@@ -1,0 +1,29 @@
+[package]
+name = "urdf-viz"
+version = "0.1.0"
+authors = ["Takashi Ogura <t.ogura@gmail.com>"]
+description = "URDF visualization"
+license = "Apache-2.0"
+keywords = ["robotics", "urdf", "visualization"]
+categories = ["visualization"]
+repository = "https://github.com/OTL/urdf-viz"
+documentation = "http://docs.rs/urdf-viz"
+
+[dependencies]
+alga = "0.5.1"
+structopt = "0.1.0"
+structopt-derive = "0.1.0"
+env_logger = "0.4.2"
+glfw = "0.8.0" # required by kiss3d
+kiss3d = "0.8.0"
+log = "0.3"
+nalgebra = "0.11.0"
+k = "0.0.4"
+regex = "0.1"
+urdf-rs = "0.1.5"
+rayon = "0.8.2"
+rand = "0.3.0"
+
+[[bin]]
+name = "urdf_viewer"
+path = "src/urdf_viewer.rs"
