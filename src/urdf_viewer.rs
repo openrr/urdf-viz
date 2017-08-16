@@ -101,6 +101,7 @@ fn main() {
     let mut last_cur_pos_y = 0f64;
     let mut last_cur_pos_x = 0f64;
     let joint_names = robot.get_joint_names();
+    let link_names = robot.map_for_joints_link(&|link| link.name.to_string());
     let num_joints = joint_names.len();
     viewer.update(&mut robot);
     while viewer.render() {
@@ -210,8 +211,22 @@ Shift+Ctrl+Drag: IK (y, x)
                 }
                 WindowEvent::Key(code, _, Action::Press, _) => {
                     match code {
-                        Key::LeftBracket => index_of_move_joint.inc(),
-                        Key::RightBracket => index_of_move_joint.dec(),
+                        Key::LeftBracket => {
+                            viewer.reset_temporal_color(&link_names[index_of_move_joint.get()]);
+                            index_of_move_joint.inc();
+                            viewer.set_temporal_color(&link_names[index_of_move_joint.get()],
+                                                      1.0,
+                                                      0.0,
+                                                      0.0);
+                        }
+                        Key::RightBracket => {
+                            viewer.reset_temporal_color(&link_names[index_of_move_joint.get()]);
+                            index_of_move_joint.dec();
+                            viewer.set_temporal_color(&link_names[index_of_move_joint.get()],
+                                                      1.0,
+                                                      0.0,
+                                                      0.0);
+                        }
                         Key::Period => index_of_arm.inc(),
                         Key::Comma => index_of_arm.dec(),
                         Key::R => {
