@@ -69,13 +69,26 @@ impl LoopIndex {
     }
 }
 
+const HOW_TO_USE_STR: &'static str = r"
+[:    joint ID +1
+]:    joint ID -1
+,:    IK target ID +1
+.:    IK target ID -1
+r:    set random angles
+Up:   joint angle +0.1
+Down: joint angle -0.1
+Ctrl+Drag: move joint
+Shift+Drag: IK (y, z)
+Shift+Ctrl+Drag: IK (y, x)
+";
+
 fn main() {
     use structopt::StructOpt;
 
     env_logger::init().unwrap();
     let opt = urdf_viz::Opt::from_args();
     if opt.clean {
-        urdf_viz::clean_cahce_dir().unwrap();
+        urdf_viz::clean_cahce_dir().unwrap_or(());
     }
     let mesh_convert = opt.get_mesh_convert_method();
     let ik_dof = opt.ik_dof;
@@ -91,7 +104,6 @@ fn main() {
     robot.set_root_transform(base_transform);
     let mut arms = k::create_kinematic_chains_with_dof_limit(&robot, ik_dof);
     let num_arms = arms.len();
-    println!("num_arms = {}", num_arms);
     let solver = k::JacobianIKSolverBuilder::new().finalize();
     let dof = robot.dof();
     let mut index_of_move_joint = LoopIndex::new(dof);
@@ -105,18 +117,7 @@ fn main() {
     let num_joints = joint_names.len();
     viewer.update(&mut robot);
     while viewer.render() {
-        viewer.draw_text(r"
-[:    joint ID +1
-]:    joint ID -1
-,:    IK target ID +1
-.:    IK target ID -1
-r:    set random angles
-Up:   joint angle +0.1
-Down: joint angle -0.1
-Ctrl+Drag: move joint
-Shift+Drag: IK (y, z)
-Shift+Ctrl+Drag: IK (y, x)
-",
+        viewer.draw_text(HOW_TO_USE_STR,
                          40,
                          &na::Point2::new(2000.0, 10.0),
                          &na::Point3::new(1f32, 1.0, 1.0));

@@ -3,11 +3,14 @@ urdf_viz
 
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 `urdf_viz` is written by rust-lang.
-It supports `.obj` files as mesh format, but it can convert other files using `meshlabserver` command
-or `assimp` command. Please install `meshlab` and `assimp`.
+It supports `.obj` files as mesh format, but it can use other formats by converting
+other files using `meshlabserver` command or `assimp` command. Please install `meshlab` and `assimp-utils`
+if you need to visualize `.dae`, `.stl` or something.
 
 Install
 --------------
+
+If you are using rust-lang already and `cargo` is installed, you can install by `cargo install`.
 
 ```bash
 $ cargo install urdf_viz
@@ -61,8 +64,8 @@ In the GUI, you can
   * `Shift` + `Ctrl` + Drag to use inverse kinematics(Y and X axis)
   * change the move target for inverse kinematics by `,` and `.`
 * `r` key to set random joints
-* move camera
-  * Mouse Right Drag to translate camera position
+* Move view point
+  * Mouse Right Drag to translate view camera position
   * Mouse Left Drag to look around
   * Scroll to zoom in/out
 
@@ -79,3 +82,8 @@ Garally
 ![thormang3_2.png](img/thormang3_2.png)
 ![pr2_1.png](img/pr2_1.png)
 ![pr2_2.png](img/pr2_2.png)
+
+Dependencies
+-------------
+`urdf-viz` is strongly depend on [kiss3d](https://github.com/sebcrozet/kiss3d),
+which is super easy to use, great 3D graphic engine.
