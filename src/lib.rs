@@ -168,7 +168,11 @@ fn convert_mesh_if_needed(filename: &str, mesh_convert: &MeshConvert, base_dir: 
                 MeshConvert::Assimp => convert_to_obj_file_by_assimp(path, new_path.as_path()),
                 MeshConvert::Meshlab => convert_to_obj_file_by_meshlab(path, new_path.as_path()),
             }
-            .unwrap();
+            .unwrap_or_else(|err| {
+                                panic!("failed to convert mesh {:?}: {}",
+                                       new_path.into_os_string(),
+                                       err);
+                            });
     }
 }
 
@@ -191,13 +195,19 @@ fn add_geometry(visual: &urdf_rs::Visual,
         } => {
             let replaced_filename = expand_package_path(filename, base_dir);
             let path = Path::new(&replaced_filename);
-            assert!(path.exists(), "{} not found", replaced_filename);
+            if !path.exists() {
+                error!("{} not found", replaced_filename);
+                return None;
+            }
             let new_path = get_cache_or_obj_path(path);
             // mtl_path works for only assimp
             let mtl_path = new_path.with_extension("obj.mtl");
             debug!("mtl_path = {}", mtl_path.to_str().unwrap());
             // should be generated in advance
-            assert!(new_path.exists());
+            if !new_path.exists() {
+                error!("converted file {:?} not found", new_path.into_os_string());
+                return None;
+            }
             Some(window.add_obj(new_path.as_path(),
                                 mtl_path.as_path(),
                                 na::Vector3::new(scale[0] as f32,
@@ -253,9 +263,11 @@ impl Viewer {
                  })
             .count();
         for l in &self.urdf_robot.links {
-            self.scenes
-                .insert(l.name.to_string(),
-                        add_geometry(&l.visual, base_dir, &mut self.window).unwrap());
+            if let Some(geom) = add_geometry(&l.visual, base_dir, &mut self.window) {
+                self.scenes.insert(l.name.to_string(), geom);
+            } else {
+                error!("failed to create for {:?}", l.visual);
+            }
         }
     }
     pub fn add_axis_cylinders(&mut self, name: &str, size: f32) {
@@ -339,15 +351,20 @@ impl Viewer {
     }
 }
 
+// TODO: Use error chain
 pub fn convert_xacro_if_needed_and_get_path(input_path: &Path) -> Result<PathBuf, std::io::Error> {
-    if input_path.extension().unwrap() == "xacro" {
-        let abs_urdf_path = get_cache_dir().to_string() +
-                            input_path.with_extension("urdf").to_str().unwrap();
-        let tmp_urdf_path = Path::new(&abs_urdf_path);
-        convert_xacro_to_urdf(&input_path, &tmp_urdf_path)?;
-        Ok(tmp_urdf_path.to_owned())
+    if let Some(ext) = input_path.extension() {
+        if ext == "xacro" {
+            let abs_urdf_path = get_cache_dir().to_string() +
+                                input_path.with_extension("urdf").to_str().unwrap();
+            let tmp_urdf_path = Path::new(&abs_urdf_path);
+            convert_xacro_to_urdf(&input_path, &tmp_urdf_path)?;
+            Ok(tmp_urdf_path.to_owned())
+        } else {
+            Ok(input_path.to_owned())
+        }
     } else {
-        Ok(input_path.to_owned())
+        Err(std::io::Error::new(std::io::ErrorKind::Other, "failed to get extension"))
     }
 }
 
