@@ -29,6 +29,10 @@ Command line
 --------------
 
 `urdf_viewer` command will be installed by cargo.
+It needs `rosrun`, `rospack` to resolve `package://` in `<mesh>`, and
+it uses `xacro` to convert `.xacro` file.
+It means you need `$ source ~/catkin_ws/devel/setup.bash` before using
+`urdf_viewer`.
 
 ```bash
 $ urdf_viewer URDF_FILE.urdf

@@ -12,6 +12,7 @@ use glfw::{Action, WindowEvent, Key};
 use k::InverseKinematicsSolver;
 use k::KinematicChain;
 use std::path::Path;
+use structopt::StructOpt;
 
 #[cfg(target_os = "macos")]
 static NATIVE_MOD: glfw::Modifiers = glfw::Super;
@@ -82,10 +83,18 @@ Shift+Drag: IK (y, z)
 Shift+Ctrl+Drag: IK (y, x)
 ";
 
+struct UrdfViewerApp {}
+
+impl UrdfViewerApp {
+    fn new() {
+        UrdfViewerApp {}
+    }
+}
+
 fn main() {
-    use structopt::StructOpt;
 
     env_logger::init().unwrap();
+
     let opt = urdf_viz::Opt::from_args();
     if opt.clean {
         urdf_viz::clean_cahce_dir().unwrap_or(());
@@ -93,11 +102,12 @@ fn main() {
     let mesh_convert = opt.get_mesh_convert_method();
     let ik_dof = opt.ik_dof;
     let input_path = Path::new(&opt.input_urdf_or_xacro);
+    let base_dir = input_path.parent().unwrap();
     let urdf_path = urdf_viz::convert_xacro_if_needed_and_get_path(input_path).unwrap();
     let urdf_robo = urdf_rs::read_file(&urdf_path).unwrap();
     let mut robot = k::urdf::create_tree::<f32>(&urdf_robo);
     let mut viewer = urdf_viz::Viewer::new(urdf_robo);
-    viewer.setup(mesh_convert);
+    viewer.setup(mesh_convert, &base_dir);
     let base_transform =
         na::Isometry3::from_parts(na::Translation3::new(0.0, 0.0, 0.0),
                                   na::UnitQuaternion::from_euler_angles(0.0, 1.57, 1.57));
@@ -116,6 +126,21 @@ fn main() {
     let link_names = robot.map_for_joints_link(&|link| link.name.to_string());
     let num_joints = joint_names.len();
     viewer.update(&mut robot);
+    viewer.add_axis_cylinders("origin", 1.0);
+    viewer
+        .scenes
+        .get_mut("origin")
+        .unwrap()
+        .set_local_transformation(base_transform);
+    if num_arms > 0 {
+        viewer.add_axis_cylinders("ik_target", 0.2);
+        viewer
+            .scenes
+            .get_mut("ik_target")
+            .unwrap()
+            .set_local_transformation(arms[index_of_arm.get()].calc_end_transform());
+    }
+
     while viewer.render() {
         viewer.draw_text(HOW_TO_USE_STR,
                          40,
@@ -189,6 +214,12 @@ fn main() {
                                 target.translation.vector[1] -=
                                     ((y - last_cur_pos_y) * ik_move_gain) as f32;
                             }
+
+                            viewer
+                                .scenes
+                                .get_mut("ik_target")
+                                .unwrap()
+                                .set_local_transformation(target);
                             solver
                                 .solve(&mut arms[index_of_arm.get()], &target)
                                 .unwrap_or_else(|err| {
@@ -228,8 +259,24 @@ fn main() {
                                                       0.0,
                                                       0.0);
                         }
-                        Key::Period => index_of_arm.inc(),
-                        Key::Comma => index_of_arm.dec(),
+                        Key::Period => {
+                            index_of_arm.inc();
+                            viewer
+                                .scenes
+                                .get_mut("ik_target")
+                                .unwrap()
+                                .set_local_transformation(arms[index_of_arm.get()]
+                                                              .calc_end_transform());
+                        }
+                        Key::Comma => {
+                            index_of_arm.dec();
+                            viewer
+                                .scenes
+                                .get_mut("ik_target")
+                                .unwrap()
+                                .set_local_transformation(arms[index_of_arm.get()]
+                                                              .calc_end_transform());
+                        }
                         Key::R => {
                             if num_joints > 0 {
                                 move_joint_by_random(&mut robot).unwrap_or(());

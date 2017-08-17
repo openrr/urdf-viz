@@ -129,26 +129,37 @@ fn rospack_find(package: &str) -> Option<String> {
 }
 
 
-fn expand_package_path(filename: &str) -> String {
-    let re = Regex::new("^package://(\\w+)/").unwrap();
-    re.replace(filename,
-               |ma: &regex::Captures| match rospack_find(&ma[1]) {
-                   Some(found_path) => found_path + "/",
-                   None => panic!("failed to find ros package {}", &ma[1]),
-               })
+fn expand_package_path(filename: &str, base_dir: &Path) -> String {
+    if filename.starts_with("package://") {
+        let re = Regex::new("^package://(\\w+)/").unwrap();
+        re.replace(filename,
+                   |ma: &regex::Captures| match rospack_find(&ma[1]) {
+                       Some(found_path) => found_path + "/",
+                       None => panic!("failed to find ros package {}", &ma[1]),
+                   })
+    } else {
+        let mut relative_path_from_urdf = base_dir.to_owned();
+        relative_path_from_urdf.push(filename);
+        relative_path_from_urdf.to_str().unwrap().to_owned()
+    }
 }
 
 fn get_cache_or_obj_path(path: &Path) -> PathBuf {
-    if path.extension().unwrap() == "obj" {
-        return path.to_path_buf();
+    match path.extension() {
+        Some(ext) => {
+            if ext == "obj" {
+                return path.to_path_buf();
+            }
+        }
+        None => panic!("not supported mesh file {:?}", path),
     }
     let cache_path = get_cache_dir().to_string() + &path.with_extension("obj").to_str().unwrap();
     info!("cache obj path = {:?}", cache_path);
     Path::new(&cache_path).to_path_buf()
 }
 
-fn convert_mesh_if_needed(filename: &str, mesh_convert: &MeshConvert) {
-    let replaced_filename = expand_package_path(filename);
+fn convert_mesh_if_needed(filename: &str, mesh_convert: &MeshConvert, base_dir: &Path) {
+    let replaced_filename = expand_package_path(filename, base_dir);
     let path = Path::new(&replaced_filename);
     assert!(path.exists(), "{} not found", replaced_filename);
     let new_path = get_cache_or_obj_path(path);
@@ -162,7 +173,10 @@ fn convert_mesh_if_needed(filename: &str, mesh_convert: &MeshConvert) {
 }
 
 
-fn add_geometry(visual: &urdf_rs::Visual, window: &mut Window) -> Option<SceneNode> {
+fn add_geometry(visual: &urdf_rs::Visual,
+                base_dir: &Path,
+                window: &mut Window)
+                -> Option<SceneNode> {
     let mut geom = match visual.geometry {
         urdf_rs::Geometry::Box { ref size } => {
             Some(window.add_cube(size[0] as f32, size[1] as f32, size[2] as f32))
@@ -175,7 +189,7 @@ fn add_geometry(visual: &urdf_rs::Visual, window: &mut Window) -> Option<SceneNo
             ref filename,
             scale,
         } => {
-            let replaced_filename = expand_package_path(filename);
+            let replaced_filename = expand_package_path(filename, base_dir);
             let path = Path::new(&replaced_filename);
             assert!(path.exists(), "{} not found", replaced_filename);
             let new_path = get_cache_or_obj_path(path);
@@ -223,7 +237,7 @@ impl Viewer {
             original_colors: HashMap::new(),
         }
     }
-    pub fn setup(&mut self, mesh_convert: MeshConvert) {
+    pub fn setup(&mut self, mesh_convert: MeshConvert, base_dir: &Path) {
         self.window
             .set_light(kiss3d::light::Light::StickToCamera);
 
@@ -235,14 +249,33 @@ impl Viewer {
                             filename: ref f,
                             scale: _,
                         } = l.visual.geometry {
-                     convert_mesh_if_needed(f, &mesh_convert);
+                     convert_mesh_if_needed(f, &mesh_convert, base_dir);
                  })
             .count();
         for l in &self.urdf_robot.links {
             self.scenes
                 .insert(l.name.to_string(),
-                        add_geometry(&l.visual, &mut self.window).unwrap());
+                        add_geometry(&l.visual, base_dir, &mut self.window).unwrap());
         }
+    }
+    pub fn add_axis_cylinders(&mut self, name: &str, size: f32) {
+        let mut axis_group = self.window.add_group();
+        let mut x = axis_group.add_cylinder(0.01, size);
+        x.set_color(0.0, 0.0, 1.0);
+        let mut y = axis_group.add_cylinder(0.01, size);
+        y.set_color(0.0, 1.0, 0.0);
+        let mut z = axis_group.add_cylinder(0.01, size);
+        z.set_color(1.0, 0.0, 0.0);
+        let rot_x = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), 1.57);
+        let rot_y = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), 1.57);
+        let rot_z = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), 1.57);
+        x.append_translation(&na::Translation3::new(0.0, 0.0, size * 0.5));
+        y.append_translation(&na::Translation3::new(0.0, size * 0.5, 0.0));
+        z.append_translation(&na::Translation3::new(size * 0.5, 0.0, 0.0));
+        x.set_local_rotation(rot_x);
+        y.set_local_rotation(rot_y);
+        z.set_local_rotation(rot_z);
+        self.scenes.insert(name.to_owned(), axis_group);
     }
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
@@ -341,4 +374,12 @@ impl Opt {
             MeshConvert::Meshlab
         }
     }
+}
+
+#[test]
+fn test_func() {
+    let input = Path::new("/home/user/robo.urdf");
+    assert!(expand_package_path("mesh/aaa.obj", input.parent().unwrap()) ==
+            "/home/user/mesh/aaa.obj");
+
 }
