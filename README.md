@@ -22,6 +22,9 @@ Install mesh converter commands
 $ sudo apt-get install meshlab assimp-utils
 ```
 
+If you don't want to install `rust` and `cargo`, you might be able to find
+binary for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
+
 Command line
 --------------
 
