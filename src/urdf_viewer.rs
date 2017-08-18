@@ -80,7 +80,7 @@ Up:   joint angle +0.1
 Down: joint angle -0.1
 Ctrl+Drag: move joint
 Shift+Drag: IK (y, z)
-Shift+Ctrl+Drag: IK (y, x)
+Shift+Ctrl+Drag: IK (x, z)
 ";
 
 struct UrdfViewerApp {
@@ -247,14 +247,14 @@ impl UrdfViewerApp {
                                 // [0]: y
                                 // [1]: z
                                 // [2]: x
-                                target.translation.vector[0] -=
-                                    ((x - last_cur_pos_x) * ik_move_gain) as f32;
+                                target.translation.vector[1] -=
+                                    ((y - last_cur_pos_y) * ik_move_gain) as f32;
                                 if is_ctrl {
-                                    target.translation.vector[2] +=
-                                        ((y - last_cur_pos_y) * ik_move_gain) as f32;
+                                    target.translation.vector[2] -=
+                                        ((x - last_cur_pos_x) * ik_move_gain) as f32;
                                 } else {
-                                    target.translation.vector[1] -=
-                                        ((y - last_cur_pos_y) * ik_move_gain) as f32;
+                                    target.translation.vector[0] -=
+                                        ((x - last_cur_pos_x) * ik_move_gain) as f32;
                                 }
 
                                 self.update_ik_target_marker();

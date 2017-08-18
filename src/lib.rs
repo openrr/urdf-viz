@@ -11,6 +11,7 @@
 //! You need to install meshlab or assimp anyway.
 //!
 extern crate alga;
+extern crate assimp;
 extern crate glfw;
 extern crate kiss3d;
 extern crate nalgebra as na;
@@ -24,9 +25,12 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
+use assimp::{Importer, LogStream};
+use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
 use rayon::prelude::*;
+use std::cell::RefCell;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
@@ -37,9 +41,33 @@ use std::process::Command;
 use std::rc::Rc;
 
 pub enum MeshConvert {
-    Assimp,
-    Meshlab,
+    AssimpLibrary,
+    AssimpCommand,
+    MeshlabCommand,
 }
+
+fn convert_assimp_scene_to_kiss3d_meshes(scene: assimp::Scene) -> Vec<Rc<RefCell<Mesh>>> {
+    scene
+        .mesh_iter()
+        .map(|mesh| {
+            let vertices = mesh.vertex_iter()
+                .map(|v| na::Point3::new(v.x, v.y, v.z))
+                .collect::<Vec<_>>();
+            let indices = mesh.face_iter()
+                .map(|f| {
+                         if f.num_indices < 3 {
+                             // TODO: fix this
+                             na::Point3::new(0, 0, 0)
+                         } else {
+                             na::Point3::new(f[0], f[1], f[2])
+                         }
+                     })
+                .collect();
+            Rc::new(RefCell::new(Mesh::new(vertices, indices, None, None, false)))
+        })
+        .collect()
+}
+
 
 fn get_cache_dir() -> &'static str {
     "/tmp/urdf_vis/"
@@ -112,7 +140,6 @@ pub fn convert_to_obj_file_by_assimp(filename: &Path,
     }
 }
 
-
 fn rospack_find(package: &str) -> Option<String> {
     let output = Command::new("rospack")
         .arg("find")
@@ -144,6 +171,7 @@ fn expand_package_path(filename: &str, base_dir: &Path) -> String {
     }
 }
 
+
 fn get_cache_or_obj_path(path: &Path) -> PathBuf {
     match path.extension() {
         Some(ext) => {
@@ -158,15 +186,25 @@ fn get_cache_or_obj_path(path: &Path) -> PathBuf {
     Path::new(&cache_path).to_path_buf()
 }
 
+
 fn convert_mesh_if_needed(filename: &str, mesh_convert: &MeshConvert, base_dir: &Path) {
+    match mesh_convert {
+        &MeshConvert::AssimpLibrary => return,
+        _ => {}
+    };
     let replaced_filename = expand_package_path(filename, base_dir);
     let path = Path::new(&replaced_filename);
     assert!(path.exists(), "{} not found", replaced_filename);
     let new_path = get_cache_or_obj_path(path);
     if !new_path.exists() {
         match *mesh_convert {
-                MeshConvert::Assimp => convert_to_obj_file_by_assimp(path, new_path.as_path()),
-                MeshConvert::Meshlab => convert_to_obj_file_by_meshlab(path, new_path.as_path()),
+                MeshConvert::AssimpLibrary => return,
+                MeshConvert::AssimpCommand => {
+                    convert_to_obj_file_by_assimp(path, new_path.as_path())
+                }
+                MeshConvert::MeshlabCommand => {
+                    convert_to_obj_file_by_meshlab(path, new_path.as_path())
+                }
             }
             .unwrap_or_else(|err| {
                                 panic!("failed to convert mesh {:?}: {}",
@@ -200,19 +238,27 @@ fn add_geometry(visual: &urdf_rs::Visual,
                 return None;
             }
             let new_path = get_cache_or_obj_path(path);
-            // mtl_path works for only assimp
-            let mtl_path = new_path.with_extension("obj.mtl");
-            debug!("mtl_path = {}", mtl_path.to_str().unwrap());
-            // should be generated in advance
-            if !new_path.exists() {
-                error!("converted file {:?} not found", new_path.into_os_string());
-                return None;
+            let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
+            if new_path.exists() &&
+               new_path
+                   .extension()
+                   .unwrap_or_else(|| panic!("no extention: {:?}", new_path)) ==
+               "obj" {
+                Some(window.add_obj(new_path.as_path(), Path::new(""), na_scale))
+            } else {
+                let mut importer = Importer::new();
+                importer.pre_transform_vertices(|x| x.enable = true);
+                match importer.read_file(path.to_str().unwrap()) {
+                    Ok(as_scene) => {
+                        let mut group = window.add_group();
+                        for mesh in convert_assimp_scene_to_kiss3d_meshes(as_scene) {
+                            group.add_mesh(mesh.clone(), na_scale);
+                        }
+                        Some(group)
+                    }
+                    Err(_) => None,
+                }
             }
-            Some(window.add_obj(new_path.as_path(),
-                                mtl_path.as_path(),
-                                na::Vector3::new(scale[0] as f32,
-                                                 scale[1] as f32,
-                                                 scale[2] as f32)))
         }
     };
     let rgba = &visual.material.color.rgba;
@@ -248,6 +294,9 @@ impl Viewer {
         }
     }
     pub fn setup(&mut self, mesh_convert: MeshConvert, base_dir: &Path) {
+        LogStream::set_verbose_logging(true);
+        let mut log_stream = LogStream::stdout();
+        log_stream.attach();
         self.window
             .set_light(kiss3d::light::Light::StickToCamera);
 
@@ -371,27 +420,35 @@ pub fn convert_xacro_if_needed_and_get_path(input_path: &Path) -> Result<PathBuf
 #[derive(StructOpt, Debug)]
 #[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
 pub struct Opt {
+    #[structopt(short = "m", long = "meshlab",
+                help = "Use meshlabserver to convert mesh files")]
+    pub meshlab: bool,
     #[structopt(short = "a", long = "assimp",
-                help = "Use assimp instead of meshlab to convert .dae to .obj for visualization")]
+                help = "Use assimp command to convert mesh files")]
     pub assimp: bool,
+
     #[structopt(short = "c", long = "clean",
-                help = "Clean the caches which is created by assimp or meshlab")]
+                help = "Clean the caches which is created by assimp or meshlabserver")]
     pub clean: bool,
-    #[structopt(short = "d", long = "dof", help = "max dof for ik", default_value = "6")]
+    #[structopt(short = "d", long = "dof", help = "limit the dof for ik to avoid use fingers as end effectors", default_value = "6")]
     pub ik_dof: usize,
     #[structopt(help = "Input urdf or xacro")]
     pub input_urdf_or_xacro: String,
 }
 
+
 impl Opt {
     pub fn get_mesh_convert_method(&self) -> MeshConvert {
-        if self.assimp {
-            MeshConvert::Assimp
+        if self.meshlab {
+            MeshConvert::MeshlabCommand
+        } else if self.assimp {
+            MeshConvert::AssimpCommand
         } else {
-            MeshConvert::Meshlab
+            MeshConvert::AssimpLibrary
         }
     }
 }
+
 
 #[test]
 fn test_func() {

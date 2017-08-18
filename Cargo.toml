@@ -1,6 +1,6 @@
 [package]
 name = "urdf-viz"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Takashi Ogura <t.ogura@gmail.com>"]
 description = "URDF visualization"
 license = "Apache-2.0"
@@ -11,6 +11,7 @@ documentation = "http://docs.rs/urdf-viz"
 
 [dependencies]
 alga = "0.5.1"
+assimp = "0.2.0"
 structopt = "0.1.0"
 structopt-derive = "0.1.0"
 env_logger = "0.4.2"
