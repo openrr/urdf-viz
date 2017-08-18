@@ -1,26 +1,39 @@
-urdf_viz
+urdf-viz
 ==================
 
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
-`urdf_viz` is written by rust-lang.
+`urdf-viz` is written by rust-lang.
 
 Install
 --------------
 
+### Install by `cargo`
+
 If you are using rust-lang already and `cargo` is installed, you can install by `cargo install`.
+
+#### Install urdf-viz
 
 ```bash
 $ cargo install urdf_viz
 ```
 
-Install mesh converter commands (optional)
+#### (FYI) Install `cargo`
+
+```bash
+$ curl https://sh.rustup.rs -sSf | sh
+```
+
+### Install by download binary from github
+
+If you don't want to install `rust` and `cargo`, you might be able to find
+binary for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
+
+### Install mesh converter commands (optional)
 
 ```bash
 $ sudo apt-get install meshlab assimp-utils
 ```
 
-If you don't want to install `rust` and `cargo`, you might be able to find
-binary for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
 
 Command line
 --------------
