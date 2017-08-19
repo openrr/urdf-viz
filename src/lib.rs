@@ -20,7 +20,6 @@ extern crate regex;
 extern crate urdf_rs;
 #[macro_use]
 extern crate log;
-extern crate rayon;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
@@ -29,23 +28,17 @@ use assimp::{Importer, LogStream};
 use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
-use rayon::prelude::*;
 use std::cell::RefCell;
 use regex::Regex;
 use std::collections::HashMap;
-use std::fs;
-use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::rc::Rc;
 
-pub enum MeshConvert {
-    AssimpLibrary,
-    AssimpCommand,
-    MeshlabCommand,
+fn get_cache_dir() -> &'static str {
+    "/tmp/urdf_viz/"
 }
-
 
 pub fn load_mesh<P>(filename: P) -> Result<Vec<Rc<RefCell<Mesh>>>, String>
     where P: AsRef<Path>
@@ -83,15 +76,6 @@ fn convert_assimp_scene_to_kiss3d_meshes(scene: assimp::Scene) -> Vec<Rc<RefCell
         .collect()
 }
 
-
-fn get_cache_dir() -> &'static str {
-    "/tmp/urdf_vis/"
-}
-
-pub fn clean_cahce_dir() -> io::Result<()> {
-    fs::remove_dir_all(get_cache_dir())
-}
-
 fn create_parent_dir(new_path: &Path) -> Result<(), std::io::Error> {
     let new_parent_dir = new_path.parent().unwrap();
     if !new_parent_dir.is_dir() {
@@ -122,38 +106,6 @@ pub fn convert_xacro_to_urdf<P>(filename: P, new_path: P) -> Result<(), std::io:
     }
 }
 
-pub fn convert_to_obj_file_by_meshlab(filename: &Path,
-                                      new_path: &Path)
-                                      -> Result<(), std::io::Error> {
-    create_parent_dir(new_path)?;
-    info!("converting {:?} to {:?}", filename, new_path);
-    let output = Command::new("meshlabserver")
-        .args(&["-i", filename.to_str().unwrap(), "-o", new_path.to_str().unwrap()])
-        .output()
-        .expect("failed to execute meshlabserver. install by apt-get install meshlab");
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "faild to meshlab"))
-    }
-}
-
-pub fn convert_to_obj_file_by_assimp(filename: &Path,
-                                     new_path: &Path)
-                                     -> Result<(), std::io::Error> {
-    create_parent_dir(new_path)?;
-    info!("converting {:?} to {:?}", filename, new_path);
-    let output =
-        Command::new("assimp")
-            .args(&["export", filename.to_str().unwrap(), new_path.to_str().unwrap(), "-ptv"])
-            .output()
-            .expect("failed to execute meshlabserver. install by apt-get install assimp-utils");
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "faild to assimp"))
-    }
-}
 
 fn rospack_find(package: &str) -> Option<String> {
     let output = Command::new("rospack")
@@ -187,49 +139,6 @@ fn expand_package_path(filename: &str, base_dir: &Path) -> String {
 }
 
 
-fn get_cache_or_obj_path(path: &Path) -> PathBuf {
-    match path.extension() {
-        Some(ext) => {
-            if ext == "obj" {
-                return path.to_path_buf();
-            }
-        }
-        None => panic!("not supported mesh file {:?}", path),
-    }
-    let cache_path = get_cache_dir().to_string() + &path.with_extension("obj").to_str().unwrap();
-    info!("cache obj path = {:?}", cache_path);
-    Path::new(&cache_path).to_path_buf()
-}
-
-
-fn convert_mesh_if_needed(filename: &str, mesh_convert: &MeshConvert, base_dir: &Path) {
-    match mesh_convert {
-        &MeshConvert::AssimpLibrary => return,
-        _ => {}
-    };
-    let replaced_filename = expand_package_path(filename, base_dir);
-    let path = Path::new(&replaced_filename);
-    assert!(path.exists(), "{} not found", replaced_filename);
-    let new_path = get_cache_or_obj_path(path);
-    if !new_path.exists() {
-        match *mesh_convert {
-                MeshConvert::AssimpLibrary => return,
-                MeshConvert::AssimpCommand => {
-                    convert_to_obj_file_by_assimp(path, new_path.as_path())
-                }
-                MeshConvert::MeshlabCommand => {
-                    convert_to_obj_file_by_meshlab(path, new_path.as_path())
-                }
-            }
-            .unwrap_or_else(|err| {
-                                panic!("failed to convert mesh {:?}: {}",
-                                       new_path.into_os_string(),
-                                       err);
-                            });
-    }
-}
-
-
 fn add_geometry(visual: &urdf_rs::Visual,
                 base_dir: &Path,
                 window: &mut Window)
@@ -252,24 +161,16 @@ fn add_geometry(visual: &urdf_rs::Visual,
                 error!("{} not found", replaced_filename);
                 return None;
             }
-            let new_path = get_cache_or_obj_path(path);
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
-            if new_path.exists() &&
-               new_path
-                   .extension()
-                   .unwrap_or_else(|| panic!("no extention: {:?}", new_path)) ==
-               "obj" {
-                Some(window.add_obj(new_path.as_path(), Path::new(""), na_scale))
-            } else {
-                if let Ok(meshes) = load_mesh(path) {
-                    let mut group = window.add_group();
-                    for mesh in meshes {
-                        group.add_mesh(mesh.clone(), na_scale);
-                    }
-                    Some(group)
-                } else {
-                    None
+
+            if let Ok(meshes) = load_mesh(path) {
+                let mut group = window.add_group();
+                for mesh in meshes {
+                    group.add_mesh(mesh.clone(), na_scale);
                 }
+                Some(group)
+            } else {
+                None
             }
         }
     };
@@ -305,7 +206,7 @@ impl Viewer {
             original_colors: HashMap::new(),
         }
     }
-    pub fn setup(&mut self, mesh_convert: MeshConvert, base_dir: &Path) {
+    pub fn setup(&mut self, base_dir: &Path) {
         LogStream::set_verbose_logging(true);
         let mut log_stream = LogStream::stdout();
         log_stream.attach();
@@ -313,16 +214,6 @@ impl Viewer {
             .set_light(kiss3d::light::Light::StickToCamera);
 
         self.window.set_background_color(0.0, 0.0, 0.3);
-        let _ = self.urdf_robot
-            .links
-            .par_iter()
-            .map(|l| if let urdf_rs::Geometry::Mesh {
-                            filename: ref f,
-                            scale: _,
-                        } = l.visual.geometry {
-                     convert_mesh_if_needed(f, &mesh_convert, base_dir);
-                 })
-            .count();
         for l in &self.urdf_robot.links {
             if let Some(geom) = add_geometry(&l.visual, base_dir, &mut self.window) {
                 self.scenes.insert(l.name.to_string(), geom);
@@ -432,16 +323,6 @@ pub fn convert_xacro_if_needed_and_get_path(input_path: &Path) -> Result<PathBuf
 #[derive(StructOpt, Debug)]
 #[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
 pub struct Opt {
-    #[structopt(short = "m", long = "meshlab",
-                help = "Use meshlabserver to convert mesh files")]
-    pub meshlab: bool,
-    #[structopt(short = "a", long = "assimp",
-                help = "Use assimp command to convert mesh files")]
-    pub assimp: bool,
-
-    #[structopt(short = "c", long = "clean",
-                help = "Clean the caches which is created by assimp or meshlabserver")]
-    pub clean: bool,
     #[structopt(short = "d", long = "dof",
                 help = "limit the dof for ik to avoid use fingers as end effectors",
                 default_value = "6")]
@@ -450,18 +331,6 @@ pub struct Opt {
     pub input_urdf_or_xacro: String,
 }
 
-
-impl Opt {
-    pub fn get_mesh_convert_method(&self) -> MeshConvert {
-        if self.meshlab {
-            MeshConvert::MeshlabCommand
-        } else if self.assimp {
-            MeshConvert::AssimpCommand
-        } else {
-            MeshConvert::AssimpLibrary
-        }
-    }
-}
 
 
 #[test]

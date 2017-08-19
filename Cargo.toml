@@ -22,7 +22,6 @@ nalgebra = "0.11.0"
 k = "0.0.4"
 regex = "0.1"
 urdf-rs = "0.1.5"
-rayon = "0.8.2"
 rand = "0.3.0"
 
 [[bin]]

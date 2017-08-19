@@ -99,9 +99,6 @@ struct UrdfViewerApp {
 impl UrdfViewerApp {
     fn new() -> Self {
         let opt = urdf_viz::Opt::from_args();
-        if opt.clean {
-            urdf_viz::clean_cahce_dir().unwrap_or(());
-        }
         let input_path = Path::new(&opt.input_urdf_or_xacro);
         let base_dir = input_path
             .parent()
@@ -123,7 +120,7 @@ impl UrdfViewerApp {
                                                           });
         let mut robot = k::urdf::create_tree::<f32>(&urdf_robo);
         let mut viewer = urdf_viz::Viewer::new(urdf_robo);
-        viewer.setup(opt.get_mesh_convert_method(), &base_dir);
+        viewer.setup(&base_dir);
         let base_transform =
             na::Isometry3::from_parts(na::Translation3::new(0.0, 0.0, 0.0),
                                       na::UnitQuaternion::from_euler_angles(0.0, 1.57, 1.57));
