@@ -14,7 +14,7 @@ If you are using rust-lang already and `cargo` is installed, you can install by 
 #### Install urdf-viz
 
 ```bash
-$ cargo install urdf_viz
+$ cargo install urdf-viz
 ```
 
 #### (FYI) Install `cargo`
@@ -23,25 +23,21 @@ $ cargo install urdf_viz
 $ curl https://sh.rustup.rs -sSf | sh
 ```
 
+and follow the instruction of the installer.
+
+
 ### Install by download binary from github
 
 If you don't want to install `rust` and `cargo`, you might be able to find
 binary for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
-
-Install mesh converter commands (optional)
----------------------------------------------
-
-```bash
-$ sudo apt-get install meshlab assimp-utils
-```
 
 
 Command line
 --------------
 
 `urdf_viewer` command will be installed by cargo.
-It needs `rosrun`, `rospack` to resolve `package://` in `<mesh>`, and
-it uses `xacro` to convert `.xacro` file.
+It needs `rosrun` and `rospack` to resolve `package://` in `<mesh>` tag, and
+it uses `xacro` to convert `.xacro` file into urdf file.
 It means you need `$ source ~/catkin_ws/devel/setup.bash` before using
 `urdf_viewer`.
 
@@ -56,17 +52,7 @@ It will be converted by `rosrun xacro xacro` inside of `urdf_viewer`.
 $ urdf_viewer XACRO_FILE.urdf.xacro
 ```
 
-The default mesh converter is `assimp`. Sometimes it fails to create currect
-meshes. (for example, `nao`, `pepper` models fails)
-
-If you failed to convert mesh files, try `-m` option to use `meshlabserver`.
-(It needs meshlab)
-
-```bash
-$ urdf_viewer -m URDF_FILE.urdf
-```
-
-For other options, please read `-h` option.
+For other options, please read the output of `-h` option.
 
 ```bash
 $ urdf_viewer -h

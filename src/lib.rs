@@ -32,77 +32,57 @@ use std::cell::RefCell;
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 use std::rc::Rc;
 
-fn get_cache_dir() -> &'static str {
-    "/tmp/urdf_viz/"
-}
+mod errors;
+pub use errors::*;
 
-pub fn load_mesh<P>(filename: P) -> Result<Vec<Rc<RefCell<Mesh>>>, String>
+pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
     where P: AsRef<Path>
 {
     let mut importer = Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
-    if let Some(file) = filename.as_ref().to_str() {
-        if let Ok(as_scene) = importer.read_file(file) {
-            Ok(convert_assimp_scene_to_kiss3d_meshes(as_scene))
-        } else {
-            Err(format!("failed to read file in assimp {}", file))
-        }
-    } else {
-        Err("failed to convert to &str filename".to_owned())
+    let file_string = filename.as_ref()
+        .to_str()
+        .ok_or("faild to get string from path")?;
+    Ok(convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?))
+}
+
+fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>> {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for mesh in scene.mesh_iter() {
+        vertices.extend(mesh.vertex_iter()
+                            .map(|v| na::Point3::new(v.x, v.y, v.z)));
+        indices.extend(mesh.face_iter()
+                           .filter_map(|f| if f.num_indices == 3 {
+                                           Some(na::Point3::new(f[0], f[1], f[2]))
+                                       } else {
+                                           None
+                                       }));
     }
+    Rc::new(RefCell::new(Mesh::new(vertices, indices, None, None, false)))
 }
 
-fn convert_assimp_scene_to_kiss3d_meshes(scene: assimp::Scene) -> Vec<Rc<RefCell<Mesh>>> {
-    scene
-        .mesh_iter()
-        .map(|mesh| {
-            let vertices = mesh.vertex_iter()
-                .map(|v| na::Point3::new(v.x, v.y, v.z))
-                .collect::<Vec<_>>();
-            let indices = mesh.face_iter()
-                .filter_map(|f| if f.num_indices == 3 {
-                                Some(na::Point3::new(f[0], f[1], f[2]))
-                            } else {
-                                None
-                            })
-                .collect();
-            Rc::new(RefCell::new(Mesh::new(vertices, indices, None, None, false)))
-        })
-        .collect()
-}
-
-fn create_parent_dir(new_path: &Path) -> Result<(), std::io::Error> {
-    let new_parent_dir = new_path.parent().unwrap();
-    if !new_parent_dir.is_dir() {
-        info!("creating dir {}", new_parent_dir.to_str().unwrap());
-        std::fs::create_dir_all(new_parent_dir)?;
-    }
-    Ok(())
-}
-
-pub fn convert_xacro_to_urdf<P>(filename: P, new_path: P) -> Result<(), std::io::Error>
+pub fn convert_xacro_to_urdf<P>(filename: P) -> Result<String>
     where P: AsRef<Path>
 {
-    create_parent_dir(new_path.as_ref())?;
     let output = Command::new("rosrun")
         .args(&["xacro",
                 "xacro",
                 "--inorder",
-                filename.as_ref().to_str().unwrap(),
-                "-o",
-                new_path.as_ref().to_str().unwrap()])
+                filename.as_ref()
+                    .to_str()
+                    .ok_or("failed to get str fro filename")?])
         .output()
         .expect("failed to execute xacro. install by apt-get install ros-*-xacro");
     if output.status.success() {
-        Ok(())
+        Ok(String::from_utf8(output.stdout)?)
     } else {
         error!("{}", String::from_utf8(output.stderr).unwrap());
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "faild to xacro"))
+        Err(Error::Other("faild to xacro".to_owned()))
     }
 }
 
@@ -143,7 +123,7 @@ fn add_geometry(visual: &urdf_rs::Visual,
                 base_dir: &Path,
                 window: &mut Window)
                 -> Option<SceneNode> {
-    let mut geom = match visual.geometry {
+    match visual.geometry {
         urdf_rs::Geometry::Box { ref size } => {
             Some(window.add_cube(size[0] as f32, size[1] as f32, size[2] as f32))
         }
@@ -163,23 +143,13 @@ fn add_geometry(visual: &urdf_rs::Visual,
             }
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
 
-            if let Ok(meshes) = load_mesh(path) {
-                let mut group = window.add_group();
-                for mesh in meshes {
-                    group.add_mesh(mesh.clone(), na_scale);
-                }
-                Some(group)
+            if let Ok(mesh) = load_mesh(path) {
+                Some(window.add_mesh(mesh, na_scale))
             } else {
                 None
             }
         }
-    };
-    let rgba = &visual.material.color.rgba;
-    match geom {
-        Some(ref mut obj) => obj.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32),
-        None => return None,
     }
-    geom
 }
 
 pub struct Viewer {
@@ -206,16 +176,33 @@ impl Viewer {
             original_colors: HashMap::new(),
         }
     }
-    pub fn setup(&mut self, base_dir: &Path) {
-        LogStream::set_verbose_logging(true);
-        let mut log_stream = LogStream::stdout();
-        log_stream.attach();
+    pub fn setup(&mut self, base_dir: &Path, is_verbose: bool) {
+        if is_verbose {
+            LogStream::set_verbose_logging(true);
+            let mut log_stream = LogStream::stdout();
+            log_stream.attach();
+        }
         self.window
             .set_light(kiss3d::light::Light::StickToCamera);
 
         self.window.set_background_color(0.0, 0.0, 0.3);
         for l in &self.urdf_robot.links {
-            if let Some(geom) = add_geometry(&l.visual, base_dir, &mut self.window) {
+            if let Some(mut geom) = add_geometry(&l.visual, base_dir, &mut self.window) {
+                match self.urdf_robot
+                          .materials
+                          .iter()
+                          .find(|mat| mat.name == l.visual.material.name)
+                          .map(|mat| mat.clone()) {
+                    Some(ref material) => {
+                        geom.set_color(material.color.rgba[0] as f32,
+                                       material.color.rgba[1] as f32,
+                                       material.color.rgba[2] as f32)
+                    }
+                    None => {
+                        let rgba = &l.visual.material.color.rgba;
+                        geom.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
+                    }
+                }
                 self.scenes.insert(l.name.to_string(), geom);
             } else {
                 error!("failed to create for {:?}", l.visual);
@@ -303,22 +290,6 @@ impl Viewer {
     }
 }
 
-// TODO: Use error chain
-pub fn convert_xacro_if_needed_and_get_path(input_path: &Path) -> Result<PathBuf, std::io::Error> {
-    if let Some(ext) = input_path.extension() {
-        if ext == "xacro" {
-            let abs_urdf_path = get_cache_dir().to_string() +
-                                input_path.with_extension("urdf").to_str().unwrap();
-            let tmp_urdf_path = Path::new(&abs_urdf_path);
-            convert_xacro_to_urdf(&input_path, &tmp_urdf_path)?;
-            Ok(tmp_urdf_path.to_owned())
-        } else {
-            Ok(input_path.to_owned())
-        }
-    } else {
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "failed to get extension"))
-    }
-}
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
@@ -327,6 +298,8 @@ pub struct Opt {
                 help = "limit the dof for ik to avoid use fingers as end effectors",
                 default_value = "6")]
     pub ik_dof: usize,
+    #[structopt(short = "v", long = "verbose", help = "show assimp log")]
+    pub verbose: bool,
     #[structopt(help = "Input urdf or xacro")]
     pub input_urdf_or_xacro: String,
 }

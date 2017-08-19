@@ -105,22 +105,21 @@ impl UrdfViewerApp {
             .unwrap_or_else(|| {
                                 panic!("failed to get base dir of {}", opt.input_urdf_or_xacro);
                             });
-
-        let urdf_path = urdf_viz::convert_xacro_if_needed_and_get_path(input_path)
-            .unwrap_or_else(|err| {
-                                panic!("failed to try to convert or get input path {}: {}",
-                                       opt.input_urdf_or_xacro,
-                                       err);
-                            });
         let urdf_robo =
-            urdf_rs::read_file(&urdf_path).unwrap_or_else(|err| {
-                                                              panic!("failed to read file {:?}: {}",
-                                                                     urdf_path,
-                                                                     err)
-                                                          });
+            if input_path
+                       .extension()
+                       .unwrap_or_else(|| panic!("failed to get extension")) ==
+                   "xacro" {
+                    let urdf_utf = urdf_viz::convert_xacro_to_urdf(input_path)
+                        .unwrap_or_else(|err| panic!("failed to convert xacro {:?}", err));
+                    urdf_rs::read_from_string(&urdf_utf)
+                } else {
+                    urdf_rs::read_file(&input_path)
+                }
+                .unwrap_or_else(|err| panic!("failed to read file {:?}: {}", input_path, err));
         let mut robot = k::urdf::create_tree::<f32>(&urdf_robo);
         let mut viewer = urdf_viz::Viewer::new(urdf_robo);
-        viewer.setup(&base_dir);
+        viewer.setup(&base_dir, opt.verbose);
         let base_transform =
             na::Isometry3::from_parts(na::Translation3::new(0.0, 0.0, 0.0),
                                       na::UnitQuaternion::from_euler_angles(0.0, 1.57, 1.57));
