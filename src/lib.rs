@@ -28,8 +28,8 @@ use assimp::{Importer, LogStream};
 use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
-use std::cell::RefCell;
 use regex::Regex;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
@@ -42,6 +42,8 @@ pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
     where P: AsRef<Path>
 {
     let mut importer = Importer::new();
+    //importer.triangulate(true);
+    //importer.optimize_meshes(true);
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
     let file_string = filename.as_ref()
@@ -53,15 +55,19 @@ pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
 fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>> {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
+    let mut last_index: u32 = 0;
     for mesh in scene.mesh_iter() {
         vertices.extend(mesh.vertex_iter()
                             .map(|v| na::Point3::new(v.x, v.y, v.z)));
         indices.extend(mesh.face_iter()
                            .filter_map(|f| if f.num_indices == 3 {
-                                           Some(na::Point3::new(f[0], f[1], f[2]))
+                                           Some(na::Point3::new(f[0] + last_index,
+                                                                f[1] + last_index,
+                                                                f[2] + last_index))
                                        } else {
                                            None
                                        }));
+        last_index = vertices.len() as u32;
     }
     Rc::new(RefCell::new(Mesh::new(vertices, indices, None, None, false)))
 }
@@ -152,10 +158,13 @@ fn add_geometry(visual: &urdf_rs::Visual,
     }
 }
 
+// we can remove this if we use group, but it need fix of temporal color
+pub struct SceneNodeAndTransform(pub SceneNode, pub na::Isometry3<f32>);
+
 pub struct Viewer {
     pub window: kiss3d::window::Window,
     pub urdf_robot: urdf_rs::Robot,
-    pub scenes: HashMap<String, SceneNode>,
+    pub scenes: HashMap<String, SceneNodeAndTransform>,
     pub arc_ball: kiss3d::camera::ArcBall,
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
     font_data: &'static [u8],
@@ -203,7 +212,10 @@ impl Viewer {
                         geom.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
                     }
                 }
-                self.scenes.insert(l.name.to_string(), geom);
+                self.scenes
+                    .insert(l.name.to_string(), SceneNodeAndTransform(geom, na::Isometry3::from_parts(
+                        k::urdf::translation_from(&l.visual.origin.xyz),
+                        k::urdf::quaternion_from(&l.visual.origin.rpy))));
             } else {
                 error!("failed to create for {:?}", l.visual);
             }
@@ -226,7 +238,8 @@ impl Viewer {
         x.set_local_rotation(rot_x);
         y.set_local_rotation(rot_y);
         z.set_local_rotation(rot_z);
-        self.scenes.insert(name.to_owned(), axis_group);
+        self.scenes
+            .insert(name.to_owned(), SceneNodeAndTransform(axis_group, na::Isometry3::identity()));
     }
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
@@ -238,7 +251,7 @@ impl Viewer {
                 .iter()
                 .zip(robot.map_link(&|link| link.name.clone())) {
             match self.scenes.get_mut(&link_name) {
-                Some(obj) => obj.set_local_transformation(*trans),
+                Some(obj) => obj.0.set_local_transformation(*trans * obj.1),
                 None => {
                     println!("{} not found", link_name);
                 }
@@ -265,11 +278,11 @@ impl Viewer {
         let color_opt = self.scenes
             .get_mut(link_name)
             .map(|obj| {
-                     let orig_color = match obj.data().object() {
+                     let orig_color = match obj.0.data().object() {
                          Some(object) => Some(object.data().color().to_owned()),
                          None => None,
                      };
-                     obj.set_color(r, g, b);
+                     obj.0.set_color(r, g, b);
                      orig_color
                  })
             .unwrap_or(None);
@@ -282,9 +295,10 @@ impl Viewer {
             self.scenes
                 .get_mut(link_name)
                 .map(|obj| {
-                         obj.set_color(original_color[0] as f32,
-                                       original_color[1] as f32,
-                                       original_color[2] as f32)
+                         obj.0
+                             .set_color(original_color[0] as f32,
+                                        original_color[1] as f32,
+                                        original_color[2] as f32)
                      });
         }
     }

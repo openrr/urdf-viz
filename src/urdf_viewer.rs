@@ -126,7 +126,7 @@ impl UrdfViewerApp {
         robot.set_root_transform(base_transform);
         viewer.add_axis_cylinders("origin", 1.0);
         if let Some(obj) = viewer.scenes.get_mut("origin") {
-            obj.set_local_transformation(base_transform);
+            obj.0.set_local_transformation(base_transform);
         }
         let arms = k::create_kinematic_chains_with_dof_limit(&robot, opt.ik_dof);
         let joint_names = robot.get_joint_names();
@@ -160,7 +160,8 @@ impl UrdfViewerApp {
     }
     fn update_ik_target_marker(&mut self) {
         if let Some(obj) = self.viewer.scenes.get_mut("ik_target") {
-            obj.set_local_transformation(self.arms[self.index_of_arm.get()].calc_end_transform());
+            obj.0
+                .set_local_transformation(self.arms[self.index_of_arm.get()].calc_end_transform());
         }
     }
     fn update_robot(&mut self) {
