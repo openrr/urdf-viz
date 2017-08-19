@@ -46,6 +46,24 @@ pub enum MeshConvert {
     MeshlabCommand,
 }
 
+
+pub fn load_mesh<P>(filename: P) -> Result<Vec<Rc<RefCell<Mesh>>>, String>
+    where P: AsRef<Path>
+{
+    let mut importer = Importer::new();
+    importer.pre_transform_vertices(|x| x.enable = true);
+    importer.collada_ignore_up_direction(true);
+    if let Some(file) = filename.as_ref().to_str() {
+        if let Ok(as_scene) = importer.read_file(file) {
+            Ok(convert_assimp_scene_to_kiss3d_meshes(as_scene))
+        } else {
+            Err(format!("failed to read file in assimp {}", file))
+        }
+    } else {
+        Err("failed to convert to &str filename".to_owned())
+    }
+}
+
 fn convert_assimp_scene_to_kiss3d_meshes(scene: assimp::Scene) -> Vec<Rc<RefCell<Mesh>>> {
     scene
         .mesh_iter()
@@ -54,14 +72,11 @@ fn convert_assimp_scene_to_kiss3d_meshes(scene: assimp::Scene) -> Vec<Rc<RefCell
                 .map(|v| na::Point3::new(v.x, v.y, v.z))
                 .collect::<Vec<_>>();
             let indices = mesh.face_iter()
-                .map(|f| {
-                         if f.num_indices < 3 {
-                             // TODO: fix this
-                             na::Point3::new(0, 0, 0)
-                         } else {
-                             na::Point3::new(f[0], f[1], f[2])
-                         }
-                     })
+                .filter_map(|f| if f.num_indices == 3 {
+                                Some(na::Point3::new(f[0], f[1], f[2]))
+                            } else {
+                                None
+                            })
                 .collect();
             Rc::new(RefCell::new(Mesh::new(vertices, indices, None, None, false)))
         })
@@ -246,17 +261,14 @@ fn add_geometry(visual: &urdf_rs::Visual,
                "obj" {
                 Some(window.add_obj(new_path.as_path(), Path::new(""), na_scale))
             } else {
-                let mut importer = Importer::new();
-                importer.pre_transform_vertices(|x| x.enable = true);
-                match importer.read_file(path.to_str().unwrap()) {
-                    Ok(as_scene) => {
-                        let mut group = window.add_group();
-                        for mesh in convert_assimp_scene_to_kiss3d_meshes(as_scene) {
-                            group.add_mesh(mesh.clone(), na_scale);
-                        }
-                        Some(group)
+                if let Ok(meshes) = load_mesh(path) {
+                    let mut group = window.add_group();
+                    for mesh in meshes {
+                        group.add_mesh(mesh.clone(), na_scale);
                     }
-                    Err(_) => None,
+                    Some(group)
+                } else {
+                    None
                 }
             }
         }
@@ -430,7 +442,9 @@ pub struct Opt {
     #[structopt(short = "c", long = "clean",
                 help = "Clean the caches which is created by assimp or meshlabserver")]
     pub clean: bool,
-    #[structopt(short = "d", long = "dof", help = "limit the dof for ik to avoid use fingers as end effectors", default_value = "6")]
+    #[structopt(short = "d", long = "dof",
+                help = "limit the dof for ik to avoid use fingers as end effectors",
+                default_value = "6")]
     pub ik_dof: usize,
     #[structopt(help = "Input urdf or xacro")]
     pub input_urdf_or_xacro: String,

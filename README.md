@@ -28,7 +28,8 @@ $ curl https://sh.rustup.rs -sSf | sh
 If you don't want to install `rust` and `cargo`, you might be able to find
 binary for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
 
-### Install mesh converter commands (optional)
+Install mesh converter commands (optional)
+---------------------------------------------
 
 ```bash
 $ sudo apt-get install meshlab assimp-utils
@@ -59,12 +60,13 @@ The default mesh converter is `assimp`. Sometimes it fails to create currect
 meshes. (for example, `nao`, `pepper` models fails)
 
 If you failed to convert mesh files, try `-m` option to use `meshlabserver`.
+(It needs meshlab)
 
 ```bash
 $ urdf_viewer -m URDF_FILE.urdf
 ```
 
-For other commands, please read `-h` option.
+For other options, please read `-h` option.
 
 ```bash
 $ urdf_viewer -h
