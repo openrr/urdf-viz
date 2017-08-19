@@ -92,6 +92,8 @@ Garally
 ![pr2_2.png](img/pr2_2.png)
 ![thormang3_1.png](img/thormang3_1.png)
 ![thormang3_2.png](img/thormang3_2.png)
+![nextage_1.png](img/nextage_1.png)
+![nextage_2.png](img/nextage_2.png)
 
 ![pepper_1.png](img/pepper_1.png)
 ![pepper_2.png](img/pepper_2.png)
