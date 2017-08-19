@@ -7,11 +7,9 @@ Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) fil
 Install
 --------------
 
-### Install by `cargo`
+### Install with `cargo`
 
 If you are using rust-lang already and `cargo` is installed, you can install by `cargo install`.
-
-#### Install urdf-viz
 
 ```bash
 $ cargo install urdf-viz
@@ -26,10 +24,10 @@ $ curl https://sh.rustup.rs -sSf | sh
 and follow the instruction of the installer.
 
 
-### Install by download binary from github
+### Download binary from github
 
-If you don't want to install `rust` and `cargo`, you might be able to find
-binary for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
+If you don't want to install `rust` and `cargo`, you can find
+binary `urdf-viz` for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
 
 For example, if you want to use v0.1.1,
 
@@ -42,11 +40,11 @@ $ ./urdf-viz /opt/ros/kinetic/share/pr2_description/robots/pr2.urdf.xacro
 Command line
 --------------
 
-`urdf-viz` command will be installed by cargo.
+`urdf-viz` command will be installed.
 It needs `rosrun` and `rospack` to resolve `package://` in `<mesh>` tag, and
 it uses `xacro` to convert `.xacro` file into urdf file.
-It means you need `$ source ~/catkin_ws/devel/setup.bash` before using
-`urdf-viz`.
+It means you need `$ source ~/catkin_ws/devel/setup.bash` or something before using `urdf-viz`.
+
 
 ```bash
 $ urdf-viz URDF_FILE.urdf
@@ -67,7 +65,8 @@ $ urdf-viz -h
 
 GUI
 --------------
-In the GUI, you can
+
+In the GUI, you can do some operations with keyboard and mouse.
 
 * Move a joint
   * set the angle of a joint by `Up`/`Down` key
@@ -102,5 +101,10 @@ Garally
 
 Dependencies
 -------------
-`urdf-viz` is strongly depend on [kiss3d](https://github.com/sebcrozet/kiss3d),
-which is super easy to use, great 3D graphic engine.
+
+* [kiss3d](https://github.com/sebcrozet/kiss3d): `urdf-viz` is strongly depend on `kiss3d`, which is super easy to use, great 3D graphic engine.
+* [nalgabra](https://github.com/sebcrozet/nalgebra): linear algebra library.
+* [k](https://github.com/OTL/k): kinematics library which is based on [nalgabra](https://github.com/sebcrozet/nalgebra). It can load URDF files using `urdf-rs`.
+* [assimp-rs](https://github.com/Eljay/assimp-rs): assimp rust interface. `kiss3d` supports `.obj` files natively, but urdf contains `dae` or `stl` files. These files are converted to kiss3d mesh model by `assim-rs`
+* [urdf-rs](https://github.com/OTL/urdf-rs): URDF file loader.
+* [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
