@@ -31,11 +31,11 @@ and follow the instruction of the installer.
 If you don't want to install `rust` and `cargo`, you might be able to find
 binary for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
 
-For example, if you want to use v0.1.0,
+For example, if you want to use v0.1.1,
 
 ```bash
-$ wget https://github.com/OTL/urdf-viz/releases/download/v0.1.0/urdf-viz-0.1.0-ubuntu16.04-amd64.tar.gz
-$ tar xvf urdf-viz-0.1.0-ubuntu16.04-amd64.tar.gz
+$ wget https://github.com/OTL/urdf-viz/releases/download/v0.1.1/urdf-viz-0.1.0-ubuntu16.04-amd64.tar.gz
+$ tar xvf urdf-viz-0.1.1-ubuntu16.04-amd64.tar.gz
 $ ./urdf-viz /opt/ros/kinetic/share/pr2_description/robots/pr2.urdf.xacro
 ```
 
