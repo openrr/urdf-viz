@@ -36,33 +36,33 @@ For example, if you want to use v0.1.0,
 ```bash
 $ wget https://github.com/OTL/urdf-viz/releases/download/v0.1.0/urdf-viz-0.1.0-ubuntu16.04-amd64.tar.gz
 $ tar xvf urdf-viz-0.1.0-ubuntu16.04-amd64.tar.gz
-$ ./urdf_viewer /opt/ros/kinetic/share/pr2_description/robots/pr2.urdf.xacro
+$ ./urdf-viz /opt/ros/kinetic/share/pr2_description/robots/pr2.urdf.xacro
 ```
 
 Command line
 --------------
 
-`urdf_viewer` command will be installed by cargo.
+`urdf-viz` command will be installed by cargo.
 It needs `rosrun` and `rospack` to resolve `package://` in `<mesh>` tag, and
 it uses `xacro` to convert `.xacro` file into urdf file.
 It means you need `$ source ~/catkin_ws/devel/setup.bash` before using
-`urdf_viewer`.
+`urdf-viz`.
 
 ```bash
-$ urdf_viewer URDF_FILE.urdf
+$ urdf-viz URDF_FILE.urdf
 ```
 
 It is possible to use xacro file directly.
-It will be converted by `rosrun xacro xacro` inside of `urdf_viewer`.
+It will be converted by `rosrun xacro xacro` inside of `urdf-viz`.
 
 ```bash
-$ urdf_viewer XACRO_FILE.urdf.xacro
+$ urdf-viz XACRO_FILE.urdf.xacro
 ```
 
 For other options, please read the output of `-h` option.
 
 ```bash
-$ urdf_viewer -h
+$ urdf-viz -h
 ```
 
 GUI
