@@ -82,7 +82,7 @@ In the GUI, you can do some operations with keyboard and mouse.
   * Mouse Left Drag to look around
   * Scroll to zoom in/out
 
-Garally
+Gallery
 --------------------
 
 ![ubr1_1.png](img/ubr1_1.png)
