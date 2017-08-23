@@ -6,6 +6,14 @@ Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) fil
 
 Install
 --------------
+### Pre requirements
+
+If you have not installed ROS, you may need cmake, xorg-dev, glu to
+compile assimp-sys and glfw-sys.
+
+```
+$ sudo apt-get install cmake  xorg-dev libglu1-mesa-dev
+```
 
 ### Install with `cargo`
 
@@ -32,7 +40,7 @@ binary `urdf-viz` for Ubuntu16.04 64bit [here](https://github.com/OTL/urdf-viz/r
 For example, if you want to use v0.1.1,
 
 ```bash
-$ wget https://github.com/OTL/urdf-viz/releases/download/v0.1.1/urdf-viz-0.1.0-ubuntu16.04-amd64.tar.gz
+$ wget https://github.com/OTL/urdf-viz/releases/download/v0.1.1/urdf-viz-0.1.1-ubuntu16.04-amd64.tar.gz
 $ tar xvf urdf-viz-0.1.1-ubuntu16.04-amd64.tar.gz
 $ ./urdf-viz /opt/ros/kinetic/share/pr2_description/robots/pr2.urdf.xacro
 ```
