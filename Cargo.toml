@@ -11,14 +11,13 @@ documentation = "http://docs.rs/urdf-viz"
 readme = "README.md"
 
 [dependencies]
-alga = "0.5.1"
 assimp = "0.2.0"
 env_logger = "0.4.2"
-glfw = "0.8.0" # required by kiss3d
-k = "0.0.6"
-kiss3d = "0.8.0"
+glfw = "0.15.0"
+k = "0.0.7"
+kiss3d = "0.11.0"
 log = "0.3"
-nalgebra = "0.11.0"
+nalgebra = "0.13.0"
 rand = "0.3.0"
 regex = "0.1"
 structopt = "0.1.0"
