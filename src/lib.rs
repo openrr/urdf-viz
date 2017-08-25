@@ -39,17 +39,20 @@ mod errors;
 pub use errors::*;
 
 pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
-    where P: AsRef<Path>
+where
+    P: AsRef<Path>,
 {
     let mut importer = Importer::new();
     //importer.triangulate(true);
     //importer.optimize_meshes(true);
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
-    let file_string = filename.as_ref()
-        .to_str()
-        .ok_or("faild to get string from path")?;
-    Ok(convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?))
+    let file_string = filename.as_ref().to_str().ok_or(
+        "faild to get string from path",
+    )?;
+    Ok(convert_assimp_scene_to_kiss3d_mesh(
+        importer.read_file(file_string)?,
+    ))
 }
 
 fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>> {
@@ -57,33 +60,42 @@ fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>
     let mut indices = Vec::new();
     let mut last_index: u32 = 0;
     for mesh in scene.mesh_iter() {
-        vertices.extend(mesh.vertex_iter()
-                            .map(|v| na::Point3::new(v.x, v.y, v.z)));
-        indices.extend(mesh.face_iter()
-                           .filter_map(|f| if f.num_indices == 3 {
-                                           Some(na::Point3::new(f[0] + last_index,
-                                                                f[1] + last_index,
-                                                                f[2] + last_index))
-                                       } else {
-                                           None
-                                       }));
+        vertices.extend(mesh.vertex_iter().map(|v| na::Point3::new(v.x, v.y, v.z)));
+        indices.extend(mesh.face_iter().filter_map(|f| if f.num_indices == 3 {
+            Some(na::Point3::new(
+                f[0] + last_index,
+                f[1] + last_index,
+                f[2] + last_index,
+            ))
+        } else {
+            None
+        }));
         last_index = vertices.len() as u32;
     }
-    Rc::new(RefCell::new(Mesh::new(vertices, indices, None, None, false)))
+    Rc::new(RefCell::new(
+        Mesh::new(vertices, indices, None, None, false),
+    ))
 }
 
 pub fn convert_xacro_to_urdf<P>(filename: P) -> Result<String>
-    where P: AsRef<Path>
+where
+    P: AsRef<Path>,
 {
     let output = Command::new("rosrun")
-        .args(&["xacro",
+        .args(
+            &[
+                "xacro",
                 "xacro",
                 "--inorder",
-                filename.as_ref()
-                    .to_str()
-                    .ok_or("failed to get str fro filename")?])
+                filename.as_ref().to_str().ok_or(
+                    "failed to get str fro filename",
+                )?,
+            ],
+        )
         .output()
-        .expect("failed to execute xacro. install by apt-get install ros-*-xacro");
+        .expect(
+            "failed to execute xacro. install by apt-get install ros-*-xacro",
+        );
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
@@ -112,11 +124,13 @@ fn rospack_find(package: &str) -> Option<String> {
 fn expand_package_path(filename: &str, base_dir: &Path) -> String {
     if filename.starts_with("package://") {
         let re = Regex::new("^package://(\\w+)/").unwrap();
-        re.replace(filename,
-                   |ma: &regex::Captures| match rospack_find(&ma[1]) {
-                       Some(found_path) => found_path + "/",
-                       None => panic!("failed to find ros package {}", &ma[1]),
-                   })
+        re.replace(
+            filename,
+            |ma: &regex::Captures| match rospack_find(&ma[1]) {
+                Some(found_path) => found_path + "/",
+                None => panic!("failed to find ros package {}", &ma[1]),
+            },
+        )
     } else {
         let mut relative_path_from_urdf = base_dir.to_owned();
         relative_path_from_urdf.push(filename);
@@ -125,13 +139,18 @@ fn expand_package_path(filename: &str, base_dir: &Path) -> String {
 }
 
 
-fn add_geometry(visual: &urdf_rs::Visual,
-                base_dir: &Path,
-                window: &mut Window)
-                -> Option<SceneNode> {
+fn add_geometry(
+    visual: &urdf_rs::Visual,
+    base_dir: &Path,
+    window: &mut Window,
+) -> Option<SceneNode> {
     match visual.geometry {
         urdf_rs::Geometry::Box { ref size } => {
-            Some(window.add_cube(size[0] as f32, size[1] as f32, size[2] as f32))
+            Some(window.add_cube(
+                size[0] as f32,
+                size[1] as f32,
+                size[2] as f32,
+            ))
         }
         urdf_rs::Geometry::Cylinder { radius, length } => {
             Some(window.add_cylinder(radius as f32, length as f32))
@@ -191,31 +210,38 @@ impl Viewer {
             let mut log_stream = LogStream::stdout();
             log_stream.attach();
         }
-        self.window
-            .set_light(kiss3d::light::Light::StickToCamera);
+        self.window.set_light(kiss3d::light::Light::StickToCamera);
 
         self.window.set_background_color(0.0, 0.0, 0.3);
         for l in &self.urdf_robot.links {
             if let Some(mut geom) = add_geometry(&l.visual, base_dir, &mut self.window) {
                 match self.urdf_robot
-                          .materials
-                          .iter()
-                          .find(|mat| mat.name == l.visual.material.name)
-                          .map(|mat| mat.clone()) {
+                    .materials
+                    .iter()
+                    .find(|mat| mat.name == l.visual.material.name)
+                    .map(|mat| mat.clone()) {
                     Some(ref material) => {
-                        geom.set_color(material.color.rgba[0] as f32,
-                                       material.color.rgba[1] as f32,
-                                       material.color.rgba[2] as f32)
+                        geom.set_color(
+                            material.color.rgba[0] as f32,
+                            material.color.rgba[1] as f32,
+                            material.color.rgba[2] as f32,
+                        )
                     }
                     None => {
                         let rgba = &l.visual.material.color.rgba;
                         geom.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
                     }
                 }
-                self.scenes
-                    .insert(l.name.to_string(), SceneNodeAndTransform(geom, na::Isometry3::from_parts(
-                        k::urdf::translation_from(&l.visual.origin.xyz),
-                        k::urdf::quaternion_from(&l.visual.origin.rpy))));
+                self.scenes.insert(
+                    l.name.to_string(),
+                    SceneNodeAndTransform(
+                        geom,
+                        na::Isometry3::from_parts(
+                            k::urdf::translation_from(&l.visual.origin.xyz),
+                            k::urdf::quaternion_from(&l.visual.origin.rpy),
+                        ),
+                    ),
+                );
             } else {
                 error!("failed to create for {:?}", l.visual);
             }
@@ -238,18 +264,22 @@ impl Viewer {
         x.set_local_rotation(rot_x);
         y.set_local_rotation(rot_y);
         z.set_local_rotation(rot_z);
-        self.scenes
-            .insert(name.to_owned(), SceneNodeAndTransform(axis_group, na::Isometry3::identity()));
+        self.scenes.insert(
+            name.to_owned(),
+            SceneNodeAndTransform(axis_group, na::Isometry3::identity()),
+        );
     }
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
     }
     pub fn update(&mut self, robot: &mut k::LinkTree<f32>) {
         for (trans, link_name) in
-            robot
-                .calc_link_transforms()
-                .iter()
-                .zip(robot.map_link(&|link| link.name.clone())) {
+            robot.calc_link_transforms().iter().zip(
+                robot.iter_link().map(
+                    |link| link.name.clone(),
+                ),
+            )
+        {
             match self.scenes.get_mut(&link_name) {
                 Some(obj) => obj.0.set_local_transformation(*trans * obj.1),
                 None => {
@@ -258,18 +288,24 @@ impl Viewer {
             }
         }
     }
-    pub fn draw_text(&mut self,
-                     text: &str,
-                     size: i32,
-                     pos: &na::Point2<f32>,
-                     color: &na::Point3<f32>) {
-        self.window
-            .draw_text(text,
-                       pos,
-                       self.font_map
-                           .entry(size)
-                           .or_insert(kiss3d::text::Font::from_memory(self.font_data, size)),
-                       color);
+    pub fn draw_text(
+        &mut self,
+        text: &str,
+        size: i32,
+        pos: &na::Point2<f32>,
+        color: &na::Point3<f32>,
+    ) {
+        self.window.draw_text(
+            text,
+            pos,
+            self.font_map.entry(size).or_insert(
+                kiss3d::text::Font::from_memory(
+                    self.font_data,
+                    size,
+                ),
+            ),
+            color,
+        );
     }
     pub fn events(&self) -> kiss3d::window::EventManager {
         self.window.events()
@@ -278,13 +314,13 @@ impl Viewer {
         let color_opt = self.scenes
             .get_mut(link_name)
             .map(|obj| {
-                     let orig_color = match obj.0.data().object() {
-                         Some(object) => Some(object.data().color().to_owned()),
-                         None => None,
-                     };
-                     obj.0.set_color(r, g, b);
-                     orig_color
-                 })
+                let orig_color = match obj.0.data().object() {
+                    Some(object) => Some(object.data().color().to_owned()),
+                    None => None,
+                };
+                obj.0.set_color(r, g, b);
+                orig_color
+            })
             .unwrap_or(None);
         if let Some(color) = color_opt {
             self.original_colors.insert(link_name.to_string(), color);
@@ -292,14 +328,13 @@ impl Viewer {
     }
     pub fn reset_temporal_color(&mut self, link_name: &str) {
         if let Some(original_color) = self.original_colors.get(link_name) {
-            self.scenes
-                .get_mut(link_name)
-                .map(|obj| {
-                         obj.0
-                             .set_color(original_color[0] as f32,
-                                        original_color[1] as f32,
-                                        original_color[2] as f32)
-                     });
+            self.scenes.get_mut(link_name).map(|obj| {
+                obj.0.set_color(
+                    original_color[0] as f32,
+                    original_color[1] as f32,
+                    original_color[2] as f32,
+                )
+            });
         }
     }
 }
@@ -323,7 +358,8 @@ pub struct Opt {
 #[test]
 fn test_func() {
     let input = Path::new("/home/user/robo.urdf");
-    assert!(expand_package_path("mesh/aaa.obj", input.parent().unwrap()) ==
-            "/home/user/mesh/aaa.obj");
+    assert!(
+        expand_package_path("mesh/aaa.obj", input.parent().unwrap()) == "/home/user/mesh/aaa.obj"
+    );
 
 }

@@ -21,21 +21,21 @@ static NATIVE_MOD: glfw::Modifiers = glfw::Super;
 static NATIVE_MOD: glfw::Modifiers = glfw::Control;
 
 fn move_joint_by_random(robot: &mut k::LinkTree<f32>) -> Result<(), k::JointError> {
-    let angles_vec = robot.map_for_joints_link(&|link| match link.joint.limits {
-                                                    Some(ref range) => {
-                                                        (range.max - range.min) *
-                                                        rand::random::<f32>() +
-                                                        range.min
-                                                    }
-                                                    None => (rand::random::<f32>() - 0.5) * 2.0,
-                                                });
+    let angles_vec = robot
+        .iter_for_joints_link()
+        .map(|link| match link.joint.limits {
+            Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
+            None => (rand::random::<f32>() - 0.5) * 2.0,
+        })
+        .collect::<Vec<f32>>();
     robot.set_joint_angles(&angles_vec)
 }
 
-fn move_joint_by_index(index: usize,
-                       diff_angle: f32,
-                       robot: &mut k::LinkTree<f32>)
-                       -> Result<(), k::JointError> {
+fn move_joint_by_index(
+    index: usize,
+    diff_angle: f32,
+    robot: &mut k::LinkTree<f32>,
+) -> Result<(), k::JointError> {
     let mut angles_vec = robot.get_joint_angles();
     assert!(index < robot.dof());
     angles_vec[index] += diff_angle;
@@ -100,29 +100,31 @@ impl UrdfViewerApp {
     fn new() -> Self {
         let opt = urdf_viz::Opt::from_args();
         let input_path = Path::new(&opt.input_urdf_or_xacro);
-        let base_dir = input_path
-            .parent()
-            .unwrap_or_else(|| {
-                                panic!("failed to get base dir of {}", opt.input_urdf_or_xacro);
-                            });
-        let urdf_robo =
-            if input_path
-                       .extension()
-                       .unwrap_or_else(|| panic!("failed to get extension")) ==
-                   "xacro" {
-                    let urdf_utf = urdf_viz::convert_xacro_to_urdf(input_path)
-                        .unwrap_or_else(|err| panic!("failed to convert xacro {:?}", err));
-                    urdf_rs::read_from_string(&urdf_utf)
-                } else {
-                    urdf_rs::read_file(&input_path)
-                }
-                .unwrap_or_else(|err| panic!("failed to read file {:?}: {}", input_path, err));
+        let base_dir = input_path.parent().unwrap_or_else(|| {
+            panic!("failed to get base dir of {}", opt.input_urdf_or_xacro);
+        });
+        let urdf_robo = if input_path.extension().unwrap_or_else(
+            || panic!("failed to get extension"),
+        ) == "xacro"
+        {
+            let urdf_utf = urdf_viz::convert_xacro_to_urdf(input_path).unwrap_or_else(
+                |err| {
+                    panic!("failed to convert xacro {:?}", err)
+                },
+            );
+            urdf_rs::read_from_string(&urdf_utf)
+        } else {
+            urdf_rs::read_file(&input_path)
+        }.unwrap_or_else(|err| {
+            panic!("failed to read file {:?}: {}", input_path, err)
+        });
         let mut robot = k::urdf::create_tree::<f32>(&urdf_robo);
         let mut viewer = urdf_viz::Viewer::new(urdf_robo);
         viewer.setup(&base_dir, opt.verbose);
-        let base_transform =
-            na::Isometry3::from_parts(na::Translation3::new(0.0, 0.0, 0.0),
-                                      na::UnitQuaternion::from_euler_angles(0.0, 1.57, 1.57));
+        let base_transform = na::Isometry3::from_parts(
+            na::Translation3::new(0.0, 0.0, 0.0),
+            na::UnitQuaternion::from_euler_angles(0.0, 1.57, 1.57),
+        );
         robot.set_root_transform(base_transform);
         viewer.add_axis_cylinders("origin", 1.0);
         if let Some(obj) = viewer.scenes.get_mut("origin") {
@@ -132,10 +134,14 @@ impl UrdfViewerApp {
         let joint_names = robot.get_joint_names();
         let num_arms = arms.len();
         let dof = robot.dof();
+        let link_names = robot
+            .iter_for_joints_link()
+            .map(|link| link.name.to_string())
+            .collect();
         UrdfViewerApp {
             viewer: viewer,
             arms: arms,
-            link_names: robot.map_for_joints_link(&|link| link.name.to_string()),
+            link_names: link_names,
             robot: robot,
             num_arms: num_arms,
             num_joints: joint_names.len(),
@@ -160,8 +166,9 @@ impl UrdfViewerApp {
     }
     fn update_ik_target_marker(&mut self) {
         if let Some(obj) = self.viewer.scenes.get_mut("ik_target") {
-            obj.0
-                .set_local_transformation(self.arms[self.index_of_arm.get()].calc_end_transform());
+            obj.0.set_local_transformation(
+                self.arms[self.index_of_arm.get()].calc_end_transform(),
+            );
         }
     }
     fn update_robot(&mut self) {
@@ -174,40 +181,49 @@ impl UrdfViewerApp {
         let mut last_cur_pos_y = 0f64;
         let mut last_cur_pos_x = 0f64;
         while self.viewer.render() {
-            self.viewer
-                .draw_text(HOW_TO_USE_STR,
-                           40,
-                           &na::Point2::new(2000.0, 10.0),
-                           &na::Point3::new(1f32, 1.0, 1.0));
+            self.viewer.draw_text(
+                HOW_TO_USE_STR,
+                40,
+                &na::Point2::new(2000.0, 10.0),
+                &na::Point3::new(1f32, 1.0, 1.0),
+            );
             if self.has_joints() {
-                self.viewer
-                    .draw_text(&format!("moving joint name [{}]",
-                                        self.joint_names[self.index_of_move_joint.get()]),
-                               60,
-                               &na::Point2::new(10f32, 20.0),
-                               &na::Point3::new(0.5f32, 0.5, 1.0));
+                self.viewer.draw_text(
+                    &format!(
+                        "moving joint name [{}]",
+                        self.joint_names[self.index_of_move_joint.get()]
+                    ),
+                    60,
+                    &na::Point2::new(10f32, 20.0),
+                    &na::Point3::new(0.5f32, 0.5, 1.0),
+                );
             }
             if self.has_arms() {
-                self.viewer
-                    .draw_text(&format!("IK target name [{}]",
-                                        self.arms[self.index_of_arm.get()].name),
-                               60,
-                               &na::Point2::new(10f32, 100.0),
-                               &na::Point3::new(0.5f32, 0.8, 0.2));
+                self.viewer.draw_text(
+                    &format!(
+                        "IK target name [{}]",
+                        self.arms[self.index_of_arm.get()].name
+                    ),
+                    60,
+                    &na::Point2::new(10f32, 100.0),
+                    &na::Point3::new(0.5f32, 0.8, 0.2),
+                );
             }
             if is_ctrl && !is_shift {
-                self.viewer
-                    .draw_text("moving joint by drag",
-                               60,
-                               &na::Point2::new(10f32, 150.0),
-                               &na::Point3::new(0.9f32, 0.5, 1.0));
+                self.viewer.draw_text(
+                    "moving joint by drag",
+                    60,
+                    &na::Point2::new(10f32, 150.0),
+                    &na::Point3::new(0.9f32, 0.5, 1.0),
+                );
             }
             if is_shift {
-                self.viewer
-                    .draw_text("solving ik",
-                               60,
-                               &na::Point2::new(10f32, 150.0),
-                               &na::Point3::new(0.9f32, 0.5, 1.0));
+                self.viewer.draw_text(
+                    "solving ik",
+                    60,
+                    &na::Point2::new(10f32, 150.0),
+                    &na::Point3::new(0.9f32, 0.5, 1.0),
+                );
             }
             for mut event in self.viewer.events().iter() {
                 match event.value {
@@ -258,9 +274,9 @@ impl UrdfViewerApp {
                                 self.solver
                                     .solve(&mut self.arms[self.index_of_arm.get()], &target)
                                     .unwrap_or_else(|err| {
-                                                        println!("Err: {}", err);
-                                                        0.0f32
-                                                    });
+                                        println!("Err: {}", err);
+                                        0.0f32
+                                    });
                                 self.update_robot();
                             }
                         }
@@ -279,28 +295,28 @@ impl UrdfViewerApp {
                     WindowEvent::Key(code, _, Action::Press, _) => {
                         match code {
                             Key::LeftBracket => {
-                                self.viewer
-                                    .reset_temporal_color(&self.link_names
-                                                               [self.index_of_move_joint.get()]);
+                                self.viewer.reset_temporal_color(
+                                    &self.link_names[self.index_of_move_joint.get()],
+                                );
                                 self.index_of_move_joint.inc();
-                                self.viewer
-                                    .set_temporal_color(&self.link_names[self.index_of_move_joint
-                                                             .get()],
-                                                        1.0,
-                                                        0.0,
-                                                        0.0);
+                                self.viewer.set_temporal_color(
+                                    &self.link_names[self.index_of_move_joint.get()],
+                                    1.0,
+                                    0.0,
+                                    0.0,
+                                );
                             }
                             Key::RightBracket => {
-                                self.viewer
-                                    .reset_temporal_color(&self.link_names
-                                                               [self.index_of_move_joint.get()]);
+                                self.viewer.reset_temporal_color(
+                                    &self.link_names[self.index_of_move_joint.get()],
+                                );
                                 self.index_of_move_joint.dec();
-                                self.viewer
-                                    .set_temporal_color(&self.link_names[self.index_of_move_joint
-                                                             .get()],
-                                                        1.0,
-                                                        0.0,
-                                                        0.0);
+                                self.viewer.set_temporal_color(
+                                    &self.link_names[self.index_of_move_joint.get()],
+                                    1.0,
+                                    0.0,
+                                    0.0,
+                                );
                             }
                             Key::Period => {
                                 self.index_of_arm.inc();
@@ -318,19 +334,21 @@ impl UrdfViewerApp {
                             }
                             Key::Up => {
                                 if self.has_joints() {
-                                    move_joint_by_index(self.index_of_move_joint.get(),
-                                                        0.1,
-                                                        &mut self.robot)
-                                            .unwrap_or(());
+                                    move_joint_by_index(
+                                        self.index_of_move_joint.get(),
+                                        0.1,
+                                        &mut self.robot,
+                                    ).unwrap_or(());
                                     self.update_robot();
                                 }
                             }
                             Key::Down => {
                                 if self.has_joints() {
-                                    move_joint_by_index(self.index_of_move_joint.get(),
-                                                        0.1,
-                                                        &mut self.robot)
-                                            .unwrap_or(());
+                                    move_joint_by_index(
+                                        self.index_of_move_joint.get(),
+                                        0.1,
+                                        &mut self.robot,
+                                    ).unwrap_or(());
                                     self.update_robot();
                                 }
                             }
