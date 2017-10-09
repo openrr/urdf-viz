@@ -81,9 +81,9 @@ Shift+Drag: IK (y, z)
 Shift+Ctrl+Drag: IK (x, z)
 ";
 
-struct UrdfViewerApp {
+struct UrdfViewerApp<'a> {
     robot: k::LinkTree<f32>,
-    viewer: urdf_viz::Viewer,
+    viewer: urdf_viz::Viewer<'a>,
     arms: Vec<k::RefKinematicChain<f32>>,
     joint_names: Vec<String>,
     link_names: Vec<String>,
@@ -94,33 +94,15 @@ struct UrdfViewerApp {
     index_of_move_joint: LoopIndex,
 }
 
-impl UrdfViewerApp {
-    fn new() -> Self {
-        let opt = urdf_viz::Opt::from_args();
-        let input_path = Path::new(&opt.input_urdf_or_xacro);
-        let base_dir = input_path
-            .parent()
-            .unwrap_or_else(|| {
-                                panic!("failed to get base dir of {}", opt.input_urdf_or_xacro);
-                            });
-        let urdf_robo =
-            if input_path
-                       .extension()
-                       .unwrap_or_else(|| panic!("failed to get extension")) ==
-                   "xacro" {
-                    let urdf_utf = urdf_viz::convert_xacro_to_urdf(input_path).unwrap_or_else(
-                |err| {
-                    panic!("failed to convert xacro {:?}", err)
-                },
-            );
-                    urdf_rs::read_from_string(&urdf_utf)
-                } else {
-                    urdf_rs::read_file(&input_path)
-                }
-                .unwrap_or_else(|err| panic!("failed to read file {:?}: {}", input_path, err));
-        let mut robot = k::urdf::create_tree::<f32>(&urdf_robo);
+impl<'a> UrdfViewerApp<'a> {
+    fn new(urdf_robo: &'a urdf_rs::Robot,
+           base_dir: &Path,
+           is_verbose: bool,
+           ik_dof: usize)
+           -> Self {
+        let mut robot = k::urdf::create_tree::<f32>(urdf_robo);
         let mut viewer = urdf_viz::Viewer::new(urdf_robo);
-        viewer.setup(&base_dir, opt.verbose);
+        viewer.setup(base_dir, is_verbose);
         let base_transform =
             na::Isometry3::from_parts(na::Translation3::new(0.0, 0.0, 0.0),
                                       na::UnitQuaternion::from_euler_angles(0.0, 1.57, 1.57));
@@ -129,7 +111,7 @@ impl UrdfViewerApp {
         if let Some(obj) = viewer.scenes.get_mut("origin") {
             obj.0.set_local_transformation(base_transform);
         }
-        let arms = k::create_kinematic_chains_with_dof_limit(&robot, opt.ik_dof);
+        let arms = k::create_kinematic_chains_with_dof_limit(&robot, ik_dof);
         let joint_names = robot.get_joint_names();
         let num_arms = arms.len();
         let dof = robot.dof();
@@ -170,7 +152,7 @@ impl UrdfViewerApp {
         }
     }
     fn update_robot(&mut self) {
-        self.viewer.update(&mut self.robot);
+        self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }
     fn run(&mut self) {
@@ -352,7 +334,15 @@ impl UrdfViewerApp {
 
 fn main() {
     env_logger::init().unwrap();
-    let mut app = UrdfViewerApp::new();
+    let opt = urdf_viz::Opt::from_args();
+    let input_path = Path::new(&opt.input_urdf_or_xacro);
+    let base_dir = input_path
+        .parent()
+        .unwrap_or_else(|| {
+                            panic!("failed to get base dir of {}", opt.input_urdf_or_xacro);
+                        });
+    let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(input_path).unwrap();
+    let mut app = UrdfViewerApp::new(&urdf_robo, base_dir, opt.verbose, opt.ik_dof);
     app.init();
     app.run();
 }

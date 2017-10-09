@@ -12,7 +12,7 @@ If you have not installed ROS, you may need cmake, xorg-dev, glu to
 compile assimp-sys and glfw-sys.
 
 ```
-$ sudo apt-get install cmake  xorg-dev libglu1-mesa-dev
+$ sudo apt-get install cmake xorg-dev libglu1-mesa-dev
 ```
 
 ### Install with `cargo`

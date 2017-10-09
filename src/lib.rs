@@ -15,7 +15,6 @@ extern crate glfw;
 extern crate kiss3d;
 extern crate nalgebra as na;
 extern crate k;
-extern crate regex;
 extern crate urdf_rs;
 #[macro_use]
 extern crate log;
@@ -27,11 +26,9 @@ use assimp::{Importer, LogStream};
 use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
-use regex::Regex;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
-use std::process::Command;
 use std::rc::Rc;
 
 mod errors;
@@ -41,8 +38,6 @@ pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
     where P: AsRef<Path>
 {
     let mut importer = Importer::new();
-    //importer.triangulate(true);
-    //importer.optimize_meshes(true);
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
     let file_string = filename.as_ref()
@@ -71,59 +66,6 @@ fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>
     Rc::new(RefCell::new(Mesh::new(vertices, indices, None, None, false)))
 }
 
-pub fn convert_xacro_to_urdf<P>(filename: P) -> Result<String>
-    where P: AsRef<Path>
-{
-    let output = Command::new("rosrun")
-        .args(&["xacro",
-                "xacro",
-                "--inorder",
-                filename.as_ref()
-                    .to_str()
-                    .ok_or("failed to get str fro filename")?])
-        .output()
-        .expect("failed to execute xacro. install by apt-get install ros-*-xacro");
-    if output.status.success() {
-        Ok(String::from_utf8(output.stdout)?)
-    } else {
-        error!("{}", String::from_utf8(output.stderr).unwrap());
-        Err(Error::Other("faild to xacro".to_owned()))
-    }
-}
-
-
-fn rospack_find(package: &str) -> Option<String> {
-    let output = Command::new("rospack")
-        .arg("find")
-        .arg(package)
-        .output()
-        .expect("rospack find failed");
-    if output.status.success() {
-        String::from_utf8(output.stdout)
-            .map(|string| string.trim().to_string())
-            .ok()
-    } else {
-        None
-    }
-}
-
-
-fn expand_package_path(filename: &str, base_dir: &Path) -> String {
-    if filename.starts_with("package://") {
-        let re = Regex::new("^package://(\\w+)/").unwrap();
-        re.replace(filename,
-                   |ma: &regex::Captures| match rospack_find(&ma[1]) {
-                       Some(found_path) => found_path + "/",
-                       None => panic!("failed to find ros package {}", &ma[1]),
-                   })
-    } else {
-        let mut relative_path_from_urdf = base_dir.to_owned();
-        relative_path_from_urdf.push(filename);
-        relative_path_from_urdf.to_str().unwrap().to_owned()
-    }
-}
-
-
 fn add_geometry(visual: &urdf_rs::Visual,
                 base_dir: &Path,
                 window: &mut Window)
@@ -140,7 +82,7 @@ fn add_geometry(visual: &urdf_rs::Visual,
             ref filename,
             scale,
         } => {
-            let replaced_filename = expand_package_path(filename, base_dir);
+            let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);
             let path = Path::new(&replaced_filename);
             if !path.exists() {
                 error!("{} not found", replaced_filename);
@@ -160,9 +102,9 @@ fn add_geometry(visual: &urdf_rs::Visual,
 // we can remove this if we use group, but it need fix of temporal color
 pub struct SceneNodeAndTransform(pub SceneNode, pub na::Isometry3<f32>);
 
-pub struct Viewer {
+pub struct Viewer<'a> {
     pub window: kiss3d::window::Window,
-    pub urdf_robot: urdf_rs::Robot,
+    pub urdf_robot: &'a urdf_rs::Robot,
     pub scenes: HashMap<String, SceneNodeAndTransform>,
     pub arc_ball: kiss3d::camera::ArcBall,
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
@@ -170,8 +112,8 @@ pub struct Viewer {
     original_colors: HashMap<String, na::Point3<f32>>,
 }
 
-impl Viewer {
-    pub fn new(urdf_robot: urdf_rs::Robot) -> Viewer {
+impl<'a> Viewer<'a> {
+    pub fn new(urdf_robot: &'a urdf_rs::Robot) -> Viewer {
         let eye = na::Point3::new(0.5f32, 1.0, -3.0);
         let at = na::Point3::new(0.0f32, 0.25, 0.0);
         Viewer {
@@ -250,7 +192,7 @@ impl Viewer {
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
     }
-    pub fn update(&mut self, robot: &mut k::LinkTree<f32>) {
+    pub fn update(&mut self, robot: &k::LinkTree<f32>) {
         for (trans, link_name) in
             robot
                 .calc_link_transforms()
@@ -309,7 +251,6 @@ impl Viewer {
         }
     }
 }
-
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
