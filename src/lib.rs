@@ -1,16 +1,13 @@
-//! # urdf visualization
+//! urdf-viz
+//! ==================
 //!
-//! # Limitation
+//! Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
+//! `urdf-viz` is written by rust-lang.
 //!
-//! ## Mesh
-//!
-//! Only `.obj` is supported by [kiss3d](https://github.com/sebcrozet/kiss3d),
-//! the visualization library used this crate.
-//! Other files are converted by `meshlabserver`.
-//! If you add `-a` option, `assimp` is used instead of meshlab.
-//! You need to install meshlab or assimp anyway.
-//!
+
+#[cfg(assimp)]
 extern crate assimp;
+
 extern crate glfw;
 extern crate kiss3d;
 extern crate nalgebra as na;
@@ -22,7 +19,6 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-use assimp::{Importer, LogStream};
 use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
@@ -34,11 +30,12 @@ use std::rc::Rc;
 mod errors;
 pub use errors::*;
 
+#[cfg(assimp)]
 pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
 where
     P: AsRef<Path>,
 {
-    let mut importer = Importer::new();
+    let mut importer = assimp::Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
     let file_string = filename.as_ref().to_str().ok_or(
@@ -49,6 +46,7 @@ where
     ))
 }
 
+#[cfg(assimp)]
 fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>> {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
@@ -70,6 +68,24 @@ fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>
         Mesh::new(vertices, indices, None, None, false),
     ))
 }
+
+#[cfg(not(assimp))]
+pub fn load_mesh<P>(_filename: P) -> Result<Rc<RefCell<Mesh>>>
+where
+    P: AsRef<Path>,
+{
+    Err(Error::from("load mesh is disabled by feature"))
+}
+
+#[cfg(assimp)]
+fn set_verbose() {
+    assimp::LogStream::set_verbose_logging(true);
+    let mut log_stream = assimp::LogStream::stdout();
+    log_stream.attach();
+}
+
+#[cfg(not(assimp))]
+fn set_verbose() {}
 
 fn add_geometry(
     visual: &urdf_rs::Visual,
@@ -99,11 +115,22 @@ fn add_geometry(
                 return None;
             }
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
-
-            if let Ok(mesh) = load_mesh(path) {
-                Some(window.add_mesh(mesh, na_scale))
+            if cfg!(assimp) {
+                if let Ok(mesh) = load_mesh(path) {
+                    Some(window.add_mesh(mesh, na_scale))
+                } else {
+                    None
+                }
             } else {
-                None
+                if path.extension() == Some(std::ffi::OsStr::new("obj")) {
+                    Some(window.add_obj(path, path, na_scale))
+                } else {
+                    error!(
+                        "{:?} is not supported, because assimp feature is disabled",
+                        path
+                    );
+                    Some(window.add_cube(0.05f32, 0.05, 0.05))
+                }
             }
         }
     }
@@ -138,9 +165,7 @@ impl<'a> Viewer<'a> {
     }
     pub fn setup(&mut self, base_dir: &Path, is_verbose: bool) {
         if is_verbose {
-            LogStream::set_verbose_logging(true);
-            let mut log_stream = LogStream::stdout();
-            log_stream.attach();
+            set_verbose()
         }
         self.window.set_light(kiss3d::light::Light::StickToCamera);
 
@@ -282,15 +307,4 @@ pub struct Opt {
     pub verbose: bool,
     #[structopt(help = "Input urdf or xacro")]
     pub input_urdf_or_xacro: String,
-}
-
-
-
-#[test]
-fn test_func() {
-    let input = Path::new("/home/user/robo.urdf");
-    assert!(
-        expand_package_path("mesh/aaa.obj", input.parent().unwrap()) == "/home/user/mesh/aaa.obj"
-    );
-
 }

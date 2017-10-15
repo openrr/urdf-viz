@@ -45,6 +45,15 @@ $ tar xvf urdf-viz-0.1.2-ubuntu16.04-x86_64.tar.gz
 $ ./urdf-viz $(rospack find pr2_description)/robots/pr2.urdf.xacro
 ```
 
+Build without assimp
+------------------------
+`assimp` cannot be used on OSX or Windows.
+You can disable assimp by disable `assimp` feature which is enabled in default.
+
+```
+$ cargo build --no-default-features
+```
+
 Command line
 --------------
 
@@ -70,6 +79,8 @@ For other options, please read the output of `-h` option.
 ```bash
 $ urdf-viz -h
 ```
+
+
 
 GUI
 --------------
