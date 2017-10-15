@@ -49,6 +49,7 @@ Build without assimp
 ------------------------
 `assimp` cannot be used on OSX or Windows.
 You can disable assimp by disable `assimp` feature which is enabled in default.
+It can handle `.obj` files even if you disable `assimp`.
 
 ```
 $ cargo build --no-default-features

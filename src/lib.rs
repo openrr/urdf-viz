@@ -5,7 +5,7 @@
 //! `urdf-viz` is written by rust-lang.
 //!
 
-#[cfg(assimp)]
+#[cfg(feature = "assimp")]
 extern crate assimp;
 
 extern crate glfw;
@@ -30,7 +30,7 @@ use std::rc::Rc;
 mod errors;
 pub use errors::*;
 
-#[cfg(assimp)]
+#[cfg(feature = "assimp")]
 pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
 where
     P: AsRef<Path>,
@@ -46,7 +46,7 @@ where
     ))
 }
 
-#[cfg(assimp)]
+#[cfg(feature = "assimp")]
 fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>> {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
@@ -69,7 +69,7 @@ fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>
     ))
 }
 
-#[cfg(not(assimp))]
+#[cfg(not(feature = "assimp"))]
 pub fn load_mesh<P>(_filename: P) -> Result<Rc<RefCell<Mesh>>>
 where
     P: AsRef<Path>,
@@ -77,14 +77,14 @@ where
     Err(Error::from("load mesh is disabled by feature"))
 }
 
-#[cfg(assimp)]
+#[cfg(feature = "assimp")]
 fn set_verbose() {
     assimp::LogStream::set_verbose_logging(true);
     let mut log_stream = assimp::LogStream::stdout();
     log_stream.attach();
 }
 
-#[cfg(not(assimp))]
+#[cfg(not(feature = "assimp"))]
 fn set_verbose() {}
 
 fn add_geometry(
@@ -115,7 +115,7 @@ fn add_geometry(
                 return None;
             }
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
-            if cfg!(assimp) {
+            if cfg!(feature = "assimp") {
                 if let Ok(mesh) = load_mesh(path) {
                     Some(window.add_mesh(mesh, na_scale))
                 } else {
