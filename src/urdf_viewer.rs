@@ -7,9 +7,10 @@ extern crate structopt;
 extern crate urdf_rs;
 extern crate urdf_viz;
 
-use glfw::{Action, WindowEvent, Key};
+use glfw::{Action, Key, WindowEvent};
 use k::InverseKinematicsSolver;
 use k::KinematicChain;
+use k::JointContainer;
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -226,12 +227,12 @@ impl<'a> UrdfViewerApp<'a> {
                             event.inhibited = true;
                             let move_gain = 0.005;
                             if self.has_joints() {
-                                move_joint_by_index(self.index_of_move_joint.get(),
-                                                    (((x - last_cur_pos_x) + (y - last_cur_pos_y)) *
-                                                     move_gain) as
-                                                    f32,
-                                                    &mut self.robot)
-                                        .unwrap_or(());
+                                move_joint_by_index(
+                                    self.index_of_move_joint.get(),
+                                    (((x - last_cur_pos_x) + (y - last_cur_pos_y)) * move_gain)
+                                        as f32,
+                                    &mut self.robot,
+                                ).unwrap_or(());
                                 self.update_robot();
                             }
                         }

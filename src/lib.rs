@@ -9,15 +9,15 @@
 extern crate assimp;
 
 extern crate glfw;
-extern crate kiss3d;
-extern crate nalgebra as na;
 extern crate k;
-extern crate urdf_rs;
+extern crate kiss3d;
 #[macro_use]
 extern crate log;
+extern crate nalgebra as na;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+extern crate urdf_rs;
 
 use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
@@ -29,6 +29,7 @@ use std::rc::Rc;
 
 mod errors;
 pub use errors::*;
+
 
 #[cfg(feature = "assimp")]
 pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
@@ -93,13 +94,11 @@ fn add_geometry(
     window: &mut Window,
 ) -> Option<SceneNode> {
     match visual.geometry {
-        urdf_rs::Geometry::Box { ref size } => {
-            Some(window.add_cube(
-                size[0] as f32,
-                size[1] as f32,
-                size[2] as f32,
-            ))
-        }
+        urdf_rs::Geometry::Box { ref size } => Some(window.add_cube(
+            size[0] as f32,
+            size[1] as f32,
+            size[2] as f32,
+        )),
         urdf_rs::Geometry::Cylinder { radius, length } => {
             Some(window.add_cylinder(radius as f32, length as f32))
         }
