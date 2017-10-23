@@ -8,6 +8,7 @@
 #[cfg(feature = "assimp")]
 extern crate assimp;
 
+extern crate alga;
 extern crate glfw;
 extern crate k;
 extern crate kiss3d;
@@ -26,11 +27,12 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
+use alga::general::SubsetOf;
 
 mod errors;
 pub use errors::*;
 
-use k::LinkContainer;
+use na::Real;
 
 #[cfg(feature = "assimp")]
 pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
@@ -229,16 +231,21 @@ impl<'a> Viewer<'a> {
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
     }
-    pub fn update(&mut self, robot: &k::LinkTree<f32>) {
+    pub fn update<R, T>(&mut self, robot: &R)
+    where
+        R: k::LinkContainer<T>,
+        T: Real + alga::general::SubsetOf<f32>,
+    {
         for (trans, link_name) in
             robot.calc_link_transforms().iter().zip(
-                robot.iter_link().map(
-                    |link| link.name.clone(),
-                ),
+                robot
+                    .get_link_names()
+                    .iter(),
             )
         {
-            match self.scenes.get_mut(&link_name) {
-                Some(obj) => obj.0.set_local_transformation(*trans * obj.1),
+            let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
+            match self.scenes.get_mut(&*link_name) {
+                Some(obj) => obj.0.set_local_transformation(trans_f32 * obj.1),
                 None => {
                     println!("{} not found", link_name);
                 }
