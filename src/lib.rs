@@ -30,6 +30,7 @@ use std::rc::Rc;
 mod errors;
 pub use errors::*;
 
+use k::LinkContainer;
 
 #[cfg(feature = "assimp")]
 pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
