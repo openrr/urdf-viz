@@ -31,9 +31,6 @@ extern crate kiss3d;
 #[macro_use]
 extern crate log;
 extern crate nalgebra as na;
-extern crate structopt;
-#[macro_use]
-extern crate structopt_derive;
 extern crate urdf_rs;
 
 use kiss3d::resource::Mesh;
@@ -110,7 +107,7 @@ fn set_verbose() {}
 
 fn add_geometry(
     visual: &urdf_rs::Visual,
-    base_dir: &Path,
+    base_dir: Option<&Path>,
     window: &mut Window,
 ) -> Option<SceneNode> {
     match visual.geometry {
@@ -182,7 +179,7 @@ impl<'a> Viewer<'a> {
             original_colors: HashMap::new(),
         }
     }
-    pub fn setup(&mut self, base_dir: &Path, is_verbose: bool) {
+    pub fn setup(&mut self, base_dir: Option<&Path>, is_verbose: bool) {
         if is_verbose {
             set_verbose()
         }
@@ -312,15 +309,4 @@ impl<'a> Viewer<'a> {
             });
         }
     }
-}
-
-#[derive(StructOpt, Debug)]
-#[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
-pub struct Opt {
-    #[structopt(short = "d", long = "dof",
-                help = "limit the dof for ik to avoid use fingers as end effectors",
-                default_value = "6")]
-    pub ik_dof: usize,
-    #[structopt(short = "v", long = "verbose", help = "show assimp log")] pub verbose: bool,
-    #[structopt(help = "Input urdf or xacro")] pub input_urdf_or_xacro: String,
 }

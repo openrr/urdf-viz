@@ -20,6 +20,8 @@ extern crate k;
 extern crate nalgebra as na;
 extern crate rand;
 extern crate structopt;
+#[macro_use]
+extern crate structopt_derive;
 extern crate urdf_rs;
 extern crate urdf_viz;
 
@@ -115,7 +117,7 @@ struct UrdfViewerApp<'a> {
 impl<'a> UrdfViewerApp<'a> {
     fn new(
         urdf_robo: &'a urdf_rs::Robot,
-        base_dir: &Path,
+        base_dir: Option<&Path>,
         is_verbose: bool,
         ik_dof: usize,
     ) -> Self {
@@ -355,13 +357,23 @@ impl<'a> UrdfViewerApp<'a> {
     }
 }
 
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
+pub struct Opt {
+    #[structopt(short = "d", long = "dof",
+                help = "limit the dof for ik to avoid use fingers as end effectors",
+                default_value = "6")]
+    pub ik_dof: usize,
+    #[structopt(short = "v", long = "verbose", help = "show assimp log")] pub verbose: bool,
+    #[structopt(help = "Input urdf or xacro")] pub input_urdf_or_xacro: String,
+}
+
 fn main() {
     env_logger::init().unwrap();
-    let opt = urdf_viz::Opt::from_args();
+    let opt = Opt::from_args();
     let input_path = Path::new(&opt.input_urdf_or_xacro);
-    let base_dir = input_path.parent().unwrap_or_else(|| {
-        panic!("failed to get base dir of {}", opt.input_urdf_or_xacro);
-    });
+    let base_dir = input_path.parent();
     let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(input_path).unwrap();
     let mut app = UrdfViewerApp::new(&urdf_robo, base_dir, opt.verbose, opt.ik_dof);
     app.init();
