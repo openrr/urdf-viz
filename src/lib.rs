@@ -1,3 +1,19 @@
+/*
+   Copyright 2017 Takashi Ogura
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
+
 //! urdf-viz
 //! ==================
 //!
@@ -42,9 +58,10 @@ where
     let mut importer = assimp::Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
-    let file_string = filename.as_ref().to_str().ok_or(
-        "faild to get string from path",
-    )?;
+    let file_string = filename
+        .as_ref()
+        .to_str()
+        .ok_or("faild to get string from path")?;
     Ok(convert_assimp_scene_to_kiss3d_mesh(
         importer.read_file(file_string)?,
     ))
@@ -178,14 +195,13 @@ impl<'a> Viewer<'a> {
                     .materials
                     .iter()
                     .find(|mat| mat.name == l.visual.material.name)
-                    .map(|mat| mat.clone()) {
-                    Some(ref material) => {
-                        geom.set_color(
-                            material.color.rgba[0] as f32,
-                            material.color.rgba[1] as f32,
-                            material.color.rgba[2] as f32,
-                        )
-                    }
+                    .map(|mat| mat.clone())
+                {
+                    Some(ref material) => geom.set_color(
+                        material.color.rgba[0] as f32,
+                        material.color.rgba[1] as f32,
+                        material.color.rgba[2] as f32,
+                    ),
                     None => {
                         let rgba = &l.visual.material.color.rgba;
                         geom.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
@@ -236,12 +252,10 @@ impl<'a> Viewer<'a> {
         R: k::LinkContainer<T>,
         T: Real + alga::general::SubsetOf<f32>,
     {
-        for (trans, link_name) in
-            robot.calc_link_transforms().iter().zip(
-                robot
-                    .get_link_names()
-                    .iter(),
-            )
+        for (trans, link_name) in robot
+            .calc_link_transforms()
+            .iter()
+            .zip(robot.get_link_names().iter())
         {
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
             match self.scenes.get_mut(&*link_name) {
@@ -262,12 +276,9 @@ impl<'a> Viewer<'a> {
         self.window.draw_text(
             text,
             pos,
-            self.font_map.entry(size).or_insert(
-                kiss3d::text::Font::from_memory(
-                    self.font_data,
-                    size,
-                ),
-            ),
+            self.font_map
+                .entry(size)
+                .or_insert(kiss3d::text::Font::from_memory(self.font_data, size)),
             color,
         );
     }
@@ -310,8 +321,6 @@ pub struct Opt {
                 help = "limit the dof for ik to avoid use fingers as end effectors",
                 default_value = "6")]
     pub ik_dof: usize,
-    #[structopt(short = "v", long = "verbose", help = "show assimp log")]
-    pub verbose: bool,
-    #[structopt(help = "Input urdf or xacro")]
-    pub input_urdf_or_xacro: String,
+    #[structopt(short = "v", long = "verbose", help = "show assimp log")] pub verbose: bool,
+    #[structopt(help = "Input urdf or xacro")] pub input_urdf_or_xacro: String,
 }

@@ -1,3 +1,19 @@
+/*
+   Copyright 2017 Takashi Ogura
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
+
 extern crate env_logger;
 extern crate glfw;
 extern crate k;
@@ -151,9 +167,8 @@ impl<'a> UrdfViewerApp<'a> {
     }
     fn update_ik_target_marker(&mut self) {
         if let Some(obj) = self.viewer.scenes.get_mut("ik_target") {
-            obj.0.set_local_transformation(
-                self.arms[self.index_of_arm.get()].calc_end_transform(),
-            );
+            obj.0
+                .set_local_transformation(self.arms[self.index_of_arm.get()].calc_end_transform());
         }
     }
     fn update_robot(&mut self) {
@@ -239,8 +254,8 @@ impl<'a> UrdfViewerApp<'a> {
                         if is_shift {
                             event.inhibited = true;
                             if self.has_arms() {
-                                let mut target = self.arms[self.index_of_arm.get()]
-                                    .calc_end_transform();
+                                let mut target =
+                                    self.arms[self.index_of_arm.get()].calc_end_transform();
                                 let ik_move_gain = 0.002;
                                 // [0]: y
                                 // [1]: z
@@ -268,15 +283,13 @@ impl<'a> UrdfViewerApp<'a> {
                         last_cur_pos_x = x;
                         last_cur_pos_y = y;
                     }
-                    WindowEvent::MouseButton(_, Action::Release, _) => {
-                        if is_ctrl {
-                            is_ctrl = false;
-                            event.inhibited = true;
-                        } else if is_shift {
-                            is_shift = false;
-                            event.inhibited = true;
-                        }
-                    }
+                    WindowEvent::MouseButton(_, Action::Release, _) => if is_ctrl {
+                        is_ctrl = false;
+                        event.inhibited = true;
+                    } else if is_shift {
+                        is_shift = false;
+                        event.inhibited = true;
+                    },
                     WindowEvent::Key(code, _, Action::Press, _) => {
                         match code {
                             Key::LeftBracket => {
@@ -311,32 +324,26 @@ impl<'a> UrdfViewerApp<'a> {
                                 self.index_of_arm.dec();
                                 self.update_ik_target_marker();
                             }
-                            Key::R => {
-                                if self.has_joints() {
-                                    move_joint_by_random(&mut self.robot).unwrap_or(());
-                                    self.update_robot();
-                                }
-                            }
-                            Key::Up => {
-                                if self.has_joints() {
-                                    move_joint_by_index(
-                                        self.index_of_move_joint.get(),
-                                        0.1,
-                                        &mut self.robot,
-                                    ).unwrap_or(());
-                                    self.update_robot();
-                                }
-                            }
-                            Key::Down => {
-                                if self.has_joints() {
-                                    move_joint_by_index(
-                                        self.index_of_move_joint.get(),
-                                        0.1,
-                                        &mut self.robot,
-                                    ).unwrap_or(());
-                                    self.update_robot();
-                                }
-                            }
+                            Key::R => if self.has_joints() {
+                                move_joint_by_random(&mut self.robot).unwrap_or(());
+                                self.update_robot();
+                            },
+                            Key::Up => if self.has_joints() {
+                                move_joint_by_index(
+                                    self.index_of_move_joint.get(),
+                                    0.1,
+                                    &mut self.robot,
+                                ).unwrap_or(());
+                                self.update_robot();
+                            },
+                            Key::Down => if self.has_joints() {
+                                move_joint_by_index(
+                                    self.index_of_move_joint.get(),
+                                    0.1,
+                                    &mut self.robot,
+                                ).unwrap_or(());
+                                self.update_robot();
+                            },
                             _ => {}
                         };
                         event.inhibited = true;
