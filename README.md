@@ -1,5 +1,4 @@
-urdf-viz
-==================
+# urdf-viz [![Build Status](https://travis-ci.org/OTL/urdf-viz.svg?branch=master)](https://travis-ci.org/OTL/urdf-viz) [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz)
 
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 `urdf-viz` is written by rust-lang.
