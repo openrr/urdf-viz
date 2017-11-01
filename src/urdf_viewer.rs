@@ -104,7 +104,7 @@ Shift+Ctrl+Drag: IK (x, z)
 struct UrdfViewerApp<'a> {
     robot: k::LinkTree<f32>,
     viewer: urdf_viz::Viewer<'a>,
-    arms: Vec<k::RefKinematicChain<f32>>,
+    arms: Vec<k::RcKinematicChain<f32>>,
     joint_names: Vec<String>,
     link_names: Vec<String>,
     num_arms: usize,
