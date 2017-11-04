@@ -250,16 +250,13 @@ impl<'a> UrdfViewerApp<'a> {
                                 let mut target =
                                     self.arms[self.index_of_arm.get()].calc_end_transform();
                                 let ik_move_gain = 0.002;
-                                // [0]: y
-                                // [1]: z
-                                // [2]: x
-                                target.translation.vector[1] -=
+                                target.translation.vector[2] -=
                                     ((y - last_cur_pos_y) * ik_move_gain) as f32;
                                 if is_ctrl {
-                                    target.translation.vector[2] -=
+                                    target.translation.vector[0] +=
                                         ((x - last_cur_pos_x) * ik_move_gain) as f32;
                                 } else {
-                                    target.translation.vector[0] -=
+                                    target.translation.vector[1] +=
                                         ((x - last_cur_pos_x) * ik_move_gain) as f32;
                                 }
 
