@@ -44,6 +44,8 @@ use alga::general::SubsetOf;
 
 mod errors;
 pub use errors::*;
+mod arc_ball;
+use arc_ball::*;
 
 use na::Real;
 
@@ -95,22 +97,12 @@ where
     Err(Error::from("load mesh is disabled by feature"))
 }
 
-#[cfg(feature = "assimp")]
-fn set_verbose() {
-    assimp::LogStream::set_verbose_logging(true);
-    let mut log_stream = assimp::LogStream::stdout();
-    log_stream.attach();
-}
-
-#[cfg(not(feature = "assimp"))]
-fn set_verbose() {}
-
 fn add_geometry(
-    visual: &urdf_rs::Visual,
+    geometry: &urdf_rs::Geometry,
     base_dir: Option<&Path>,
     window: &mut Window,
 ) -> Option<SceneNode> {
-    match visual.geometry {
+    match *geometry {
         urdf_rs::Geometry::Box { ref size } => Some(window.add_cube(
             size[0] as f32,
             size[1] as f32,
@@ -159,7 +151,7 @@ pub struct Viewer<'a> {
     pub window: kiss3d::window::Window,
     pub urdf_robot: &'a urdf_rs::Robot,
     pub scenes: HashMap<String, SceneNodeAndTransform>,
-    pub arc_ball: kiss3d::camera::ArcBall,
+    pub arc_ball: ArcBall,
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
     font_data: &'static [u8],
     original_colors: HashMap<String, na::Point3<f32>>,
@@ -167,27 +159,28 @@ pub struct Viewer<'a> {
 
 impl<'a> Viewer<'a> {
     pub fn new(urdf_robot: &'a urdf_rs::Robot) -> Viewer {
-        let eye = na::Point3::new(0.5f32, 1.0, -3.0);
-        let at = na::Point3::new(0.0f32, 0.25, 0.0);
+        let eye = na::Point3::new(3.0f32, 0.0, 1.0);
+        let at = na::Point3::new(0.0f32, 0.0, 0.25);
         Viewer {
             window: kiss3d::window::Window::new_with_size("urdf_viewer", 1400, 1000),
             urdf_robot: urdf_robot,
             scenes: HashMap::new(),
-            arc_ball: kiss3d::camera::ArcBall::new(eye, at),
+            //arc_ball: kiss3d::camera::ArcBall::new(eye, at),
+            arc_ball: ArcBall::new(eye, at),
             font_map: HashMap::new(),
             font_data: include_bytes!("font/Inconsolata.otf"),
             original_colors: HashMap::new(),
         }
     }
-    pub fn setup(&mut self, base_dir: Option<&Path>, is_verbose: bool) {
-        if is_verbose {
-            set_verbose()
-        }
+    pub fn setup(&mut self) {
+        self.setup_with_base_dir(None);
+    }
+    pub fn setup_with_base_dir(&mut self, base_dir: Option<&Path>) {
         self.window.set_light(kiss3d::light::Light::StickToCamera);
 
         self.window.set_background_color(0.0, 0.0, 0.3);
         for l in &self.urdf_robot.links {
-            if let Some(mut geom) = add_geometry(&l.visual, base_dir, &mut self.window) {
+            if let Some(mut geom) = add_geometry(&l.visual.geometry, base_dir, &mut self.window) {
                 match self.urdf_robot
                     .materials
                     .iter()

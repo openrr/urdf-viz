@@ -118,21 +118,12 @@ impl<'a> UrdfViewerApp<'a> {
     fn new(
         urdf_robo: &'a urdf_rs::Robot,
         base_dir: Option<&Path>,
-        is_verbose: bool,
         ik_dof: usize,
     ) -> Self {
-        let mut robot = k::urdf::create_tree::<f32>(urdf_robo);
+        let robot = k::urdf::create_tree::<f32>(urdf_robo);
         let mut viewer = urdf_viz::Viewer::new(urdf_robo);
-        viewer.setup(base_dir, is_verbose);
-        let base_transform = na::Isometry3::from_parts(
-            na::Translation3::new(0.0, 0.0, 0.0),
-            na::UnitQuaternion::from_euler_angles(0.0, 1.57, 1.57),
-        );
-        robot.set_root_transform(base_transform);
+        viewer.setup_with_base_dir(base_dir);
         viewer.add_axis_cylinders("origin", 1.0);
-        if let Some(obj) = viewer.scenes.get_mut("origin") {
-            obj.0.set_local_transformation(base_transform);
-        }
         let arms = k::create_kinematic_chains_with_dof_limit(&robot, ik_dof);
         let joint_names = robot.get_joint_names();
         let num_arms = arms.len();
@@ -365,7 +356,6 @@ pub struct Opt {
                 help = "limit the dof for ik to avoid use fingers as end effectors",
                 default_value = "6")]
     pub ik_dof: usize,
-    #[structopt(short = "v", long = "verbose", help = "show assimp log")] pub verbose: bool,
     #[structopt(help = "Input urdf or xacro")] pub input_urdf_or_xacro: String,
 }
 
@@ -375,7 +365,7 @@ fn main() {
     let input_path = Path::new(&opt.input_urdf_or_xacro);
     let base_dir = input_path.parent();
     let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(input_path).unwrap();
-    let mut app = UrdfViewerApp::new(&urdf_robo, base_dir, opt.verbose, opt.ik_dof);
+    let mut app = UrdfViewerApp::new(&urdf_robo, base_dir, opt.ik_dof);
     app.init();
     app.run();
 }
