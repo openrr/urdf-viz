@@ -19,7 +19,7 @@ main() {
     cargo build --release
 
     # TODO Update this to package the right artifacts
-    cp target/$TARGET/release/urdf-viz $stage/
+    cp target/release/urdf-viz $stage/
 
     cd $stage
     tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
