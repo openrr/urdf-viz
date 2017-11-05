@@ -3,22 +3,9 @@
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 `urdf-viz` is written in Rust-lang.
 
-Install from source
---------------
-### Pre requirements on Linux
-
-If you have not installed ROS, you may need cmake, xorg-dev, glu to
-compile assimp-sys and glfw-sys.
-
-```
-$ sudo apt-get install cmake xorg-dev libglu1-mesa-dev
-```
-
-### Pre requirements on Windows
-You need freetype.lib in your PATH, which is required by `freetype-sys`.
-You can find binaries [here](https://github.com/PistonDevelopers/binaries)
-
-### Install with `cargo`
+Install
+-----------
+## Install with `cargo`
 
 If you are using rust-lang already and `cargo` is installed, you can install by `cargo install`.
 
@@ -35,11 +22,34 @@ $ curl https://sh.rustup.rs -sSf | sh
 and follow the instruction of the installer.
 
 
-Download binary
----------------------------------
+Pre-requirements for build
+---------------------------
+### On Linux
+
+If you have not installed ROS, you may need cmake, xorg-dev, glu to
+compile assimp-sys and glfw-sys.
+
+```
+$ sudo apt-get install cmake xorg-dev libglu1-mesa-dev
+```
+
+### On Windows
+You need freetype.lib in your PATH, which is required by `freetype-sys`.
+You can find binaries [here](https://github.com/PistonDevelopers/binaries)
+
+### On MacOS
+
+Install freetype by brew.
+
+```
+$ brew install freetype
+```
+
+## Download binary
 
 If you don't want to install `rust` and `cargo`, you can find
 binary releases of `urdf-viz` for Ubuntu16.04/14.04 64bit, Windows, MacOS [here](https://github.com/OTL/urdf-viz/releases).
+
 
 How to use
 --------------
@@ -67,6 +77,8 @@ For other options, please read the output of `-h` option.
 $ urdf-viz -h
 ```
 
+If there are no "package://" in mesh tag, and don't use xacro you can skip install of ROS.
+
 GUI
 --------------
 
@@ -79,7 +91,7 @@ In the GUI, you can do some operations with keyboard and mouse.
 * Inverse kinematics (only positions)
   * `Shift` + Drag to use inverse kinematics(Y and Z axis)
   * `Shift` + `Ctrl` + Drag to use inverse kinematics(X and Z axis)
-  * change the move target for inverse kinematics by `,` and `.`
+  * change the move target for inverse kinematics by `,` or `.`
 * `r` key to set random joints
 * Move view point
   * Mouse Right Drag to translate view camera position
