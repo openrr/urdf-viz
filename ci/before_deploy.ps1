@@ -11,6 +11,7 @@ Set-Location $STAGE
 $ZIP = "$SRC_DIR\$($Env:CRATE_NAME)-$($Env:APPVEYOR_REPO_TAG_NAME)-$($Env:TARGET).zip"
 
 # TODO Update this to package the right artifacts
+Copy-Item "C:\Users\appveyor\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\x86_64-pc-windows-msvc\lib\freetype.lib" '.\'
 Copy-Item "$SRC_DIR\target\$($Env:TARGET)\release\urdf-viz.exe" '.\'
 
 7z a "$ZIP" *
