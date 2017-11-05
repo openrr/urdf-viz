@@ -19,8 +19,7 @@ matrix:
       rust: nightly
 
 before_install:
-  - brew update
-  - brew install freetype
+  - sh ci/install.sh
 
 before_deploy:
   - sh ci/before_deploy.sh
