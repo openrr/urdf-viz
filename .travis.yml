@@ -18,6 +18,9 @@ matrix:
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
 
+before_install:
+  - brew install freetype
+
 before_deploy:
   - sh ci/before_deploy.sh
 
