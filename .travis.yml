@@ -132,3 +132,9 @@ branches:
 notifications:
   email:
     on_success: never
+    
+addons:
+  apt:
+    packages:
+      - xorg-dev
+      - libglu1-mesa-dev
