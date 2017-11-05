@@ -8,7 +8,7 @@ environment:
     RUST_VERSION: stable
 
     # TODO Update this to match the name of your project.
-    CRATE_NAME: trust
+    CRATE_NAME: urdf-viz
 
   # TODO These are all the build jobs. Adjust as necessary. Comment out what you
   # don't need
