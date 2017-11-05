@@ -1,11 +1,11 @@
 # urdf-viz [![Build Status](https://travis-ci.org/OTL/urdf-viz.svg?branch=master)](https://travis-ci.org/OTL/urdf-viz) [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz)
 
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
-`urdf-viz` is written by rust-lang.
+`urdf-viz` is written in Rust-lang.
 
-Install
+Install from source
 --------------
-### Pre requirements
+### Pre requirements on Linux
 
 If you have not installed ROS, you may need cmake, xorg-dev, glu to
 compile assimp-sys and glfw-sys.
@@ -13,6 +13,10 @@ compile assimp-sys and glfw-sys.
 ```
 $ sudo apt-get install cmake xorg-dev libglu1-mesa-dev
 ```
+
+### Pre requirements on Windows
+You need freetype.lib in your PATH, which is required by `freetype-sys`.
+You can find binaries [here](https://github.com/PistonDevelopers/binaries)
 
 ### Install with `cargo`
 
@@ -31,30 +35,13 @@ $ curl https://sh.rustup.rs -sSf | sh
 and follow the instruction of the installer.
 
 
-### Download binary from github
+Download binary
+---------------------------------
 
 If you don't want to install `rust` and `cargo`, you can find
-binary `urdf-viz` for Ubuntu16.04/14.04 64bit [here](https://github.com/OTL/urdf-viz/releases).
+binary releases of `urdf-viz` for Ubuntu16.04/14.04 64bit, Windows, MacOS [here](https://github.com/OTL/urdf-viz/releases).
 
-For example, if you want to use v0.1.2 and Ubuntu16.04,
-
-```bash
-$ wget https://github.com/OTL/urdf-viz/releases/download/v0.1.2/urdf-viz-0.1.2-ubuntu16.04-x86_64.tar.gz
-$ tar xvf urdf-viz-0.1.2-ubuntu16.04-x86_64.tar.gz
-$ ./urdf-viz $(rospack find pr2_description)/robots/pr2.urdf.xacro
-```
-
-Build without assimp
-------------------------
-`assimp` cannot be used on OSX or Windows.
-You can disable assimp by disable `assimp` feature which is enabled in default.
-It can handle `.obj` files even if you disable `assimp`.
-
-```
-$ cargo build --no-default-features
-```
-
-Command line
+How to use
 --------------
 
 `urdf-viz` command will be installed.
@@ -79,8 +66,6 @@ For other options, please read the output of `-h` option.
 ```bash
 $ urdf-viz -h
 ```
-
-
 
 GUI
 --------------
@@ -127,3 +112,13 @@ Dependencies
 * [assimp-rs](https://github.com/Eljay/assimp-rs): assimp rust interface. `kiss3d` supports `.obj` files natively, but urdf contains `dae` or `stl` files. These files are converted to kiss3d mesh model by `assim-rs`
 * [urdf-rs](https://github.com/OTL/urdf-rs): URDF file loader.
 * [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
+
+Build without assimp
+------------------------
+You can disable assimp by disable `assimp` feature which is enabled in default.
+It can handle `.obj` files even if you disable `assimp`.
+`assimp` works on Linux/Windows/MacOS now, we don't need this now.
+
+```
+$ cargo build --no-default-features
+```
