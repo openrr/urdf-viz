@@ -16,7 +16,7 @@ main() {
     esac
 
     test -f Cargo.lock || cargo generate-lockfile
-    cargo build --release
+    rustc --target $TARGET --release --bin urdf-viz -- -C lto
 
     # TODO Update this to package the right artifacts
     cp target/release/urdf-viz $stage/
