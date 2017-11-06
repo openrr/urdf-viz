@@ -16,8 +16,6 @@ Copy-Item "$SRC_DIR\target\$($Env:TARGET)\release\urdf-viz.exe" '.\'
 Copy-Item "$SRC_DIR\binaries\FTL.TXT" '.\'
 Copy-Item "$SRC_DIR\binaries\GPLv2.TXT" '.\'
 
-- rm -rf binaries
-
 7z a "$ZIP" *
 
 Push-AppveyorArtifact "$ZIP"
