@@ -147,9 +147,8 @@ fn add_geometry(
 // we can remove this if we use group, but it need fix of temporal color
 pub struct SceneNodeAndTransform(pub SceneNode, pub na::Isometry3<f32>);
 
-pub struct Viewer<'a> {
+pub struct Viewer {
     pub window: kiss3d::window::Window,
-    pub urdf_robot: &'a urdf_rs::Robot,
     pub scenes: HashMap<String, SceneNodeAndTransform>,
     pub arc_ball: ArcBall,
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
@@ -157,13 +156,12 @@ pub struct Viewer<'a> {
     original_colors: HashMap<String, na::Point3<f32>>,
 }
 
-impl<'a> Viewer<'a> {
-    pub fn new(urdf_robot: &'a urdf_rs::Robot) -> Viewer {
+impl Viewer {
+    pub fn new() -> Viewer {
         let eye = na::Point3::new(3.0f32, 0.0, 1.0);
         let at = na::Point3::new(0.0f32, 0.0, 0.25);
         Viewer {
             window: kiss3d::window::Window::new_with_size("urdf_viewer", 1400, 1000),
-            urdf_robot: urdf_robot,
             scenes: HashMap::new(),
             //arc_ball: kiss3d::camera::ArcBall::new(eye, at),
             arc_ball: ArcBall::new(eye, at),
@@ -172,16 +170,17 @@ impl<'a> Viewer<'a> {
             original_colors: HashMap::new(),
         }
     }
-    pub fn setup(&mut self) {
-        self.setup_with_base_dir(None);
+    pub fn setup(&mut self, urdf_robot: &urdf_rs::Robot) {
+        self.setup_with_base_dir(urdf_robot, None);
     }
-    pub fn setup_with_base_dir(&mut self, base_dir: Option<&Path>) {
+    pub fn setup_with_base_dir(&mut self, urdf_robot: &urdf_rs::Robot,
+        base_dir: Option<&Path>) {
         self.window.set_light(kiss3d::light::Light::StickToCamera);
 
         self.window.set_background_color(0.0, 0.0, 0.3);
-        for l in &self.urdf_robot.links {
+        for l in &urdf_robot.links {
             if let Some(mut geom) = add_geometry(&l.visual.geometry, base_dir, &mut self.window) {
-                match self.urdf_robot
+                match urdf_robot
                     .materials
                     .iter()
                     .find(|mat| mat.name == l.visual.material.name)

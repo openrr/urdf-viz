@@ -101,9 +101,9 @@ Shift+Drag: IK (y, z)
 Shift+Ctrl+Drag: IK (x, z)
 ";
 
-struct UrdfViewerApp<'a> {
+struct UrdfViewerApp {
     robot: k::LinkTree<f32>,
-    viewer: urdf_viz::Viewer<'a>,
+    viewer: urdf_viz::Viewer,
     arms: Vec<k::RcKinematicChain<f32>>,
     joint_names: Vec<String>,
     link_names: Vec<String>,
@@ -114,15 +114,15 @@ struct UrdfViewerApp<'a> {
     index_of_move_joint: LoopIndex,
 }
 
-impl<'a> UrdfViewerApp<'a> {
+impl UrdfViewerApp {
     fn new(
-        urdf_robo: &'a urdf_rs::Robot,
+        urdf_robo: &urdf_rs::Robot,
         base_dir: Option<&Path>,
         ik_dof: usize,
     ) -> Self {
         let robot = k::urdf::create_tree::<f32>(urdf_robo);
-        let mut viewer = urdf_viz::Viewer::new(urdf_robo);
-        viewer.setup_with_base_dir(base_dir);
+        let mut viewer = urdf_viz::Viewer::new();
+        viewer.setup_with_base_dir(urdf_robo, base_dir);
         viewer.add_axis_cylinders("origin", 1.0);
         let arms = k::create_kinematic_chains_with_dof_limit(&robot, ik_dof);
         let joint_names = robot.get_joint_names();
