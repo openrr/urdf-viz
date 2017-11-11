@@ -57,10 +57,9 @@ where
     let mut importer = assimp::Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
-    let file_string = filename
-        .as_ref()
-        .to_str()
-        .ok_or("faild to get string from path")?;
+    let file_string = filename.as_ref().to_str().ok_or(
+        "faild to get string from path",
+    )?;
     Ok(convert_assimp_scene_to_kiss3d_mesh(
         importer.read_file(file_string)?,
     ))
@@ -173,8 +172,7 @@ impl Viewer {
     pub fn setup(&mut self, urdf_robot: &urdf_rs::Robot) {
         self.setup_with_base_dir(urdf_robot, None);
     }
-    pub fn setup_with_base_dir(&mut self, urdf_robot: &urdf_rs::Robot,
-        base_dir: Option<&Path>) {
+    pub fn setup_with_base_dir(&mut self, urdf_robot: &urdf_rs::Robot, base_dir: Option<&Path>) {
         self.window.set_light(kiss3d::light::Light::StickToCamera);
 
         self.window.set_background_color(0.0, 0.0, 0.3);
@@ -184,27 +182,28 @@ impl Viewer {
                     .materials
                     .iter()
                     .find(|mat| mat.name == l.visual.material.name)
-                    .map(|mat| mat.clone())
-                {
-                    Some(ref material) => geom.set_color(
-                        material.color.rgba[0] as f32,
-                        material.color.rgba[1] as f32,
-                        material.color.rgba[2] as f32,
-                    ),
+                    .map(|mat| mat.clone()) {
+                    Some(ref material) => {
+                        geom.set_color(
+                            material.color.rgba[0] as f32,
+                            material.color.rgba[1] as f32,
+                            material.color.rgba[2] as f32,
+                        )
+                    }
                     None => {
                         let rgba = &l.visual.material.color.rgba;
                         geom.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
                     }
                 }
+                let origin = na::Isometry3::from_parts(
+                    k::urdf::translation_from(&l.visual.origin.xyz),
+                    k::urdf::quaternion_from(&l.visual.origin.rpy),
+                );
+                // set initial origin offset
+                geom.set_local_transformation(origin);
                 self.scenes.insert(
                     l.name.to_string(),
-                    SceneNodeAndTransform(
-                        geom,
-                        na::Isometry3::from_parts(
-                            k::urdf::translation_from(&l.visual.origin.xyz),
-                            k::urdf::quaternion_from(&l.visual.origin.rpy),
-                        ),
-                    ),
+                    SceneNodeAndTransform(geom, origin),
                 );
             } else {
                 error!("failed to create for {:?}", l.visual);
@@ -241,10 +240,12 @@ impl Viewer {
         R: k::LinkContainer<T>,
         T: Real + alga::general::SubsetOf<f32>,
     {
-        for (trans, link_name) in robot
-            .calc_link_transforms()
-            .iter()
-            .zip(robot.get_link_names().iter())
+        for (trans, link_name) in
+            robot.calc_link_transforms().iter().zip(
+                robot
+                    .get_link_names()
+                    .iter(),
+            )
         {
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
             match self.scenes.get_mut(&*link_name) {
@@ -265,9 +266,12 @@ impl Viewer {
         self.window.draw_text(
             text,
             pos,
-            self.font_map
-                .entry(size)
-                .or_insert(kiss3d::text::Font::from_memory(self.font_data, size)),
+            self.font_map.entry(size).or_insert(
+                kiss3d::text::Font::from_memory(
+                    self.font_data,
+                    size,
+                ),
+            ),
             color,
         );
     }
