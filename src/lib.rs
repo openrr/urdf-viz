@@ -108,7 +108,13 @@ fn add_geometry(
             size[2] as f32,
         )),
         urdf_rs::Geometry::Cylinder { radius, length } => {
-            Some(window.add_cylinder(radius as f32, length as f32))
+            let mut base = window.add_group();
+            let mut cylinder = base.add_cylinder(radius as f32, length as f32);
+            cylinder.append_rotation(&na::UnitQuaternion::from_axis_angle(
+                &na::Vector3::x_axis(),
+                1.57,
+            ));
+            Some(base)
         }
         urdf_rs::Geometry::Sphere { radius } => Some(window.add_sphere(radius as f32)),
         urdf_rs::Geometry::Mesh {
@@ -156,35 +162,52 @@ pub struct Viewer {
 }
 
 impl Viewer {
-    pub fn new() -> Viewer {
+    pub fn new(title: &str) -> Viewer {
         let eye = na::Point3::new(3.0f32, 0.0, 1.0);
         let at = na::Point3::new(0.0f32, 0.0, 0.25);
+        let mut window = kiss3d::window::Window::new_with_size(title, 1400, 1000);
+        window.set_light(kiss3d::light::Light::StickToCamera);
+        window.set_background_color(0.0, 0.0, 0.3);
+
         Viewer {
-            window: kiss3d::window::Window::new_with_size("urdf_viewer", 1400, 1000),
+            window,
             scenes: HashMap::new(),
-            //arc_ball: kiss3d::camera::ArcBall::new(eye, at),
             arc_ball: ArcBall::new(eye, at),
             font_map: HashMap::new(),
             font_data: include_bytes!("font/Inconsolata.otf"),
             original_colors: HashMap::new(),
         }
     }
-    pub fn setup(&mut self, urdf_robot: &urdf_rs::Robot) {
-        self.setup_with_base_dir(urdf_robot, None);
+    pub fn add_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
+        self.add_robot_with_base_dir(urdf_robot, None);
     }
-    pub fn setup_with_base_dir(&mut self, urdf_robot: &urdf_rs::Robot, base_dir: Option<&Path>) {
-        self.window.set_light(kiss3d::light::Light::StickToCamera);
-
-        self.window.set_background_color(0.0, 0.0, 0.3);
+    pub fn add_robot_with_base_dir(
+        &mut self,
+        urdf_robot: &urdf_rs::Robot,
+        base_dir: Option<&Path>,
+    ) {
+        self.add_robot_with_base_dir_and_collision_flag(urdf_robot, base_dir, false);
+    }
+    pub fn add_robot_with_base_dir_and_collision_flag(
+        &mut self,
+        urdf_robot: &urdf_rs::Robot,
+        base_dir: Option<&Path>,
+        is_collision: bool,
+    ) {
         for l in &urdf_robot.links {
-            if let Some(mut geom) = add_geometry(&l.visual.geometry, base_dir, &mut self.window) {
+            let (geom_element, origin_element) = if is_collision {
+                (&l.collision.geometry, &l.collision.origin)
+            } else {
+                (&l.visual.geometry, &l.visual.origin)
+            };
+            if let Some(mut scene_node) = add_geometry(geom_element, base_dir, &mut self.window) {
                 match urdf_robot
                     .materials
                     .iter()
                     .find(|mat| mat.name == l.visual.material.name)
                     .map(|mat| mat.clone()) {
                     Some(ref material) => {
-                        geom.set_color(
+                        scene_node.set_color(
                             material.color.rgba[0] as f32,
                             material.color.rgba[1] as f32,
                             material.color.rgba[2] as f32,
@@ -192,21 +215,28 @@ impl Viewer {
                     }
                     None => {
                         let rgba = &l.visual.material.color.rgba;
-                        geom.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
+                        scene_node.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
                     }
                 }
                 let origin = na::Isometry3::from_parts(
-                    k::urdf::translation_from(&l.visual.origin.xyz),
-                    k::urdf::quaternion_from(&l.visual.origin.rpy),
+                    k::urdf::translation_from(&origin_element.xyz),
+                    k::urdf::quaternion_from(&origin_element.rpy),
                 );
                 // set initial origin offset
-                geom.set_local_transformation(origin);
+                scene_node.set_local_transformation(origin);
                 self.scenes.insert(
                     l.name.to_string(),
-                    SceneNodeAndTransform(geom, origin),
+                    SceneNodeAndTransform(scene_node, origin),
                 );
             } else {
-                error!("failed to create for {:?}", l.visual);
+                error!("failed to create for {:?}", l);
+            }
+        }
+    }
+    pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
+        for l in &urdf_robot.links {
+            if let Some(ref mut scene_trans) = self.scenes.get_mut(&l.name) {
+                self.window.remove(&mut scene_trans.0);
             }
         }
     }
