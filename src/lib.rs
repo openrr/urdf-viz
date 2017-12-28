@@ -195,41 +195,50 @@ impl Viewer {
         is_collision: bool,
     ) {
         for l in &urdf_robot.links {
-            let (geom_element, origin_element) = if is_collision {
-                (&l.collision.geometry, &l.collision.origin)
+            let num = if is_collision {
+                l.collision.len()
             } else {
-                (&l.visual.geometry, &l.visual.origin)
+                l.visual.len()
             };
-            if let Some(mut scene_node) = add_geometry(geom_element, base_dir, &mut self.window) {
-                match urdf_robot
-                    .materials
-                    .iter()
-                    .find(|mat| mat.name == l.visual.material.name)
-                    .map(|mat| mat.clone()) {
-                    Some(ref material) => {
-                        scene_node.set_color(
-                            material.color.rgba[0] as f32,
-                            material.color.rgba[1] as f32,
-                            material.color.rgba[2] as f32,
-                        )
+            for i in 0..num {
+                let (geom_element, origin_element) = if is_collision {
+                    (&l.collision[i].geometry, &l.collision[i].origin)
+                } else {
+                    (&l.visual[i].geometry, &l.visual[i].origin)
+                };
+                if let Some(mut scene_node) =
+                    add_geometry(geom_element, base_dir, &mut self.window)
+                {
+                    match urdf_robot
+                        .materials
+                        .iter()
+                        .find(|mat| mat.name == l.visual[i].material.name)
+                        .map(|mat| mat.clone()) {
+                        Some(ref material) => {
+                            scene_node.set_color(
+                                material.color.rgba[0] as f32,
+                                material.color.rgba[1] as f32,
+                                material.color.rgba[2] as f32,
+                            )
+                        }
+                        None => {
+                            let rgba = &l.visual[i].material.color.rgba;
+                            scene_node.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
+                        }
                     }
-                    None => {
-                        let rgba = &l.visual.material.color.rgba;
-                        scene_node.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
-                    }
+                    let origin = na::Isometry3::from_parts(
+                        k::urdf::translation_from(&origin_element.xyz),
+                        k::urdf::quaternion_from(&origin_element.rpy),
+                    );
+                    // set initial origin offset
+                    scene_node.set_local_transformation(origin);
+                    self.scenes.insert(
+                        l.name.to_string(),
+                        SceneNodeAndTransform(scene_node, origin),
+                    );
+                } else {
+                    error!("failed to create for {:?}", l);
                 }
-                let origin = na::Isometry3::from_parts(
-                    k::urdf::translation_from(&origin_element.xyz),
-                    k::urdf::quaternion_from(&origin_element.rpy),
-                );
-                // set initial origin offset
-                scene_node.set_local_transformation(origin);
-                self.scenes.insert(
-                    l.name.to_string(),
-                    SceneNodeAndTransform(scene_node, origin),
-                );
-            } else {
-                error!("failed to create for {:?}", l);
             }
         }
     }

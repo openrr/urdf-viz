@@ -15,10 +15,19 @@
         <color rgba="1.0 1.0 1.0 1.0"/>
       </material>
     </visual>
+    <visual>
+      <origin xyz="0.0 0.0 0.4" rpy="0.0 0.0 0.0" />
+      <geometry>
+        <sphere radius="0.2" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+      </material>
+    </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="1" length="0.5"/>
+        <cylinder radius="0.1" length="0.4"/>
       </geometry>
     </collision>
   </link>
