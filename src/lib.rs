@@ -154,11 +154,11 @@ pub struct SceneNodeAndTransform(pub SceneNode, pub na::Isometry3<f32>);
 
 pub struct Viewer {
     pub window: kiss3d::window::Window,
-    pub scenes: HashMap<String, SceneNodeAndTransform>,
+    pub scenes: HashMap<String, Vec<SceneNodeAndTransform>>,
     pub arc_ball: ArcBall,
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
     font_data: &'static [u8],
-    original_colors: HashMap<String, na::Point3<f32>>,
+    original_colors: HashMap<String, Vec<Option<na::Point3<f32>>>>,
 }
 
 impl Viewer {
@@ -200,6 +200,7 @@ impl Viewer {
             } else {
                 l.visual.len()
             };
+            let mut scene_vec = Vec::new();
             for i in 0..num {
                 let (geom_element, origin_element) = if is_collision {
                     (&l.collision[i].geometry, &l.collision[i].origin)
@@ -232,20 +233,22 @@ impl Viewer {
                     );
                     // set initial origin offset
                     scene_node.set_local_transformation(origin);
-                    self.scenes.insert(
-                        l.name.to_string(),
-                        SceneNodeAndTransform(scene_node, origin),
-                    );
+                    scene_vec.push(SceneNodeAndTransform(scene_node, origin));
                 } else {
                     error!("failed to create for {:?}", l);
                 }
+            }
+            if !scene_vec.is_empty() {
+                self.scenes.insert(l.name.to_string(), scene_vec);
             }
         }
     }
     pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
         for l in &urdf_robot.links {
-            if let Some(ref mut scene_trans) = self.scenes.get_mut(&l.name) {
-                self.window.remove(&mut scene_trans.0);
+            if let Some(scene_trans_vec) = self.scenes.get_mut(&l.name) {
+                for scene_trans in scene_trans_vec {
+                    self.window.remove(&mut scene_trans.0);
+                }
             }
         }
     }
@@ -268,7 +271,7 @@ impl Viewer {
         z.set_local_rotation(rot_z);
         self.scenes.insert(
             name.to_owned(),
-            SceneNodeAndTransform(axis_group, na::Isometry3::identity()),
+            vec![SceneNodeAndTransform(axis_group, na::Isometry3::identity())],
         );
     }
     pub fn render(&mut self) -> bool {
@@ -288,9 +291,13 @@ impl Viewer {
         {
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
             match self.scenes.get_mut(&*link_name) {
-                Some(obj) => obj.0.set_local_transformation(trans_f32 * obj.1),
+                Some(obj_vec) => {
+                    obj_vec.iter_mut().for_each(|obj| {
+                        obj.0.set_local_transformation(trans_f32 * obj.1);
+                    })
+                }
                 None => {
-                    println!("{} not found", link_name);
+                    debug!("{} not found", link_name);
                 }
             }
         }
@@ -320,28 +327,37 @@ impl Viewer {
     pub fn set_temporal_color(&mut self, link_name: &str, r: f32, g: f32, b: f32) {
         let color_opt = self.scenes
             .get_mut(link_name)
-            .map(|obj| {
-                let orig_color = match obj.0.data().object() {
-                    Some(object) => Some(object.data().color().to_owned()),
-                    None => None,
-                };
-                obj.0.set_color(r, g, b);
-                orig_color
+            .map(|obj_list| {
+                Some(
+                    obj_list
+                        .iter_mut()
+                        .map(|obj| {
+                            let orig_color = match obj.0.data().object() {
+                                Some(object) => Some(object.data().color().to_owned()),
+                                None => None,
+                            };
+                            obj.0.set_color(r, g, b);
+                            orig_color
+                        })
+                        .collect::<Vec<_>>(),
+                )
             })
             .unwrap_or(None);
-        if let Some(color) = color_opt {
-            self.original_colors.insert(link_name.to_string(), color);
+        if let Some(colors) = color_opt {
+            self.original_colors.insert(link_name.to_string(), colors);
         }
     }
     pub fn reset_temporal_color(&mut self, link_name: &str) {
         if let Some(original_color) = self.original_colors.get(link_name) {
-            self.scenes.get_mut(link_name).map(|obj| {
-                obj.0.set_color(
-                    original_color[0] as f32,
-                    original_color[1] as f32,
-                    original_color[2] as f32,
-                )
-            });
+            self.scenes.get_mut(link_name).map(
+                |obj_vec| for (i, obj) in
+                    obj_vec.iter_mut().enumerate()
+                {
+                    if let Some(c) = original_color[i] {
+                        obj.0.set_color(c[0] as f32, c[1] as f32, c[2] as f32);
+                    }
+                },
+            );
         }
     }
 }
