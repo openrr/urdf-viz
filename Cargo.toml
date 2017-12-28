@@ -17,7 +17,7 @@ default = ["assimp"]
 alga = "0.5"
 env_logger = "0.4.2"
 glfw = { version = "0.15.0", default-features = false }
-k = "0.6.0"
+k = "0.8.0"
 kiss3d = "0.11.0"
 log = "0.3"
 nalgebra = "0.13.0"
