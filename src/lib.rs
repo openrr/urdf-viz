@@ -210,21 +210,27 @@ impl Viewer {
                 if let Some(mut scene_node) =
                     add_geometry(geom_element, base_dir, &mut self.window)
                 {
-                    match urdf_robot
-                        .materials
-                        .iter()
-                        .find(|mat| mat.name == l.visual[i].material.name)
-                        .map(|mat| mat.clone()) {
-                        Some(ref material) => {
-                            scene_node.set_color(
-                                material.color.rgba[0] as f32,
-                                material.color.rgba[1] as f32,
-                                material.color.rgba[2] as f32,
-                            )
-                        }
-                        None => {
-                            let rgba = &l.visual[i].material.color.rgba;
-                            scene_node.set_color(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
+                    if l.visual.len() > i {
+                        match urdf_robot
+                            .materials
+                            .iter()
+                            .find(|mat| mat.name == l.visual[i].material.name)
+                            .map(|mat| mat.clone()) {
+                            Some(ref material) => {
+                                scene_node.set_color(
+                                    material.color.rgba[0] as f32,
+                                    material.color.rgba[1] as f32,
+                                    material.color.rgba[2] as f32,
+                                )
+                            }
+                            None => {
+                                let rgba = &l.visual[i].material.color.rgba;
+                                scene_node.set_color(
+                                    rgba[0] as f32,
+                                    rgba[1] as f32,
+                                    rgba[2] as f32,
+                                );
+                            }
                         }
                     }
                     let origin = na::Isometry3::from_parts(
@@ -325,24 +331,19 @@ impl Viewer {
         self.window.events()
     }
     pub fn set_temporal_color(&mut self, link_name: &str, r: f32, g: f32, b: f32) {
-        let color_opt = self.scenes
-            .get_mut(link_name)
-            .map(|obj_list| {
-                Some(
-                    obj_list
-                        .iter_mut()
-                        .map(|obj| {
-                            let orig_color = match obj.0.data().object() {
-                                Some(object) => Some(object.data().color().to_owned()),
-                                None => None,
-                            };
-                            obj.0.set_color(r, g, b);
-                            orig_color
-                        })
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .unwrap_or(None);
+        let color_opt = self.scenes.get_mut(link_name).map(|obj_list| {
+            obj_list
+                .iter_mut()
+                .map(|obj| {
+                    let orig_color = match obj.0.data().object() {
+                        Some(object) => Some(object.data().color().to_owned()),
+                        None => None,
+                    };
+                    obj.0.set_color(r, g, b);
+                    orig_color
+                })
+                .collect::<Vec<_>>()
+        });
         if let Some(colors) = color_opt {
             self.original_colors.insert(link_name.to_string(), colors);
         }
