@@ -138,7 +138,7 @@ impl<'a> UrdfViewerApp<'a> {
         }
         let arms = end_link_names
             .iter()
-            .filter_map(|end_name| robot.get_chain(&end_name))
+            .filter_map(|end_name| robot.new_chain(&end_name))
             .collect::<Vec<_>>();
         let joint_names = robot.joint_names();
         let num_arms = arms.len();
