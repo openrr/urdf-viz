@@ -56,7 +56,7 @@ fn move_joint_by_index(
     diff_angle: f32,
     robot: &mut k::LinkTree<f32>,
 ) -> Result<(), k::JointError> {
-    let mut angles_vec = robot.get_joint_angles();
+    let mut angles_vec = robot.joint_angles();
     assert!(index < robot.dof());
     angles_vec[index] += diff_angle;
     robot.set_joint_angles(&angles_vec)
@@ -140,7 +140,7 @@ impl<'a> UrdfViewerApp<'a> {
             .iter()
             .filter_map(|end_name| robot.get_chain(&end_name))
             .collect::<Vec<_>>();
-        let joint_names = robot.get_joint_names();
+        let joint_names = robot.joint_names();
         let num_arms = arms.len();
         let dof = robot.dof();
         let link_names = robot
@@ -178,7 +178,7 @@ impl<'a> UrdfViewerApp<'a> {
         &mut self.arms[self.index_of_arm.get()]
     }
     fn update_ik_target_marker(&mut self) {
-        let trans = self.get_arm().calc_end_transform();
+        let trans = self.get_arm().end_transform();
         if let Some(obj_vec) = self.viewer.scenes.get_mut("ik_target") {
             obj_vec.iter_mut().for_each(|obj| {
                 obj.0.set_local_transformation(trans)
@@ -269,7 +269,7 @@ impl<'a> UrdfViewerApp<'a> {
                         if is_shift {
                             event.inhibited = true;
                             if self.has_arms() {
-                                let mut target = self.get_arm().calc_end_transform();
+                                let mut target = self.get_arm().end_transform();
                                 let ik_move_gain = 0.002;
                                 target.translation.vector[2] -=
                                     ((y - last_cur_pos_y) * ik_move_gain) as f32;
