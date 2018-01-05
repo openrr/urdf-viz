@@ -289,10 +289,8 @@ impl Viewer {
         T: Real + alga::general::SubsetOf<f32>,
     {
         for (trans, link_name) in
-            robot.calc_link_transforms().iter().zip(
-                robot
-                    .get_link_names()
-                    .iter(),
+            robot.link_transforms().iter().zip(
+                robot.link_names().iter(),
             )
         {
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
