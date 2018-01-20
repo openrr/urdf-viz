@@ -78,14 +78,18 @@ impl LoopIndex {
         self.index
     }
     fn inc(&mut self) {
-        self.index += 1;
-        self.index %= self.size;
+        if self.size != 0 {
+            self.index += 1;
+            self.index %= self.size;
+        }
     }
     fn dec(&mut self) {
-        if self.index == 0 {
-            self.index = self.size - 1;
-        } else {
-            self.index -= 1;
+        if self.size != 0 {
+            if self.index == 0 {
+                self.index = self.size - 1;
+            } else {
+                self.index -= 1;
+            }
         }
     }
 }
@@ -136,6 +140,7 @@ impl<'a> UrdfViewerApp<'a> {
                 .map(|node| node.borrow().data.name.to_owned())
                 .collect::<Vec<_>>();
         }
+        println!("end_link_names = {:?}", end_link_names);
         let arms = end_link_names
             .iter()
             .filter_map(|end_name| robot.new_chain(&end_name))
@@ -178,9 +183,11 @@ impl<'a> UrdfViewerApp<'a> {
         &mut self.arms[self.index_of_arm.get()]
     }
     fn update_ik_target_marker(&mut self) {
-        let trans = self.get_arm().end_transform();
-        if let Some(obj) = self.viewer.scenes.get_mut("ik_target") {
-            obj.set_local_transformation(trans)
+        if self.has_arms() {
+            let trans = self.get_arm().end_transform();
+            self.viewer.scene_node_mut("ik_target").map(|obj| {
+                obj.set_local_transformation(trans);
+            });
         }
     }
     fn update_robot(&mut self) {

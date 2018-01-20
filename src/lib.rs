@@ -163,8 +163,8 @@ fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -> [f
 
 pub struct Viewer {
     pub window: kiss3d::window::Window,
-    pub scenes: HashMap<String, SceneNode>,
-    pub arc_ball: ArcBall,
+    scenes: HashMap<String, SceneNode>,
+    arc_ball: ArcBall,
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
     font_data: &'static [u8],
     original_colors: HashMap<String, Vec<na::Point3<f32>>>,
@@ -268,6 +268,12 @@ impl Viewer {
         y.set_local_rotation(rot_y);
         z.set_local_rotation(rot_z);
         self.scenes.insert(name.to_owned(), axis_group);
+    }
+    pub fn scene_node(&mut self, name: &str) -> Option<&SceneNode> {
+        self.scenes.get(name)
+    }
+    pub fn scene_node_mut(&mut self, name: &str) -> Option<&mut SceneNode> {
+        self.scenes.get_mut(name)
     }
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
