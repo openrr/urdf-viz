@@ -3,37 +3,37 @@
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 `urdf-viz` is written in Rust-lang.
 
-Install
------------
-## Install with `cargo`
+## Install
+
+### Install with `cargo`
 
 If you are using rust-lang already and `cargo` is installed, you can install by `cargo install`.
 
 ```bash
-$ cargo install urdf-viz
+cargo install urdf-viz
 ```
 
 #### (FYI) Install `cargo`
 
 ```bash
-$ curl https://sh.rustup.rs -sSf | sh
+curl https://sh.rustup.rs -sSf | sh
 ```
 
 and follow the instruction of the installer.
 
+## Pre-requirements for build
 
-Pre-requirements for build
----------------------------
 ### On Linux
 
 If you have not installed ROS, you may need cmake, xorg-dev, glu to
 compile assimp-sys and glfw-sys.
 
-```
-$ sudo apt-get install cmake xorg-dev libglu1-mesa-dev
+```bash
+sudo apt-get install cmake xorg-dev libglu1-mesa-dev
 ```
 
 ### On Windows
+
 You need freetype.lib in your PATH, which is required by `freetype-sys`.
 You can find binaries [here](https://github.com/PistonDevelopers/binaries)
 
@@ -41,8 +41,8 @@ You can find binaries [here](https://github.com/PistonDevelopers/binaries)
 
 Install freetype by brew.
 
-```
-$ brew install freetype
+```bash
+brew install freetype
 ```
 
 ## Download binary
@@ -50,9 +50,7 @@ $ brew install freetype
 If you don't want to install `rust` and `cargo`, you can find
 binary releases of `urdf-viz` for Ubuntu16.04/14.04 64bit, Windows, MacOS [here](https://github.com/OTL/urdf-viz/releases).
 
-
-How to use
---------------
+## How to use
 
 `urdf-viz` command will be installed.
 It needs `rosrun` and `rospack` to resolve `package://` in `<mesh>` tag, and
@@ -61,26 +59,25 @@ It means you need `$ source ~/catkin_ws/devel/setup.bash` or something before us
 
 
 ```bash
-$ urdf-viz URDF_FILE.urdf
+urdf-viz URDF_FILE.urdf
 ```
 
 It is possible to use xacro file directly.
 It will be converted by `rosrun xacro xacro` inside of `urdf-viz`.
 
 ```bash
-$ urdf-viz XACRO_FILE.urdf.xacro
+urdf-viz XACRO_FILE.urdf.xacro
 ```
 
 For other options, please read the output of `-h` option.
 
 ```bash
-$ urdf-viz -h
+urdf-viz -h
 ```
 
 If there are no "package://" in mesh tag, and don't use xacro you can skip install of ROS.
 
-GUI
---------------
+## GUI Usage
 
 In the GUI, you can do some operations with keyboard and mouse.
 
@@ -98,8 +95,7 @@ In the GUI, you can do some operations with keyboard and mouse.
   * Mouse Left Drag to look around
   * Scroll to zoom in/out
 
-Gallery
---------------------
+## Gallery
 
 ![ubr1_1.png](img/ubr1_1.png)
 ![ubr1_2.png](img/ubr1_2.png)
@@ -115,8 +111,7 @@ Gallery
 ![nao_1.png](img/nao_1.png)
 ![nao_2.png](img/nao_2.png)
 
-Dependencies
--------------
+## Dependencies
 
 * [kiss3d](https://github.com/sebcrozet/kiss3d): `urdf-viz` is strongly depend on `kiss3d`, which is super easy to use, great 3D graphic engine.
 * [nalgabra](https://github.com/sebcrozet/nalgebra): linear algebra library.
@@ -125,12 +120,12 @@ Dependencies
 * [urdf-rs](https://github.com/OTL/urdf-rs): URDF file loader.
 * [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
 
-Build without assimp
-------------------------
+### Build without assimp
+
 You can disable assimp by disable `assimp` feature which is enabled in default.
 It can handle `.obj` files even if you disable `assimp`.
 `assimp` works on Linux/Windows/MacOS now, we don't need this now.
 
-```
-$ cargo build --no-default-features
+```bash
+cargo build --no-default-features
 ```
