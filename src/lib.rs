@@ -35,7 +35,6 @@ extern crate urdf_rs;
 
 use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
-use kiss3d::window::Window;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
@@ -99,16 +98,16 @@ where
 fn add_geometry(
     geometry: &urdf_rs::Geometry,
     base_dir: Option<&Path>,
-    window: &mut Window,
+    group: &mut SceneNode,
 ) -> Option<SceneNode> {
     match *geometry {
-        urdf_rs::Geometry::Box { ref size } => Some(window.add_cube(
+        urdf_rs::Geometry::Box { ref size } => Some(group.add_cube(
             size[0] as f32,
             size[1] as f32,
             size[2] as f32,
         )),
         urdf_rs::Geometry::Cylinder { radius, length } => {
-            let mut base = window.add_group();
+            let mut base = group.add_group();
             let mut cylinder = base.add_cylinder(radius as f32, length as f32);
             cylinder.append_rotation(&na::UnitQuaternion::from_axis_angle(
                 &na::Vector3::x_axis(),
@@ -116,7 +115,7 @@ fn add_geometry(
             ));
             Some(base)
         }
-        urdf_rs::Geometry::Sphere { radius } => Some(window.add_sphere(radius as f32)),
+        urdf_rs::Geometry::Sphere { radius } => Some(group.add_sphere(radius as f32)),
         urdf_rs::Geometry::Mesh {
             ref filename,
             scale,
@@ -130,35 +129,45 @@ fn add_geometry(
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
             if cfg!(feature = "assimp") {
                 if let Ok(mesh) = load_mesh(path) {
-                    Some(window.add_mesh(mesh, na_scale))
+                    Some(group.add_mesh(mesh, na_scale))
                 } else {
                     None
                 }
             } else {
                 if path.extension() == Some(std::ffi::OsStr::new("obj")) {
-                    Some(window.add_obj(path, path, na_scale))
+                    Some(group.add_obj(path, path, na_scale))
                 } else {
                     error!(
                         "{:?} is not supported, because assimp feature is disabled",
                         path
                     );
-                    Some(window.add_cube(0.05f32, 0.05, 0.05))
+                    Some(group.add_cube(0.05f32, 0.05, 0.05))
                 }
             }
         }
     }
 }
 
-// we can remove this if we use group, but it need fix of temporal color
-pub struct SceneNodeAndTransform(pub SceneNode, pub na::Isometry3<f32>);
+// Use material which is defined as root materials if found.
+// Root material is used for PR2, but not documented.
+fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -> [f64; 4] {
+    match urdf_robot
+        .materials
+        .iter()
+        .find(|mat| mat.name == visual.material.name)
+        .map(|mat| mat.clone()) {
+        Some(ref material) => material.color.rgba,
+        None => visual.material.color.rgba,
+    }
+}
 
 pub struct Viewer {
     pub window: kiss3d::window::Window,
-    pub scenes: HashMap<String, Vec<SceneNodeAndTransform>>,
+    pub scenes: HashMap<String, SceneNode>,
     pub arc_ball: ArcBall,
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
     font_data: &'static [u8],
-    original_colors: HashMap<String, Vec<Option<na::Point3<f32>>>>,
+    original_colors: HashMap<String, Vec<na::Point3<f32>>>,
 }
 
 impl Viewer {
@@ -200,7 +209,11 @@ impl Viewer {
             } else {
                 l.visual.len()
             };
-            let mut scene_vec = Vec::new();
+            if num == 0 {
+                continue;
+            }
+            let mut scene_group = self.window.add_group();
+            let mut colors = Vec::new();
             for i in 0..num {
                 let (geom_element, origin_element) = if is_collision {
                     (&l.collision[i].geometry, &l.collision[i].origin)
@@ -208,30 +221,13 @@ impl Viewer {
                     (&l.visual[i].geometry, &l.visual[i].origin)
                 };
                 if let Some(mut scene_node) =
-                    add_geometry(geom_element, base_dir, &mut self.window)
+                    add_geometry(geom_element, base_dir, &mut scene_group)
                 {
                     if l.visual.len() > i {
-                        match urdf_robot
-                            .materials
-                            .iter()
-                            .find(|mat| mat.name == l.visual[i].material.name)
-                            .map(|mat| mat.clone()) {
-                            Some(ref material) => {
-                                scene_node.set_color(
-                                    material.color.rgba[0] as f32,
-                                    material.color.rgba[1] as f32,
-                                    material.color.rgba[2] as f32,
-                                )
-                            }
-                            None => {
-                                let rgba = &l.visual[i].material.color.rgba;
-                                scene_node.set_color(
-                                    rgba[0] as f32,
-                                    rgba[1] as f32,
-                                    rgba[2] as f32,
-                                );
-                            }
-                        }
+                        let rgba = rgba_from_visual(urdf_robot, &l.visual[i]);
+                        let color = na::Point3::new(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
+                        scene_node.set_color(color[0], color[1], color[2]);
+                        colors.push(color);
                     }
                     let origin = na::Isometry3::from_parts(
                         k::urdf::translation_from(&origin_element.xyz),
@@ -239,22 +235,18 @@ impl Viewer {
                     );
                     // set initial origin offset
                     scene_node.set_local_transformation(origin);
-                    scene_vec.push(SceneNodeAndTransform(scene_node, origin));
                 } else {
                     error!("failed to create for {:?}", l);
                 }
             }
-            if !scene_vec.is_empty() {
-                self.scenes.insert(l.name.to_string(), scene_vec);
-            }
+            self.scenes.insert(l.name.to_string(), scene_group);
+            self.original_colors.insert(l.name.to_string(), colors);
         }
     }
     pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
         for l in &urdf_robot.links {
-            if let Some(scene_trans_vec) = self.scenes.get_mut(&l.name) {
-                for scene_trans in scene_trans_vec {
-                    self.window.remove(&mut scene_trans.0);
-                }
+            if let Some(mut scene) = self.scenes.get_mut(&l.name) {
+                self.window.remove(&mut scene);
             }
         }
     }
@@ -275,10 +267,7 @@ impl Viewer {
         x.set_local_rotation(rot_x);
         y.set_local_rotation(rot_y);
         z.set_local_rotation(rot_z);
-        self.scenes.insert(
-            name.to_owned(),
-            vec![SceneNodeAndTransform(axis_group, na::Isometry3::identity())],
-        );
+        self.scenes.insert(name.to_owned(), axis_group);
     }
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
@@ -295,10 +284,8 @@ impl Viewer {
         {
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
             match self.scenes.get_mut(&*link_name) {
-                Some(obj_vec) => {
-                    obj_vec.iter_mut().for_each(|obj| {
-                        obj.0.set_local_transformation(trans_f32 * obj.1);
-                    })
+                Some(obj) => {
+                    obj.set_local_transformation(trans_f32);
                 }
                 None => {
                     debug!("{} not found", link_name);
@@ -329,34 +316,19 @@ impl Viewer {
         self.window.events()
     }
     pub fn set_temporal_color(&mut self, link_name: &str, r: f32, g: f32, b: f32) {
-        let color_opt = self.scenes.get_mut(link_name).map(|obj_list| {
-            obj_list
-                .iter_mut()
-                .map(|obj| {
-                    let orig_color = match obj.0.data().object() {
-                        Some(object) => Some(object.data().color().to_owned()),
-                        None => None,
-                    };
-                    obj.0.set_color(r, g, b);
-                    orig_color
-                })
-                .collect::<Vec<_>>()
+        self.scenes.get_mut(link_name).map(|obj| {
+            obj.set_color(r, g, b);
         });
-        if let Some(colors) = color_opt {
-            self.original_colors.insert(link_name.to_string(), colors);
-        }
     }
     pub fn reset_temporal_color(&mut self, link_name: &str) {
-        if let Some(original_color) = self.original_colors.get(link_name) {
-            self.scenes.get_mut(link_name).map(
-                |obj_vec| for (i, obj) in
-                    obj_vec.iter_mut().enumerate()
-                {
-                    if let Some(c) = original_color[i] {
-                        obj.0.set_color(c[0] as f32, c[1] as f32, c[2] as f32);
-                    }
-                },
-            );
+        if let Some(colors) = self.original_colors.get(link_name) {
+            let mut i = 0;
+            self.scenes.get_mut(link_name).map(|obj| {
+                obj.apply_to_scene_nodes_mut(&mut |o| {
+                    o.set_color(colors[i][0], colors[i][1], colors[i][2])
+                });
+                i += 1;
+            });
         }
     }
 }

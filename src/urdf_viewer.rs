@@ -179,10 +179,8 @@ impl<'a> UrdfViewerApp<'a> {
     }
     fn update_ik_target_marker(&mut self) {
         let trans = self.get_arm().end_transform();
-        if let Some(obj_vec) = self.viewer.scenes.get_mut("ik_target") {
-            obj_vec.iter_mut().for_each(|obj| {
-                obj.0.set_local_transformation(trans)
-            });
+        if let Some(obj) = self.viewer.scenes.get_mut("ik_target") {
+            obj.set_local_transformation(trans)
         }
     }
     fn update_robot(&mut self) {
