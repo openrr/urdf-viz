@@ -81,6 +81,7 @@ If there are no "package://" in mesh tag, and don't use xacro you can skip insta
 
 In the GUI, you can do some operations with keyboard and mouse.
 
+* `c` key to toggle collision model or visual mode 
 * Move a joint
   * set the angle of a joint by `Up`/`Down` key
   * `Ctrl` + Drag to move the angle of a joint
@@ -100,14 +101,17 @@ In the GUI, you can do some operations with keyboard and mouse.
 ![ubr1_1.png](img/ubr1_1.png)
 ![ubr1_2.png](img/ubr1_2.png)
 
-![ubr1_1.png](img/sawyer_1.png)
-![ubr1_2.png](img/sawyer_2.png)
+![sawyer_1.png](img/sawyer_1.png)
+![sawyer_2.png](img/sawyer_2.png)
 
 ![pr2_1.png](img/pr2_1.png)
 ![pr2_2.png](img/pr2_2.png)
 
 ![nextage_1.png](img/nextage_1.png)
 ![nextage_2.png](img/nextage_2.png)
+
+![hsr_1.png](img/hsr_1.png)
+![hsr_2.png](img/hsr_2.png)
 
 ![thormang3_1.png](img/thormang3_1.png)
 ![thormang3_2.png](img/thormang3_2.png)
