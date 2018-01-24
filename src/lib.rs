@@ -23,6 +23,8 @@
 
 #[cfg(feature = "assimp")]
 extern crate assimp;
+#[cfg(feature = "assimp")]
+extern crate assimp_sys;
 
 extern crate alga;
 extern crate glfw;
@@ -44,51 +46,130 @@ use alga::general::SubsetOf;
 mod errors;
 pub use errors::*;
 mod arc_ball;
-use arc_ball::*;
+pub use arc_ball::*;
 
 use na::Real;
 
+const ASSIMP_DIFFUSE: &'static [u8] = b"$clr.diffuse\0";
+/*
+const ASSIMP_AMBIENT: &'static [u8] = b"$clr.ambient\0";
+const ASSIMP_EMISSIVE: &'static [u8] = b"$clr.emissive\0";
+const ASSIMP_SPECULAR: &'static [u8] = b"$clr.specular\0";
+*/
+
 #[cfg(feature = "assimp")]
-pub fn load_mesh<P>(filename: P) -> Result<Rc<RefCell<Mesh>>>
+pub fn load_mesh<P>(
+    filename: P,
+    scale: na::Vector3<f32>,
+    opt_color: &Option<na::Point3<f32>>,
+    group: &mut SceneNode,
+) -> Result<SceneNode>
 where
     P: AsRef<Path>,
 {
+    let mut base = group.add_group();
     let mut importer = assimp::Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
     let file_string = filename.as_ref().to_str().ok_or(
-        "faild to get string from path",
+        "failed to convert file string",
     )?;
-    Ok(convert_assimp_scene_to_kiss3d_mesh(
-        importer.read_file(file_string)?,
-    ))
+    let (meshes, colors) = convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?);
+    if meshes.len() == colors.len() {
+        for (mesh, color) in meshes.into_iter().zip(colors.into_iter()) {
+            let mut mesh_scene = base.add_mesh(mesh, scale);
+            if color[0] == 1f32 && color[1] == 1f32 && color[2] == 1f32 {
+                warn!("ignore complete white of mesh color for now.");
+                if let Some(color) = *opt_color {
+                    mesh_scene.set_color(color[0], color[1], color[2]);
+                }
+            } else {
+                mesh_scene.set_color(color[0], color[1], color[2]);
+            }
+        }
+    } else {
+        for mesh in meshes {
+            let mut mesh_scene = base.add_mesh(mesh, scale);
+            if !colors.is_empty() {
+                let color = colors[0];
+                mesh_scene.set_color(color[0], color[1], color[2]);
+            } else {
+                if let Some(color) = *opt_color {
+                    mesh_scene.set_color(color[0], color[1], color[2]);
+                }
+            }
+        }
+    }
+    Ok(base)
 }
 
-#[cfg(feature = "assimp")]
-fn convert_assimp_scene_to_kiss3d_mesh(scene: assimp::Scene) -> Rc<RefCell<Mesh>> {
-    let mut vertices = Vec::new();
-    let mut indices = Vec::new();
-    let mut last_index: u32 = 0;
-    for mesh in scene.mesh_iter() {
-        vertices.extend(mesh.vertex_iter().map(|v| na::Point3::new(v.x, v.y, v.z)));
-        indices.extend(mesh.face_iter().filter_map(|f| if f.num_indices == 3 {
-            Some(na::Point3::new(
-                f[0] + last_index,
-                f[1] + last_index,
-                f[2] + last_index,
-            ))
-        } else {
-            None
-        }));
-        last_index = vertices.len() as u32;
+
+fn assimp_material(
+    material: &assimp::Material,
+    color_type: &'static [u8],
+) -> Option<na::Vector3<f32>> {
+    let mut assimp_color = assimp_sys::AiColor4D {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.0,
+    };
+    let mat = &(**material) as *const assimp_sys::AiMaterial;
+    unsafe {
+        match assimp_sys::aiGetMaterialColor(
+            mat,
+            color_type.as_ptr() as *const i8,
+            0,
+            0,
+            &mut assimp_color,
+        ) {
+            assimp_sys::AiReturn::Success => {
+                Some(na::Vector3::<f32>::new(
+                    assimp_color.r,
+                    assimp_color.g,
+                    assimp_color.b,
+                ))
+            }
+            _ => None,
+        }
     }
-    Rc::new(RefCell::new(
-        Mesh::new(vertices, indices, None, None, false),
-    ))
+}
+
+
+#[cfg(feature = "assimp")]
+fn convert_assimp_scene_to_kiss3d_mesh(
+    scene: assimp::Scene,
+) -> (Vec<Rc<RefCell<Mesh>>>, Vec<na::Vector3<f32>>) {
+    let meshes = scene
+        .mesh_iter()
+        .map(|mesh| {
+            let mut vertices = Vec::new();
+            let mut indices = Vec::new();
+            vertices.extend(mesh.vertex_iter().map(|v| na::Point3::new(v.x, v.y, v.z)));
+            indices.extend(mesh.face_iter().filter_map(|f| if f.num_indices == 3 {
+                Some(na::Point3::new(f[0], f[1], f[2]))
+            } else {
+                None
+            }));
+            Rc::new(RefCell::new(
+                Mesh::new(vertices, indices, None, None, false),
+            ))
+        })
+        .collect();
+    let colors = scene
+        .material_iter()
+        .filter_map(|material| assimp_material(&material, ASSIMP_DIFFUSE))
+        .collect();
+    (meshes, colors)
 }
 
 #[cfg(not(feature = "assimp"))]
-pub fn load_mesh<P>(_filename: P) -> Result<Rc<RefCell<Mesh>>>
+pub fn load_mesh<P>(
+    filename: P,
+    scale: na::Vector3<f32>,
+    opt_color: &Option<na::Point3<f32>>,
+    group: &mut SceneNode,
+) -> Result<SceneNode>
 where
     P: AsRef<Path>,
 {
@@ -97,15 +178,18 @@ where
 
 fn add_geometry(
     geometry: &urdf_rs::Geometry,
+    opt_color: &Option<na::Point3<f32>>,
     base_dir: Option<&Path>,
     group: &mut SceneNode,
-) -> Option<SceneNode> {
+) -> Result<SceneNode> {
     match *geometry {
-        urdf_rs::Geometry::Box { ref size } => Some(group.add_cube(
-            size[0] as f32,
-            size[1] as f32,
-            size[2] as f32,
-        )),
+        urdf_rs::Geometry::Box { ref size } => {
+            let mut cube = group.add_cube(size[0] as f32, size[1] as f32, size[2] as f32);
+            if let Some(color) = *opt_color {
+                cube.set_color(color[0], color[1], color[2]);
+            }
+            Ok(cube)
+        }
         urdf_rs::Geometry::Cylinder { radius, length } => {
             let mut base = group.add_group();
             let mut cylinder = base.add_cylinder(radius as f32, length as f32);
@@ -113,9 +197,18 @@ fn add_geometry(
                 &na::Vector3::x_axis(),
                 1.57,
             ));
-            Some(base)
+            if let Some(color) = *opt_color {
+                base.set_color(color[0], color[1], color[2]);
+            }
+            Ok(base)
         }
-        urdf_rs::Geometry::Sphere { radius } => Some(group.add_sphere(radius as f32)),
+        urdf_rs::Geometry::Sphere { radius } => {
+            let mut sphere = group.add_sphere(radius as f32);
+            if let Some(color) = *opt_color {
+                sphere.set_color(color[0], color[1], color[2]);
+            }
+            Ok(sphere)
+        }
         urdf_rs::Geometry::Mesh {
             ref filename,
             scale,
@@ -123,25 +216,29 @@ fn add_geometry(
             let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);
             let path = Path::new(&replaced_filename);
             if !path.exists() {
-                error!("{} not found", replaced_filename);
-                return None;
+                return Err(Error::from(format!("{} not found", replaced_filename)));
             }
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
             if cfg!(feature = "assimp") {
-                if let Ok(mesh) = load_mesh(path) {
-                    Some(group.add_mesh(mesh, na_scale))
-                } else {
-                    None
-                }
+                debug!("filename = {}", replaced_filename);
+                load_mesh(path, na_scale, opt_color, group)
             } else {
                 if path.extension() == Some(std::ffi::OsStr::new("obj")) {
-                    Some(group.add_obj(path, path, na_scale))
+                    let mut base = group.add_obj(path, path, na_scale);
+                    if let Some(color) = *opt_color {
+                        base.set_color(color[0], color[1], color[2]);
+                    }
+                    Ok(base)
                 } else {
                     error!(
                         "{:?} is not supported, because assimp feature is disabled",
                         path
                     );
-                    Some(group.add_cube(0.05f32, 0.05, 0.05))
+                    let mut base = group.add_cube(0.05f32, 0.05, 0.05);
+                    if let Some(color) = *opt_color {
+                        base.set_color(color[0], color[1], color[2]);
+                    }
+                    Ok(base)
                 }
             }
         }
@@ -220,21 +317,24 @@ impl Viewer {
                 } else {
                     (&l.visual[i].geometry, &l.visual[i].origin)
                 };
-                if let Some(mut scene_node) =
-                    add_geometry(geom_element, base_dir, &mut scene_group)
-                {
-                    if l.visual.len() > i {
-                        let rgba = rgba_from_visual(urdf_robot, &l.visual[i]);
-                        let color = na::Point3::new(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
-                        scene_node.set_color(color[0], color[1], color[2]);
-                        colors.push(color);
+                let mut opt_color = None;
+                if l.visual.len() > i {
+                    let rgba = rgba_from_visual(urdf_robot, &l.visual[i]);
+                    let color = na::Point3::new(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
+                    if color[0] > 0.001 || color[1] > 0.001 || color[2] > 0.001 {
+                        opt_color = Some(color.clone());
                     }
+                    colors.push(color);
+                }
+                if let Ok(mut base_group) =
+                    add_geometry(geom_element, &opt_color, base_dir, &mut scene_group)
+                {
                     let origin = na::Isometry3::from_parts(
                         k::urdf::translation_from(&origin_element.xyz),
                         k::urdf::quaternion_from(&origin_element.rpy),
                     );
                     // set initial origin offset
-                    scene_node.set_local_transformation(origin);
+                    base_group.set_local_transformation(origin);
                 } else {
                     error!("failed to create for {:?}", l);
                 }
