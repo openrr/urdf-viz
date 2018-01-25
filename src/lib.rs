@@ -51,11 +51,6 @@ pub use arc_ball::*;
 use na::Real;
 
 const ASSIMP_DIFFUSE: &'static [u8] = b"$clr.diffuse\0";
-/*
-const ASSIMP_AMBIENT: &'static [u8] = b"$clr.ambient\0";
-const ASSIMP_EMISSIVE: &'static [u8] = b"$clr.emissive\0";
-const ASSIMP_SPECULAR: &'static [u8] = b"$clr.specular\0";
-*/
 
 #[cfg(feature = "assimp")]
 pub fn load_mesh<P>(
@@ -74,22 +69,35 @@ where
     let file_string = filename.as_ref().to_str().ok_or(
         "failed to convert file string",
     )?;
-    let (meshes, colors) = convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?);
+    let (meshes, textures, colors) =
+        convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?);
+    warn!("{} {} {}", meshes.len(), textures.len(), colors.len());
     if meshes.len() == colors.len() {
+        let mut count = 0;
         for (mesh, color) in meshes.into_iter().zip(colors.into_iter()) {
             let mut mesh_scene = base.add_mesh(mesh, scale);
-            if color[0] == 1f32 && color[1] == 1f32 && color[2] == 1f32 {
-                warn!("ignore complete white of mesh color for now.");
-                if let Some(color) = *opt_color {
-                    mesh_scene.set_color(color[0], color[1], color[2]);
+            mesh_scene.set_color(color[0], color[1], color[2]);
+            let mut texture_path = filename.as_ref().to_path_buf();
+            if count < textures.len() {
+                texture_path.set_file_name(textures[count].clone());
+                debug!("texture={}", texture_path.display());
+                if texture_path.exists() {
+                    mesh_scene.set_texture_from_file(&texture_path, texture_path.to_str().unwrap());
                 }
-            } else {
-                mesh_scene.set_color(color[0], color[1], color[2]);
             }
+            count += 1;
         }
     } else {
         for mesh in meshes {
             let mut mesh_scene = base.add_mesh(mesh, scale);
+            if !textures.is_empty() {
+                let mut texture_path = filename.as_ref().to_path_buf();
+                texture_path.set_file_name(textures[0].clone());
+                debug!("texture={}", texture_path.display());
+                if texture_path.exists() {
+                    mesh_scene.set_texture_from_file(&texture_path, texture_path.to_str().unwrap());
+                }
+            }
             if !colors.is_empty() {
                 let color = colors[0];
                 mesh_scene.set_color(color[0], color[1], color[2]);
@@ -103,8 +111,37 @@ where
     Ok(base)
 }
 
+fn assimp_material_texture(material: &assimp::Material) -> Option<String> {
+    use std::os::raw::{c_float, c_uint};
+    let mut path = assimp_sys::AiString::default();
+    let texture_type = assimp_sys::AiTextureType::Diffuse;
+    let mat = &(**material) as *const assimp_sys::AiMaterial;
+    let mut mapping = assimp_sys::AiTextureMapping::UV;
+    let mut uv_index: c_uint = 0;
+    let mut blend: c_float = 0.0;
+    let mut op = assimp_sys::AiTextureOp::Multiply;
+    let mut map_mode = assimp_sys::AiTextureMapMode::Wrap;
+    let mut flags: c_uint = 0;
+    unsafe {
+        match assimp_sys::aiGetMaterialTexture(
+            mat,
+            texture_type,
+            0,
+            &mut path as *mut assimp_sys::AiString,
+            &mut mapping as *const assimp_sys::AiTextureMapping,
+            &mut uv_index as *mut c_uint,
+            &mut blend as *mut c_float,
+            &mut op as *mut assimp_sys::AiTextureOp,
+            &mut map_mode as *mut assimp_sys::AiTextureMapMode,
+            &mut flags as *mut c_uint,
+        ) {
+            assimp_sys::AiReturn::Success => Some(path.as_ref().to_owned()),
+            _ => None,
+        }
+    }
+}
 
-fn assimp_material(
+fn assimp_material_color(
     material: &assimp::Material,
     color_type: &'static [u8],
 ) -> Option<na::Vector3<f32>> {
@@ -139,7 +176,7 @@ fn assimp_material(
 #[cfg(feature = "assimp")]
 fn convert_assimp_scene_to_kiss3d_mesh(
     scene: assimp::Scene,
-) -> (Vec<Rc<RefCell<Mesh>>>, Vec<na::Vector3<f32>>) {
+) -> (Vec<Rc<RefCell<Mesh>>>, Vec<String>, Vec<na::Vector3<f32>>) {
     let meshes = scene
         .mesh_iter()
         .map(|mesh| {
@@ -158,9 +195,13 @@ fn convert_assimp_scene_to_kiss3d_mesh(
         .collect();
     let colors = scene
         .material_iter()
-        .filter_map(|material| assimp_material(&material, ASSIMP_DIFFUSE))
+        .filter_map(|material| assimp_material_color(&material, ASSIMP_DIFFUSE))
         .collect();
-    (meshes, colors)
+    let texture_files = scene
+        .material_iter()
+        .filter_map(|material| assimp_material_texture(&material))
+        .collect();
+    (meshes, texture_files, colors)
 }
 
 #[cfg(not(feature = "assimp"))]
