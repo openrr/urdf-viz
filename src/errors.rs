@@ -27,7 +27,6 @@ pub enum Error {
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
-
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error::Io(err)
@@ -39,7 +38,6 @@ impl From<string::FromUtf8Error> for Error {
         Error::Other(err.description().to_owned())
     }
 }
-
 
 impl<'a> From<&'a str> for Error {
     fn from(err: &'a str) -> Error {

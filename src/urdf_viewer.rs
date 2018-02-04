@@ -128,9 +128,13 @@ impl<'a> UrdfViewerApp<'a> {
         base_dir: Option<&'a Path>,
         mut end_link_names: Vec<String>,
         is_collision: bool,
+        disable_texture: bool,
     ) -> Self {
         let robot = k::LinkTree::<f32>::from_urdf_robot(&urdf_robo);
         let mut viewer = urdf_viz::Viewer::new("urdf-viz");
+        if disable_texture {
+            viewer.disable_texture();
+        }
         viewer.add_robot_with_base_dir_and_collision_flag(&urdf_robo, base_dir, is_collision);
         viewer.add_axis_cylinders("origin", 1.0);
         if end_link_names.is_empty() {
@@ -393,7 +397,6 @@ impl<'a> UrdfViewerApp<'a> {
     }
 }
 
-
 #[derive(StructOpt, Debug)]
 #[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
 pub struct Opt {
@@ -401,8 +404,11 @@ pub struct Opt {
     pub input_urdf_or_xacro: String,
     #[structopt(short = "e", long = "end-link-name", help = "end link names")]
     pub end_link_names: Vec<String>,
-    #[structopt(short = "c", long = "collision", help = "Show collision element instead of visual")]
+    #[structopt(short = "c", long = "collision",
+                help = "Show collision element instead of visual")]
     pub is_collision: bool,
+    #[structopt(short = "d", long = "disable-texture", help = "Disable texture rendering")]
+    pub disable_texture: bool,
 }
 
 fn main() {
@@ -411,7 +417,13 @@ fn main() {
     let input_path = Path::new(&opt.input_urdf_or_xacro);
     let base_dir = input_path.parent();
     let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(input_path).unwrap();
-    let mut app = UrdfViewerApp::new(urdf_robo, base_dir, opt.end_link_names, opt.is_collision);
+    let mut app = UrdfViewerApp::new(
+        urdf_robo,
+        base_dir,
+        opt.end_link_names,
+        opt.is_collision,
+        opt.disable_texture,
+    );
     app.init();
     app.run();
 }

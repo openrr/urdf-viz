@@ -55,8 +55,9 @@ use na::Real;
 pub fn load_mesh<P>(
     filename: P,
     scale: na::Vector3<f32>,
-    opt_color: &Option<na::Point3<f32>>,
+    opt_urdf_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
+    use_texture: bool,
 ) -> Result<SceneNode>
 where
     P: AsRef<Path>,
@@ -65,18 +66,34 @@ where
     let mut importer = assimp::Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
-    let file_string = filename.as_ref().to_str().ok_or(
-        "failed to convert file string",
-    )?;
+    let file_string = filename
+        .as_ref()
+        .to_str()
+        .ok_or("failed to convert file string")?;
     let (meshes, textures, colors) =
         convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?);
-    warn!("{} {} {}", meshes.len(), textures.len(), colors.len());
-    if meshes.len() == colors.len() {
+    info!("{} {} {}", meshes.len(), textures.len(), colors.len());
+    let mesh_scenes = meshes
+        .into_iter()
+        .map(|mesh| base.add_mesh(mesh, scale))
+        .collect::<Vec<_>>();
+    // do not use texture, use only color in urdf file.
+    if !use_texture {
+        if let Some(urdf_color) = *opt_urdf_color {
+            for mut mesh_scene in mesh_scenes {
+                mesh_scene.set_color(urdf_color[0], urdf_color[1], urdf_color[2]);
+            }
+        }
+        return Ok(base);
+    }
+
+    // Size of color and mesh are same, use each color for mesh
+    if mesh_scenes.len() == colors.len() {
         let mut count = 0;
-        for (mesh, color) in meshes.into_iter().zip(colors.into_iter()) {
-            let mut mesh_scene = base.add_mesh(mesh, scale);
+        for (mut mesh_scene, color) in mesh_scenes.into_iter().zip(colors.into_iter()) {
             mesh_scene.set_color(color[0], color[1], color[2]);
             let mut texture_path = filename.as_ref().to_path_buf();
+            // Is this OK?
             if count < textures.len() {
                 texture_path.set_file_name(textures[count].clone());
                 debug!("texture={}", texture_path.display());
@@ -87,8 +104,9 @@ where
             count += 1;
         }
     } else {
-        for mesh in meshes {
-            let mut mesh_scene = base.add_mesh(mesh, scale);
+        // When size of mesh and color mismatch, use only first color/texture for all meshes.
+        // If no color found, use urdf color instead.
+        for mut mesh_scene in mesh_scenes {
             if !textures.is_empty() {
                 let mut texture_path = filename.as_ref().to_path_buf();
                 texture_path.set_file_name(textures[0].clone());
@@ -101,8 +119,8 @@ where
                 let color = colors[0];
                 mesh_scene.set_color(color[0], color[1], color[2]);
             } else {
-                if let Some(color) = *opt_color {
-                    mesh_scene.set_color(color[0], color[1], color[2]);
+                if let Some(urdf_color) = *opt_urdf_color {
+                    mesh_scene.set_color(urdf_color[0], urdf_color[1], urdf_color[2]);
                 }
             }
         }
@@ -116,6 +134,7 @@ pub fn load_mesh<P>(
     scale: na::Vector3<f32>,
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
+    use_texture: bool,
 ) -> Result<SceneNode>
 where
     P: AsRef<Path>,
@@ -128,6 +147,7 @@ fn add_geometry(
     opt_color: &Option<na::Point3<f32>>,
     base_dir: Option<&Path>,
     group: &mut SceneNode,
+    use_texture: bool,
 ) -> Result<SceneNode> {
     match *geometry {
         urdf_rs::Geometry::Box { ref size } => {
@@ -168,7 +188,7 @@ fn add_geometry(
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
             if cfg!(feature = "assimp") {
                 debug!("filename = {}", replaced_filename);
-                load_mesh(path, na_scale, opt_color, group)
+                load_mesh(path, na_scale, opt_color, group, use_texture)
             } else {
                 if path.extension() == Some(std::ffi::OsStr::new("obj")) {
                     let mut base = group.add_obj(path, path, na_scale);
@@ -199,7 +219,8 @@ fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -> [f
         .materials
         .iter()
         .find(|mat| mat.name == visual.material.name)
-        .map(|mat| mat.clone()) {
+        .map(|mat| mat.clone())
+    {
         Some(ref material) => material.color.rgba,
         None => visual.material.color.rgba,
     }
@@ -212,6 +233,7 @@ pub struct Viewer {
     font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
     font_data: &'static [u8],
     original_colors: HashMap<String, Vec<na::Point3<f32>>>,
+    is_texture_enabled: bool,
 }
 
 impl Viewer {
@@ -229,8 +251,16 @@ impl Viewer {
             font_map: HashMap::new(),
             font_data: include_bytes!("font/Inconsolata.otf"),
             original_colors: HashMap::new(),
+            is_texture_enabled: true,
         }
     }
+    pub fn disable_texture(&mut self) {
+        self.is_texture_enabled = false;
+    }
+    pub fn enable_texture(&mut self) {
+        self.is_texture_enabled = true;
+    }
+
     pub fn add_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
         self.add_robot_with_base_dir(urdf_robot, None);
     }
@@ -273,9 +303,13 @@ impl Viewer {
                     }
                     colors.push(color);
                 }
-                if let Ok(mut base_group) =
-                    add_geometry(geom_element, &opt_color, base_dir, &mut scene_group)
-                {
+                if let Ok(mut base_group) = add_geometry(
+                    geom_element,
+                    &opt_color,
+                    base_dir,
+                    &mut scene_group,
+                    self.is_texture_enabled,
+                ) {
                     let origin = na::Isometry3::from_parts(
                         k::urdf::translation_from(&origin_element.xyz),
                         k::urdf::quaternion_from(&origin_element.rpy),
@@ -330,10 +364,10 @@ impl Viewer {
         R: k::LinkContainer<T>,
         T: Real + alga::general::SubsetOf<f32>,
     {
-        for (trans, link_name) in
-            robot.link_transforms().iter().zip(
-                robot.link_names().iter(),
-            )
+        for (trans, link_name) in robot
+            .link_transforms()
+            .iter()
+            .zip(robot.link_names().iter())
         {
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
             match self.scenes.get_mut(&*link_name) {
@@ -356,12 +390,9 @@ impl Viewer {
         self.window.draw_text(
             text,
             pos,
-            self.font_map.entry(size).or_insert(
-                kiss3d::text::Font::from_memory(
-                    self.font_data,
-                    size,
-                ),
-            ),
+            self.font_map
+                .entry(size)
+                .or_insert(kiss3d::text::Font::from_memory(self.font_data, size)),
             color,
         );
     }

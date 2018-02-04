@@ -72,13 +72,11 @@ pub fn assimp_material_color(
             0,
             &mut assimp_color,
         ) {
-            assimp_sys::AiReturn::Success => {
-                Some(na::Vector3::<f32>::new(
-                    assimp_color.r,
-                    assimp_color.g,
-                    assimp_color.b,
-                ))
-            }
+            assimp_sys::AiReturn::Success => Some(na::Vector3::<f32>::new(
+                assimp_color.r,
+                assimp_color.g,
+                assimp_color.b,
+            )),
             _ => None,
         }
     }
@@ -93,14 +91,20 @@ pub fn convert_assimp_scene_to_kiss3d_mesh(
             let mut vertices = Vec::new();
             let mut indices = Vec::new();
             vertices.extend(mesh.vertex_iter().map(|v| na::Point3::new(v.x, v.y, v.z)));
-            indices.extend(mesh.face_iter().filter_map(|f| if f.num_indices == 3 {
-                Some(na::Point3::new(f[0], f[1], f[2]))
-            } else {
-                None
+            indices.extend(mesh.face_iter().filter_map(|f| {
+                if f.num_indices == 3 {
+                    Some(na::Point3::new(f[0], f[1], f[2]))
+                } else {
+                    None
+                }
             }));
-            Rc::new(RefCell::new(
-                Mesh::new(vertices, indices, None, None, false),
-            ))
+            Rc::new(RefCell::new(Mesh::new(
+                vertices,
+                indices,
+                None,
+                None,
+                false,
+            )))
         })
         .collect();
     let colors = scene
