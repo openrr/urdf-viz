@@ -95,16 +95,13 @@ pub fn convert_assimp_scene_to_kiss3d_mesh(
                 if f.num_indices == 3 {
                     Some(na::Point3::new(f[0], f[1], f[2]))
                 } else {
+                    debug!("invalid mesh!");
                     None
                 }
             }));
-            Rc::new(RefCell::new(Mesh::new(
-                vertices,
-                indices,
-                None,
-                None,
-                false,
-            )))
+            Rc::new(RefCell::new(
+                Mesh::new(vertices, indices, None, None, false),
+            ))
         })
         .collect();
     let colors = scene

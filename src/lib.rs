@@ -75,15 +75,17 @@ where
     info!("{} {} {}", meshes.len(), textures.len(), colors.len());
     let mesh_scenes = meshes
         .into_iter()
-        .map(|mesh| base.add_mesh(mesh, scale))
+        .map(|mesh| {
+            let mut scene = base.add_mesh(mesh, scale);
+            // use urdf color as default
+            if let Some(urdf_color) = *opt_urdf_color {
+                scene.set_color(urdf_color[0], urdf_color[1], urdf_color[2]);
+            }
+            scene
+        })
         .collect::<Vec<_>>();
     // do not use texture, use only color in urdf file.
     if !use_texture {
-        if let Some(urdf_color) = *opt_urdf_color {
-            for mut mesh_scene in mesh_scenes {
-                mesh_scene.set_color(urdf_color[0], urdf_color[1], urdf_color[2]);
-            }
-        }
         return Ok(base);
     }
 
@@ -92,11 +94,11 @@ where
         let mut count = 0;
         for (mut mesh_scene, color) in mesh_scenes.into_iter().zip(colors.into_iter()) {
             mesh_scene.set_color(color[0], color[1], color[2]);
-            let mut texture_path = filename.as_ref().to_path_buf();
             // Is this OK?
             if count < textures.len() {
+                let mut texture_path = filename.as_ref().to_path_buf();
                 texture_path.set_file_name(textures[count].clone());
-                debug!("texture={}", texture_path.display());
+                debug!("using texture={}", texture_path.display());
                 if texture_path.exists() {
                     mesh_scene.set_texture_from_file(&texture_path, texture_path.to_str().unwrap());
                 }
@@ -118,10 +120,6 @@ where
             if !colors.is_empty() {
                 let color = colors[0];
                 mesh_scene.set_color(color[0], color[1], color[2]);
-            } else {
-                if let Some(urdf_color) = *opt_urdf_color {
-                    mesh_scene.set_color(urdf_color[0], urdf_color[1], urdf_color[2]);
-                }
             }
         }
     }
