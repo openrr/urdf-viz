@@ -197,7 +197,9 @@ impl<'a> UrdfViewerApp<'a> {
     fn update_robot(&mut self) {
         // this is hack to handle invalid mimic joints, like hsr
         let joint_angles = self.robot.joint_angles();
-        self.robot.set_joint_angles(&joint_angles).unwrap();
+        self.robot
+            .set_joint_angles(&joint_angles)
+            .unwrap_or_else(|err| println!("failed to update robot joints {}", err));
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }
@@ -307,15 +309,13 @@ impl<'a> UrdfViewerApp<'a> {
                         last_cur_pos_x = x;
                         last_cur_pos_y = y;
                     }
-                    WindowEvent::MouseButton(_, Action::Release, _) => {
-                        if is_ctrl {
-                            is_ctrl = false;
-                            event.inhibited = true;
-                        } else if is_shift {
-                            is_shift = false;
-                            event.inhibited = true;
-                        }
-                    }
+                    WindowEvent::MouseButton(_, Action::Release, _) => if is_ctrl {
+                        is_ctrl = false;
+                        event.inhibited = true;
+                    } else if is_shift {
+                        is_shift = false;
+                        event.inhibited = true;
+                    },
                     WindowEvent::Key(code, _, Action::Press, _) => {
                         match code {
                             Key::LeftBracket => {
@@ -360,32 +360,26 @@ impl<'a> UrdfViewerApp<'a> {
                                 );
                                 self.update_robot();
                             }
-                            Key::R => {
-                                if self.has_joints() {
-                                    move_joint_by_random(&mut self.robot).unwrap_or(());
-                                    self.update_robot();
-                                }
-                            }
-                            Key::Up => {
-                                if self.has_joints() {
-                                    move_joint_by_index(
-                                        self.index_of_move_joint.get(),
-                                        0.1,
-                                        &mut self.robot,
-                                    ).unwrap_or(());
-                                    self.update_robot();
-                                }
-                            }
-                            Key::Down => {
-                                if self.has_joints() {
-                                    move_joint_by_index(
-                                        self.index_of_move_joint.get(),
-                                        0.1,
-                                        &mut self.robot,
-                                    ).unwrap_or(());
-                                    self.update_robot();
-                                }
-                            }
+                            Key::R => if self.has_joints() {
+                                move_joint_by_random(&mut self.robot).unwrap_or(());
+                                self.update_robot();
+                            },
+                            Key::Up => if self.has_joints() {
+                                move_joint_by_index(
+                                    self.index_of_move_joint.get(),
+                                    0.1,
+                                    &mut self.robot,
+                                ).unwrap_or(());
+                                self.update_robot();
+                            },
+                            Key::Down => if self.has_joints() {
+                                move_joint_by_index(
+                                    self.index_of_move_joint.get(),
+                                    0.1,
+                                    &mut self.robot,
+                                ).unwrap_or(());
+                                self.update_robot();
+                            },
                             _ => {}
                         };
                         event.inhibited = true;
@@ -400,8 +394,7 @@ impl<'a> UrdfViewerApp<'a> {
 #[derive(StructOpt, Debug)]
 #[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
 pub struct Opt {
-    #[structopt(help = "Input urdf or xacro")]
-    pub input_urdf_or_xacro: String,
+    #[structopt(help = "Input urdf or xacro")] pub input_urdf_or_xacro: String,
     #[structopt(short = "e", long = "end-link-name", help = "end link names")]
     pub end_link_names: Vec<String>,
     #[structopt(short = "c", long = "collision",

@@ -99,9 +99,13 @@ pub fn convert_assimp_scene_to_kiss3d_mesh(
                     None
                 }
             }));
-            Rc::new(RefCell::new(
-                Mesh::new(vertices, indices, None, None, false),
-            ))
+            Rc::new(RefCell::new(Mesh::new(
+                vertices,
+                indices,
+                None,
+                None,
+                false,
+            )))
         })
         .collect();
     let colors = scene

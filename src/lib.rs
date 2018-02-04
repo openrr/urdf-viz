@@ -72,7 +72,12 @@ where
         .ok_or("failed to convert file string")?;
     let (meshes, textures, colors) =
         convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?);
-    info!("{} {} {}", meshes.len(), textures.len(), colors.len());
+    info!(
+        "num mesh, texture, colors = {} {} {}",
+        meshes.len(),
+        textures.len(),
+        colors.len()
+    );
     let mesh_scenes = meshes
         .into_iter()
         .map(|mesh| {
@@ -84,8 +89,15 @@ where
             scene
         })
         .collect::<Vec<_>>();
+    // use texture only for dae (collada)
+    let mut is_collada = false;
+    if let Some(ext) = filename.as_ref().extension() {
+        if ext == "dae" || ext == "DAE" {
+            is_collada = true;
+        }
+    }
     // do not use texture, use only color in urdf file.
-    if !use_texture {
+    if !use_texture || !is_collada {
         return Ok(base);
     }
 
