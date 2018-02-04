@@ -9,6 +9,7 @@ categories = ["visualization"]
 repository = "https://github.com/OTL/urdf-viz"
 documentation = "http://docs.rs/urdf-viz"
 readme = "README.md"
+exclude = ["img/*", "ci/*"]
 
 [features]
 default = ["assimp"]
