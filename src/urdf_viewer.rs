@@ -191,6 +191,9 @@ impl<'a> UrdfViewerApp<'a> {
         }
     }
     fn update_robot(&mut self) {
+        // this is hack to handle invalid mimic joints, like hsr
+        let joint_angles = self.robot.joint_angles();
+        self.robot.set_joint_angles(&joint_angles).unwrap();
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }

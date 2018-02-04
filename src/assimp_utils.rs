@@ -15,8 +15,8 @@
  */
 
 use assimp_sys;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 use assimp;
 use na;
 use kiss3d::resource::Mesh;
