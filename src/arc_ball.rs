@@ -30,13 +30,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Edit Takashi Ogura <t.ogura@gmail.com>
  */
 
-use std::f32;
-use glfw::{Action, Key, MouseButton};
 use glfw;
 use glfw::WindowEvent;
-use na::{Isometry3, Matrix4, Perspective3, Point3, Vector2, Vector3};
-use na;
+use glfw::{Action, Key, MouseButton};
 use kiss3d::camera::Camera;
+use na;
+use na::{Isometry3, Matrix4, Perspective3, Point3, Vector2, Vector3};
+use std::f32;
 
 /// Arc-ball camera mode.
 ///
@@ -165,7 +165,7 @@ impl ArcBall {
     pub fn look_at(&mut self, eye: Point3<f32>, at: Point3<f32>) {
         let dist = na::norm(&(eye - at));
         let pitch = ((eye.z - at.z) / dist).acos();
-        let yaw = (eye.x - at.x).atan2(eye.y - at.y);
+        let yaw = (eye.y - at.y).atan2(eye.x - at.x);
 
         self.at = at;
         self.dist = dist;
@@ -226,7 +226,7 @@ impl ArcBall {
     }
 
     fn handle_left_button_displacement(&mut self, dpos: &Vector2<f32>) {
-        self.yaw = self.yaw + dpos.x * self.yaw_step;
+        self.yaw = self.yaw - dpos.x * self.yaw_step;
         self.pitch = self.pitch - dpos.y * self.pitch_step;
 
         self.update_restrictions();
@@ -266,9 +266,9 @@ impl Camera for ArcBall {
     }
 
     fn eye(&self) -> Point3<f32> {
-        let py = self.at.x + self.dist * self.yaw.cos() * self.pitch.sin();
-        let pz = self.at.y + self.dist * self.pitch.cos();
-        let px = self.at.z + self.dist * self.yaw.sin() * self.pitch.sin();
+        let px = self.at.x + self.dist * self.yaw.cos() * self.pitch.sin();
+        let py = self.at.y + self.dist * self.yaw.sin() * self.pitch.sin();
+        let pz = self.at.z + self.dist * self.pitch.cos();
 
         Point3::new(px, py, pz)
     }
