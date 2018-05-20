@@ -248,7 +248,7 @@ pub struct Viewer {
 
 impl Viewer {
     pub fn new(title: &str) -> Viewer {
-        let eye = na::Point3::new(3.0f32, 0.0, 1.0);
+        let eye = na::Point3::new(3.0f32, 1.0, 1.0);
         let at = na::Point3::new(0.0f32, 0.0, 0.25);
         let mut window = kiss3d::window::Window::new_with_size(title, 1400, 1000);
         window.set_light(kiss3d::light::Light::StickToCamera);
