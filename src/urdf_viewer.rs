@@ -318,7 +318,7 @@ impl<'a> UrdfViewerApp<'a> {
                     },
                     WindowEvent::Key(code, _, Action::Press, _) => {
                         match code {
-                            Key::LeftBracket => {
+                            Key::LeftBracket => if self.has_joints() {
                                 self.viewer.reset_temporal_color(
                                     &self.link_names[self.index_of_move_joint.get()],
                                 );
@@ -329,8 +329,8 @@ impl<'a> UrdfViewerApp<'a> {
                                     0.0,
                                     0.0,
                                 );
-                            }
-                            Key::RightBracket => {
+                            },
+                            Key::RightBracket => if self.has_joints() {
                                 self.viewer.reset_temporal_color(
                                     &self.link_names[self.index_of_move_joint.get()],
                                 );
@@ -341,7 +341,7 @@ impl<'a> UrdfViewerApp<'a> {
                                     0.0,
                                     0.0,
                                 );
-                            }
+                            },
                             Key::Period => {
                                 self.index_of_arm.inc();
                                 self.update_ik_target_marker();
@@ -375,7 +375,7 @@ impl<'a> UrdfViewerApp<'a> {
                             Key::Down => if self.has_joints() {
                                 move_joint_by_index(
                                     self.index_of_move_joint.get(),
-                                    0.1,
+                                    -0.1,
                                     &mut self.robot,
                                 ).unwrap_or(());
                                 self.update_robot();
