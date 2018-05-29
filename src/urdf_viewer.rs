@@ -29,7 +29,8 @@ use glfw::{Action, Key, WindowEvent};
 use k::ChainContainer;
 use k::InverseKinematicsSolver;
 use k::JointContainer;
-use k::KinematicChain;
+use k::Manipulator;
+use k::ManipulatorContainer;
 use k::urdf::FromUrdf;
 use std::path::Path;
 use structopt::StructOpt;
@@ -42,7 +43,7 @@ static NATIVE_MOD: glfw::modifiers::Modifiers = glfw::modifiers::Control;
 
 fn move_joint_by_random(robot: &mut k::LinkTree<f32>) -> Result<(), k::JointError> {
     let angles_vec = robot
-        .iter_joints_link()
+        .iter_movable()
         .map(|link| match link.joint.limits {
             Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
             None => (rand::random::<f32>() - 0.5) * 2.0,
@@ -139,7 +140,7 @@ impl<'a> UrdfViewerApp<'a> {
         viewer.add_axis_cylinders("origin", 1.0);
         if end_link_names.is_empty() {
             end_link_names = robot
-                .iter()
+                .iter_node()
                 .filter(|node| node.borrow().children.is_empty())
                 .map(|node| node.borrow().data.name.to_owned())
                 .collect::<Vec<_>>();
@@ -147,13 +148,13 @@ impl<'a> UrdfViewerApp<'a> {
         println!("end_link_names = {:?}", end_link_names);
         let arms = end_link_names
             .iter()
-            .filter_map(|end_name| robot.new_chain(&end_name))
+            .filter_map(|end_name| robot.new_manipulator(&end_name))
             .collect::<Vec<_>>();
         let joint_names = robot.joint_names();
         let num_arms = arms.len();
         let dof = robot.dof();
         let link_names = robot
-            .iter_joints_link()
+            .iter_movable()
             .map(|link| link.name.to_string())
             .collect();
         UrdfViewerApp {
