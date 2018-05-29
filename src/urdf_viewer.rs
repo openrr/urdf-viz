@@ -26,11 +26,11 @@ extern crate urdf_rs;
 extern crate urdf_viz;
 
 use glfw::{Action, Key, WindowEvent};
-use k::InverseKinematicsSolver;
-use k::KinematicChain;
-use k::JointContainer;
-use k::urdf::FromUrdf;
 use k::ChainContainer;
+use k::InverseKinematicsSolver;
+use k::JointContainer;
+use k::KinematicChain;
+use k::urdf::FromUrdf;
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -139,7 +139,7 @@ impl<'a> UrdfViewerApp<'a> {
         viewer.add_axis_cylinders("origin", 1.0);
         if end_link_names.is_empty() {
             end_link_names = robot
-                .iter_joints()
+                .iter()
                 .filter(|node| node.borrow().children.is_empty())
                 .map(|node| node.borrow().data.name.to_owned())
                 .collect::<Vec<_>>();
@@ -394,7 +394,8 @@ impl<'a> UrdfViewerApp<'a> {
 #[derive(StructOpt, Debug)]
 #[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
 pub struct Opt {
-    #[structopt(help = "Input urdf or xacro")] pub input_urdf_or_xacro: String,
+    #[structopt(help = "Input urdf or xacro")]
+    pub input_urdf_or_xacro: String,
     #[structopt(short = "e", long = "end-link-name", help = "end link names")]
     pub end_link_names: Vec<String>,
     #[structopt(short = "c", long = "collision",
