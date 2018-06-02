@@ -1,6 +1,6 @@
 [package]
 name = "urdf-viz"
-version = "0.9.3"
+version = "0.10.0"
 authors = ["Takashi Ogura <t.ogura@gmail.com>"]
 description = "URDF visualization"
 license = "Apache-2.0"
@@ -15,16 +15,15 @@ exclude = ["img/*", "ci/*"]
 default = ["assimp"]
 
 [dependencies]
-alga = "0.5"
+alga = "0.6.0"
 env_logger = "0.4.2"
-glfw = { version = "0.15.0", default-features = false }
-k = "0.10.0"
-kiss3d = "0.11.0"
+glfw = { version = "0.19.0", default-features = false }
+k = "0.11.0"
+kiss3d = "0.15.0"
 log = "0.3"
-nalgebra = "0.13.0"
+nalgebra = "0.15.0"
 rand = "0.3.0"
-structopt = "0.1.0"
-structopt-derive = "0.1.0"
+structopt = "0.2.0"
 urdf-rs = "0.4.2"
 
 assimp = { version = "0.3.1", optional = true }

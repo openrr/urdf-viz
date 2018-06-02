@@ -19,30 +19,26 @@ extern crate glfw;
 extern crate k;
 extern crate nalgebra as na;
 extern crate rand;
-extern crate structopt;
 #[macro_use]
-extern crate structopt_derive;
+extern crate structopt;
 extern crate urdf_rs;
 extern crate urdf_viz;
 
-use glfw::{Action, Key, WindowEvent};
-use k::ChainContainer;
-use k::InverseKinematicsSolver;
-use k::JointContainer;
-use k::KinematicChain;
+use glfw::{Action, Key, Modifiers, WindowEvent};
 use k::urdf::FromUrdf;
-use std::path::Path;
+use k::{EndTransform, HasJoints, InverseKinematicsSolver, Manipulator};
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[cfg(target_os = "macos")]
-static NATIVE_MOD: glfw::modifiers::Modifiers = glfw::modifiers::Super;
+static NATIVE_MOD: Modifiers = glfw::Modifiers::Super;
 
 #[cfg(not(target_os = "macos"))]
-static NATIVE_MOD: glfw::modifiers::Modifiers = glfw::modifiers::Control;
+static NATIVE_MOD: Modifiers = glfw::Modifiers::Control;
 
 fn move_joint_by_random(robot: &mut k::LinkTree<f32>) -> Result<(), k::JointError> {
     let angles_vec = robot
-        .iter_joints_link()
+        .iter_movable()
         .map(|link| match link.joint.limits {
             Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
             None => (rand::random::<f32>() - 0.5) * 2.0,
@@ -108,38 +104,43 @@ Shift+Ctrl+Drag: IK (x, z)
 c:    toggle visual/collision
 ";
 
-struct UrdfViewerApp<'a> {
+struct UrdfViewerApp {
+    input_path: PathBuf,
     urdf_robot: urdf_rs::Robot,
     robot: k::LinkTree<f32>,
     viewer: urdf_viz::Viewer,
-    arms: Vec<k::LinkChain<f32>>,
+    arms: Vec<k::Manipulator<f32>>,
     joint_names: Vec<String>,
     link_names: Vec<String>,
     num_arms: usize,
     num_joints: usize,
     index_of_arm: LoopIndex,
     index_of_move_joint: LoopIndex,
-    base_dir: Option<&'a Path>,
 }
 
-impl<'a> UrdfViewerApp<'a> {
+impl UrdfViewerApp {
     fn new(
-        urdf_robo: urdf_rs::Robot,
-        base_dir: Option<&'a Path>,
+        input_file: String,
         mut end_link_names: Vec<String>,
         is_collision: bool,
         disable_texture: bool,
     ) -> Self {
+        let input_path = PathBuf::from(&input_file);
+        let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(&input_path).unwrap();
         let robot = k::LinkTree::<f32>::from_urdf_robot(&urdf_robo);
         let mut viewer = urdf_viz::Viewer::new("urdf-viz");
         if disable_texture {
             viewer.disable_texture();
         }
-        viewer.add_robot_with_base_dir_and_collision_flag(&urdf_robo, base_dir, is_collision);
+        viewer.add_robot_with_base_dir_and_collision_flag(
+            &urdf_robo,
+            input_path.parent(),
+            is_collision,
+        );
         viewer.add_axis_cylinders("origin", 1.0);
         if end_link_names.is_empty() {
             end_link_names = robot
-                .iter()
+                .iter_node()
                 .filter(|node| node.borrow().children.is_empty())
                 .map(|node| node.borrow().data.name.to_owned())
                 .collect::<Vec<_>>();
@@ -147,21 +148,21 @@ impl<'a> UrdfViewerApp<'a> {
         println!("end_link_names = {:?}", end_link_names);
         let arms = end_link_names
             .iter()
-            .filter_map(|end_name| robot.new_chain(&end_name))
+            .filter_map(|end_name| Manipulator::from_link_tree(&end_name, &robot))
             .collect::<Vec<_>>();
         let joint_names = robot.joint_names();
         let num_arms = arms.len();
         let dof = robot.dof();
         let link_names = robot
-            .iter_joints_link()
+            .iter_movable()
             .map(|link| link.name.to_string())
             .collect();
         UrdfViewerApp {
+            input_path,
             viewer,
             arms,
             link_names,
             urdf_robot: urdf_robo,
-            base_dir,
             robot,
             num_arms,
             num_joints: joint_names.len(),
@@ -183,7 +184,7 @@ impl<'a> UrdfViewerApp<'a> {
             self.update_ik_target_marker();
         }
     }
-    fn get_arm(&mut self) -> &mut k::LinkChain<f32> {
+    fn get_arm(&mut self) -> &mut k::Manipulator<f32> {
         &mut self.arms[self.index_of_arm.get()]
     }
     fn update_ik_target_marker(&mut self) {
@@ -261,7 +262,7 @@ impl<'a> UrdfViewerApp<'a> {
                             is_ctrl = true;
                             event.inhibited = true;
                         }
-                        if mods.contains(glfw::modifiers::Shift) {
+                        if mods.contains(glfw::Modifiers::Shift) {
                             is_shift = true;
                             event.inhibited = true;
                         }
@@ -355,7 +356,20 @@ impl<'a> UrdfViewerApp<'a> {
                                 is_collision = !is_collision;
                                 self.viewer.add_robot_with_base_dir_and_collision_flag(
                                     &self.urdf_robot,
-                                    self.base_dir,
+                                    self.input_path.parent(),
+                                    is_collision,
+                                );
+                                self.update_robot();
+                            }
+                            Key::L => {
+                                // reload
+                                self.viewer.remove_robot(&self.urdf_robot);
+                                self.urdf_robot =
+                                    urdf_rs::utils::read_urdf_or_xacro(&self.input_path).unwrap();
+                                self.robot = k::LinkTree::<f32>::from_urdf_robot(&self.urdf_robot);
+                                self.viewer.add_robot_with_base_dir_and_collision_flag(
+                                    &self.urdf_robot,
+                                    self.input_path.parent(),
                                     is_collision,
                                 );
                                 self.update_robot();
@@ -408,12 +422,8 @@ pub struct Opt {
 fn main() {
     env_logger::init().unwrap();
     let opt = Opt::from_args();
-    let input_path = Path::new(&opt.input_urdf_or_xacro);
-    let base_dir = input_path.parent();
-    let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(input_path).unwrap();
     let mut app = UrdfViewerApp::new(
-        urdf_robo,
-        base_dir,
+        opt.input_urdf_or_xacro,
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,

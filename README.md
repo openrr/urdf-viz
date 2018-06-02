@@ -57,7 +57,6 @@ It needs `rosrun` and `rospack` to resolve `package://` in `<mesh>` tag, and
 it uses `xacro` to convert `.xacro` file into urdf file.
 It means you need `$ source ~/catkin_ws/devel/setup.bash` or something before using `urdf-viz`.
 
-
 ```bash
 urdf-viz URDF_FILE.urdf
 ```
@@ -81,7 +80,8 @@ If there are no "package://" in mesh tag, and don't use xacro you can skip insta
 
 In the GUI, you can do some operations with keyboard and mouse.
 
-* `c` key to toggle collision model or visual mode 
+* `l` key to reload the urdf from file
+* `c` key to toggle collision model or visual mode
 * Move a joint
   * set the angle of a joint by `Up`/`Down` key
   * `Ctrl` + Drag to move the angle of a joint

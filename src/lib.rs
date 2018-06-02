@@ -371,7 +371,7 @@ impl Viewer {
     }
     pub fn update<R, T>(&mut self, robot: &R)
     where
-        R: k::LinkContainer<T>,
+        R: k::HasLinks<T>,
         T: Real + alga::general::SubsetOf<f32>,
     {
         for (trans, link_name) in robot
