@@ -25,9 +25,9 @@
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.4" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.1" length="0.4"/>
+        <sphere radius="0.2"/>
       </geometry>
     </collision>
   </link>
@@ -81,7 +81,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
       <geometry>
-        <box size="0.1 0.15 0.1" />
+        <cylinder radius="0.1" length="0.2" />
       </geometry>
       <material name="Cyan">
         <color rgba="1.0 0.0 0.0 1.0"/>
@@ -149,7 +149,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
       <geometry>
-        <box size="0.1 0.15 0.1" />
+        <cylinder radius="0.1" length="0.2" />
       </geometry>
       <material name="Cyan">
         <color rgba="1.0 0.0 0.0 1.0"/>
