@@ -112,7 +112,7 @@ struct UrdfViewerApp {
     arms: Vec<k::Manipulator<f32>>,
     joint_names: Vec<String>,
     link_names: Vec<String>,
-    num_arms: usize,
+    input_end_link_names: Vec<String>,
     num_joints: usize,
     index_of_arm: LoopIndex,
     index_of_move_joint: LoopIndex,
@@ -138,6 +138,7 @@ impl UrdfViewerApp {
             is_collision,
         );
         viewer.add_axis_cylinders("origin", 1.0);
+        let input_end_link_names = end_link_names.clone();
         if end_link_names.is_empty() {
             end_link_names = robot
                 .iter_node()
@@ -151,28 +152,27 @@ impl UrdfViewerApp {
             .filter_map(|end_name| Manipulator::from_link_tree(&end_name, &robot))
             .collect::<Vec<_>>();
         let joint_names = robot.joint_names();
-        let num_arms = arms.len();
-        let dof = robot.dof();
         let link_names = robot
             .iter_movable()
             .map(|link| link.name.to_string())
             .collect();
+        let dof = arms.len();
         UrdfViewerApp {
             input_path,
             viewer,
             arms,
             link_names,
+            input_end_link_names,
             urdf_robot: urdf_robo,
             robot,
-            num_arms,
             num_joints: joint_names.len(),
             joint_names,
-            index_of_arm: LoopIndex::new(num_arms),
+            index_of_arm: LoopIndex::new(dof),
             index_of_move_joint: LoopIndex::new(dof),
         }
     }
     fn has_arms(&self) -> bool {
-        self.num_arms > 0
+        !self.arms.is_empty()
     }
     fn has_joints(&self) -> bool {
         self.num_joints > 0
@@ -203,6 +203,29 @@ impl UrdfViewerApp {
             .unwrap_or_else(|err| println!("failed to update robot joints {}", err));
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
+    }
+    fn reload_urdf(&mut self) {
+        self.viewer.remove_robot(&self.urdf_robot);
+        self.urdf_robot = urdf_rs::utils::read_urdf_or_xacro(&self.input_path).unwrap();
+        self.robot = k::LinkTree::<f32>::from_urdf_robot(&self.urdf_robot);
+        let end_link_names = if self.input_end_link_names.is_empty() {
+            self.robot
+                .iter_node()
+                .filter(|node| node.borrow().children.is_empty())
+                .map(|node| node.borrow().data.name.to_owned())
+                .collect::<Vec<_>>()
+        } else {
+            self.input_end_link_names.clone()
+        };
+        self.arms = end_link_names
+            .iter()
+            .filter_map(|end_name| Manipulator::from_link_tree(&end_name, &self.robot))
+            .collect::<Vec<_>>();
+        self.joint_names = self.robot.joint_names();
+        self.link_names = self.robot
+            .iter_movable()
+            .map(|link| link.name.to_string())
+            .collect();
     }
     fn run(&mut self) {
         let mut is_ctrl = false;
@@ -363,10 +386,7 @@ impl UrdfViewerApp {
                             }
                             Key::L => {
                                 // reload
-                                self.viewer.remove_robot(&self.urdf_robot);
-                                self.urdf_robot =
-                                    urdf_rs::utils::read_urdf_or_xacro(&self.input_path).unwrap();
-                                self.robot = k::LinkTree::<f32>::from_urdf_robot(&self.urdf_robot);
+                                self.reload_urdf();
                                 self.viewer.add_robot_with_base_dir_and_collision_flag(
                                     &self.urdf_robot,
                                     self.input_path.parent(),
@@ -412,8 +432,7 @@ pub struct Opt {
     pub input_urdf_or_xacro: String,
     #[structopt(short = "e", long = "end-link-name", help = "end link names")]
     pub end_link_names: Vec<String>,
-    #[structopt(short = "c", long = "collision",
-                help = "Show collision element instead of visual")]
+    #[structopt(short = "c", long = "collision", help = "Show collision element instead of visual")]
     pub is_collision: bool,
     #[structopt(short = "d", long = "disable-texture", help = "Disable texture rendering")]
     pub disable_texture: bool,
