@@ -65,7 +65,8 @@ deploy:
   # - Paste the output down here
   auth_token:
     secure: Gq7MZFRmicR6Wgfo5e1aoT4RLdGExEBF1J5uyaW60mwPs9XPjOOigbDsthaswEhB
-  description: ''
+  description: 'Release urdf-viz on Windows'
+  tag: $(APPVEYOR_REPO_TAG_NAME)
   on:
     # TODO Here you can pick which targets will generate binary releases
     # In this example, there are some targets that are tested using the stable
