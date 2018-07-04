@@ -156,7 +156,8 @@ impl UrdfViewerApp {
             .iter_movable()
             .map(|link| link.name.to_string())
             .collect();
-        let dof = arms.len();
+        let num_arms = arms.len();
+        let num_joints = joint_names.len();
         UrdfViewerApp {
             input_path,
             viewer,
@@ -165,10 +166,10 @@ impl UrdfViewerApp {
             input_end_link_names,
             urdf_robot: urdf_robo,
             robot,
-            num_joints: joint_names.len(),
+            num_joints,
             joint_names,
-            index_of_arm: LoopIndex::new(dof),
-            index_of_move_joint: LoopIndex::new(dof),
+            index_of_arm: LoopIndex::new(num_arms),
+            index_of_move_joint: LoopIndex::new(num_joints),
         }
     }
     fn has_arms(&self) -> bool {
