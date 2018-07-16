@@ -125,8 +125,9 @@ $ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST
 }
 ```
 
-
 ### Get joint angles as JSON
+
+The result JSON format of getting the joint angles is the same as the *Set* method.
 
 ```bash
 $ curl http://127.0.0.1:7777/get_joint_angles | jq
