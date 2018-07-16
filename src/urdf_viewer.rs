@@ -158,6 +158,8 @@ impl UrdfViewerApp {
             .collect();
         let num_arms = arms.len();
         let num_joints = joint_names.len();
+        println!("DoF={}", num_joints);
+        println!("joint names={:?}", joint_names);
         UrdfViewerApp {
             input_path,
             viewer,
