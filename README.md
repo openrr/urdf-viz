@@ -127,13 +127,3 @@ In the GUI, you can do some operations with keyboard and mouse.
 * [assimp-rs](https://github.com/Eljay/assimp-rs): assimp rust interface. `kiss3d` supports `.obj` files natively, but urdf contains `dae` or `stl` files. These files are converted to kiss3d mesh model by `assim-rs`
 * [urdf-rs](https://github.com/OTL/urdf-rs): URDF file loader.
 * [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
-
-### Build without assimp
-
-You can disable assimp by disable `assimp` feature which is enabled in default.
-It can handle `.obj` files even if you disable `assimp`.
-`assimp` works on Linux/Windows/MacOS now, we don't need this now.
-
-```bash
-cargo build --no-default-features
-```
