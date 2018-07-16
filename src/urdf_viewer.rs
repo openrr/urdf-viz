@@ -116,6 +116,7 @@ struct UrdfViewerApp {
     num_joints: usize,
     index_of_arm: LoopIndex,
     index_of_move_joint: LoopIndex,
+    web_server_port: u16,
 }
 
 impl UrdfViewerApp {
@@ -124,6 +125,7 @@ impl UrdfViewerApp {
         mut end_link_names: Vec<String>,
         is_collision: bool,
         disable_texture: bool,
+        web_server_port: u16,
     ) -> Self {
         let input_path = PathBuf::from(&input_file);
         let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(&input_path).unwrap();
@@ -172,6 +174,7 @@ impl UrdfViewerApp {
             joint_names,
             index_of_arm: LoopIndex::new(num_arms),
             index_of_move_joint: LoopIndex::new(num_joints),
+            web_server_port,
         }
     }
     fn has_arms(&self) -> bool {
@@ -230,6 +233,22 @@ impl UrdfViewerApp {
             .map(|link| link.name.to_string())
             .collect();
     }
+
+    fn set_joint_angles_from_request(
+        &mut self,
+        joint_angles: &urdf_viz::JointNamesAndAngles,
+    ) -> Result<(), k::JointError> {
+        let mut angles = self.robot.joint_angles();
+        for (name, angle) in joint_angles.names.iter().zip(joint_angles.angles.iter()) {
+            if let Some(index) = self.joint_names.iter().position(|ref n| *n == name) {
+                angles[index] = *angle;
+            } else {
+                println!("{} not found, but continues", name);
+            }
+        }
+        self.robot.set_joint_angles(&angles)
+    }
+
     fn run(&mut self) {
         let mut is_ctrl = false;
         let mut is_shift = false;
@@ -237,6 +256,12 @@ impl UrdfViewerApp {
         let mut last_cur_pos_y = 0f64;
         let mut last_cur_pos_x = 0f64;
         let solver = k::JacobianIKSolverBuilder::new().finalize();
+        let web_server = urdf_viz::WebServer::new(self.web_server_port);
+        let (target_joint_angles, current_joint_angles) = web_server.clone_in_out();
+        if let Ok(mut cur_ja) = current_joint_angles.lock() {
+            cur_ja.names = self.joint_names.clone();
+        }
+        std::thread::spawn(move || web_server.start());
 
         while self.viewer.render() {
             self.viewer.draw_text(
@@ -255,6 +280,23 @@ impl UrdfViewerApp {
                     &na::Point2::new(10f32, 20.0),
                     &na::Point3::new(0.5f32, 0.5, 1.0),
                 );
+
+                if let Ok(mut ja) = target_joint_angles.lock() {
+                    if ja.requested {
+                        match self.set_joint_angles_from_request(&ja.joint_angles) {
+                            Ok(_) => {
+                                self.update_robot();
+                                ja.requested = false;
+                            }
+                            Err(err) => {
+                                println!("{}", err);
+                            }
+                        }
+                    }
+                }
+                if let Ok(mut cur_ja) = current_joint_angles.lock() {
+                    cur_ja.angles = self.robot.joint_angles();
+                }
             }
             if self.has_arms() {
                 let name = self.get_arm().name.to_owned();
@@ -439,6 +481,13 @@ pub struct Opt {
     pub is_collision: bool,
     #[structopt(short = "d", long = "disable-texture", help = "Disable texture rendering")]
     pub disable_texture: bool,
+    #[structopt(
+        short = "p",
+        long = "web-server-port",
+        help = "Port number for web server interface",
+        default_value = "7777"
+    )]
+    pub web_server_port: u16,
 }
 
 fn main() {
@@ -449,6 +498,7 @@ fn main() {
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,
+        opt.web_server_port,
     );
     app.init();
     app.run();

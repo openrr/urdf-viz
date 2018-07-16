@@ -96,6 +96,72 @@ In the GUI, you can do some operations with keyboard and mouse.
   * Mouse Left Drag to look around
   * Scroll to zoom in/out
 
+## Web I/O interface
+
+You can set/get the joint angles using http/JSON.
+Default port number is 7777. You can change it by `-p` option.
+(`jq` is used for JSON formatter in the following examples)
+
+### Set joint angles
+
+POST the JSON data, which format is like below. You have to specify the names of joints and angles.
+The length of `names` and `angles` have to be the same. You don't need write
+all joint names, it means you can specify a part of the joints.
+
+```json
+{
+  "names": ["joint_name1", "joint_name2"],
+  "angles": [0.5, -0.1]
+}
+```
+
+You can try it using `curl`.
+
+```bash
+$ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"names": ["r_shoulder_yaw", "r_shoulder_pitch"], "angles": [0.8, -0.8]}'  http://127.0.0.1:7777/set_joint_angles | jq
+{
+  "is_ok": true,
+  "reason": ""
+}
+```
+
+
+### Get joint angles as JSON
+
+```bash
+$ curl http://127.0.0.1:7777/get_joint_angles | jq
+{
+  "names": [
+    "r_shoulder_yaw",
+    "r_shoulder_pitch",
+    "r_shoulder_roll",
+    "r_elbow_pitch",
+    "r_wrist_yaw",
+    "r_wrist_pitch",
+    "l_shoulder_yaw",
+    "l_shoulder_pitch",
+    "l_shoulder_roll",
+    "l_elbow_pitch",
+    "l_wrist_yaw",
+    "l_wrist_pitch"
+  ],
+  "angles": [
+    0.8,
+    -0.8,
+    -1.3447506,
+    -1.6683152,
+    -1.786362,
+    -1.0689334,
+    0.11638665,
+    -0.5987091,
+    0.7868867,
+    -0.027412653,
+    0.019940138,
+    -0.6975361
+  ]
+}
+```
+
 ## Gallery
 
 ![sawyer_1.png](img/sawyer_1.png)

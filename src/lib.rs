@@ -35,6 +35,10 @@ extern crate kiss3d;
 #[macro_use]
 extern crate log;
 extern crate nalgebra as na;
+#[macro_use]
+extern crate rouille;
+#[macro_use]
+extern crate serde_derive;
 extern crate urdf_rs;
 
 use alga::general::SubsetOf;
@@ -47,7 +51,10 @@ mod errors;
 pub use errors::*;
 mod arc_ball;
 pub use arc_ball::*;
+mod web_server;
 use assimp_utils::*;
+pub use web_server::JointNamesAndAngles;
+pub use web_server::WebServer;
 
 use na::Real;
 
