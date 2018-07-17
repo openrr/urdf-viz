@@ -2,19 +2,10 @@ use rouille;
 use rouille::Response;
 use std::sync::{Arc, Mutex};
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct JointNamesAndAngles {
     pub names: Vec<String>,
     pub angles: Vec<f32>,
-}
-
-impl JointNamesAndAngles {
-    pub fn new() -> Self {
-        Self {
-            names: vec![],
-            angles: vec![],
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -41,10 +32,10 @@ impl WebServer {
         Self {
             port,
             target_joint_angles: Arc::new(Mutex::new(JointNamesAndAnglesRequest {
-                joint_angles: JointNamesAndAngles::new(),
+                joint_angles: JointNamesAndAngles::default(),
                 requested: false,
             })),
-            current_joint_angles: Arc::new(Mutex::new(JointNamesAndAngles::new())),
+            current_joint_angles: Arc::new(Mutex::new(JointNamesAndAngles::default())),
         }
     }
 

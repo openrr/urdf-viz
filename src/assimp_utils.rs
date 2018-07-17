@@ -14,14 +14,16 @@
    limitations under the License.
  */
 
+use assimp;
 use assimp_sys;
+use kiss3d::resource::Mesh;
+use na;
 use std::cell::RefCell;
 use std::rc::Rc;
-use assimp;
-use na;
-use kiss3d::resource::Mesh;
 
-const ASSIMP_DIFFUSE: &'static [u8] = b"$clr.diffuse\0";
+const ASSIMP_DIFFUSE: &[u8] = b"$clr.diffuse\0";
+
+type RefCellMesh = Rc<RefCell<Mesh>>;
 
 pub fn assimp_material_texture(material: &assimp::Material) -> Option<String> {
     use std::os::raw::{c_float, c_uint};
@@ -83,8 +85,8 @@ pub fn assimp_material_color(
 }
 
 pub fn convert_assimp_scene_to_kiss3d_mesh(
-    scene: assimp::Scene,
-) -> (Vec<Rc<RefCell<Mesh>>>, Vec<String>, Vec<na::Vector3<f32>>) {
+    scene: &assimp::Scene,
+) -> (Vec<RefCellMesh>, Vec<String>, Vec<na::Vector3<f32>>) {
     let meshes = scene
         .mesh_iter()
         .map(|mesh| {
@@ -100,11 +102,7 @@ pub fn convert_assimp_scene_to_kiss3d_mesh(
                 }
             }));
             Rc::new(RefCell::new(Mesh::new(
-                vertices,
-                indices,
-                None,
-                None,
-                false,
+                vertices, indices, None, None, false,
             )))
         })
         .collect();

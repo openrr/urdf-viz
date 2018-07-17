@@ -78,7 +78,7 @@ where
         .to_str()
         .ok_or("failed to convert file string")?;
     let (meshes, textures, colors) =
-        convert_assimp_scene_to_kiss3d_mesh(importer.read_file(file_string)?);
+        convert_assimp_scene_to_kiss3d_mesh(&importer.read_file(file_string)?);
     info!(
         "num mesh, texture, colors = {} {} {}",
         meshes.len(),
@@ -206,24 +206,22 @@ fn add_geometry(
             if cfg!(feature = "assimp") {
                 debug!("filename = {}", replaced_filename);
                 load_mesh(path, na_scale, opt_color, group, use_texture)
-            } else {
-                if path.extension() == Some(std::ffi::OsStr::new("obj")) {
-                    let mut base = group.add_obj(path, path, na_scale);
-                    if let Some(color) = *opt_color {
-                        base.set_color(color[0], color[1], color[2]);
-                    }
-                    Ok(base)
-                } else {
-                    error!(
-                        "{:?} is not supported, because assimp feature is disabled",
-                        path
-                    );
-                    let mut base = group.add_cube(0.05f32, 0.05, 0.05);
-                    if let Some(color) = *opt_color {
-                        base.set_color(color[0], color[1], color[2]);
-                    }
-                    Ok(base)
+            } else if path.extension() == Some(std::ffi::OsStr::new("obj")) {
+                let mut base = group.add_obj(path, path, na_scale);
+                if let Some(color) = *opt_color {
+                    base.set_color(color[0], color[1], color[2]);
                 }
+                Ok(base)
+            } else {
+                error!(
+                    "{:?} is not supported, because assimp feature is disabled",
+                    path
+                );
+                let mut base = group.add_cube(0.05f32, 0.05, 0.05);
+                if let Some(color) = *opt_color {
+                    base.set_color(color[0], color[1], color[2]);
+                }
+                Ok(base)
             }
         }
     }
@@ -236,7 +234,7 @@ fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -> [f
         .materials
         .iter()
         .find(|mat| mat.name == visual.material.name)
-        .map(|mat| mat.clone())
+        .cloned()
     {
         Some(ref material) => material.color.rgba,
         None => visual.material.color.rgba,
@@ -316,7 +314,7 @@ impl Viewer {
                     let rgba = rgba_from_visual(urdf_robot, &l.visual[i]);
                     let color = na::Point3::new(rgba[0] as f32, rgba[1] as f32, rgba[2] as f32);
                     if color[0] > 0.001 || color[1] > 0.001 || color[2] > 0.001 {
-                        opt_color = Some(color.clone());
+                        opt_color = Some(color);
                     }
                     colors.push(color);
                 }
@@ -417,19 +415,19 @@ impl Viewer {
         self.window.events()
     }
     pub fn set_temporal_color(&mut self, link_name: &str, r: f32, g: f32, b: f32) {
-        self.scenes.get_mut(link_name).map(|obj| {
+        if let Some(obj) = self.scenes.get_mut(link_name) {
             obj.set_color(r, g, b);
-        });
+        }
     }
     pub fn reset_temporal_color(&mut self, link_name: &str) {
         if let Some(colors) = self.original_colors.get(link_name) {
-            let mut i = 0;
-            self.scenes.get_mut(link_name).map(|obj| {
+            if let Some(obj) = self.scenes.get_mut(link_name) {
+                let mut i = 0;
                 obj.apply_to_scene_nodes_mut(&mut |o| {
-                    o.set_color(colors[i][0], colors[i][1], colors[i][2])
+                    o.set_color(colors[i][0], colors[i][1], colors[i][2]);
+                    i += 1;
                 });
-                i += 1;
-            });
+            }
         }
     }
 }

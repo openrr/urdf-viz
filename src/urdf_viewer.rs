@@ -65,10 +65,7 @@ struct LoopIndex {
 
 impl LoopIndex {
     fn new(size: usize) -> Self {
-        Self {
-            index: 0,
-            size: size,
-        }
+        Self { index: 0, size }
     }
     fn get(&self) -> usize {
         self.index
@@ -90,7 +87,7 @@ impl LoopIndex {
     }
 }
 
-const HOW_TO_USE_STR: &'static str = r"
+const HOW_TO_USE_STR: &str = r"
 [:    joint ID +1
 ]:    joint ID -1
 ,:    IK target ID +1
@@ -121,13 +118,13 @@ struct UrdfViewerApp {
 
 impl UrdfViewerApp {
     fn new(
-        input_file: String,
+        input_file: &str,
         mut end_link_names: Vec<String>,
         is_collision: bool,
         disable_texture: bool,
         web_server_port: u16,
     ) -> Self {
-        let input_path = PathBuf::from(&input_file);
+        let input_path = PathBuf::from(input_file);
         let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(&input_path).unwrap();
         let robot = k::LinkTree::<f32>::from_urdf_robot(&urdf_robo);
         let mut viewer = urdf_viz::Viewer::new("urdf-viz");
@@ -196,9 +193,9 @@ impl UrdfViewerApp {
     fn update_ik_target_marker(&mut self) {
         if self.has_arms() {
             let trans = self.get_arm().end_transform();
-            self.viewer.scene_node_mut("ik_target").map(|obj| {
+            if let Some(obj) = self.viewer.scene_node_mut("ik_target") {
                 obj.set_local_transformation(trans);
-            });
+            };
         }
     }
     fn update_robot(&mut self) {
@@ -477,7 +474,9 @@ pub struct Opt {
     pub input_urdf_or_xacro: String,
     #[structopt(short = "e", long = "end-link-name", help = "end link names")]
     pub end_link_names: Vec<String>,
-    #[structopt(short = "c", long = "collision", help = "Show collision element instead of visual")]
+    #[structopt(
+        short = "c", long = "collision", help = "Show collision element instead of visual"
+    )]
     pub is_collision: bool,
     #[structopt(short = "d", long = "disable-texture", help = "Disable texture rendering")]
     pub disable_texture: bool,
@@ -494,7 +493,7 @@ fn main() {
     env_logger::init().unwrap();
     let opt = Opt::from_args();
     let mut app = UrdfViewerApp::new(
-        opt.input_urdf_or_xacro,
+        &opt.input_urdf_or_xacro,
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,
