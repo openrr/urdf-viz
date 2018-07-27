@@ -16,6 +16,8 @@ main() {
     esac
 
     test -f Cargo.lock || cargo generate-lockfile
+    # clean to reduce the disk usage
+    cargo clean
     cargo build --release
 
     # TODO Update this to package the right artifacts
