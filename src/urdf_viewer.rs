@@ -114,6 +114,7 @@ struct UrdfViewerApp {
     index_of_arm: LoopIndex,
     index_of_move_joint: LoopIndex,
     web_server_port: u16,
+    is_collision: bool,
 }
 
 impl UrdfViewerApp {
@@ -172,6 +173,7 @@ impl UrdfViewerApp {
             index_of_arm: LoopIndex::new(num_arms),
             index_of_move_joint: LoopIndex::new(num_joints),
             web_server_port,
+            is_collision,
         }
     }
     fn has_arms(&self) -> bool {
@@ -225,7 +227,8 @@ impl UrdfViewerApp {
             .filter_map(|end_name| Manipulator::from_link_tree(&end_name, &self.robot))
             .collect::<Vec<_>>();
         self.joint_names = self.robot.joint_names();
-        self.link_names = self.robot
+        self.link_names = self
+            .robot
             .iter_movable()
             .map(|link| link.name.to_string())
             .collect();
@@ -245,11 +248,75 @@ impl UrdfViewerApp {
         }
         self.robot.set_joint_angles(&angles)
     }
-
+    fn increment_move_joint_index(&mut self, is_inc: bool) {
+        if self.has_joints() {
+            self.viewer
+                .reset_temporal_color(&self.link_names[self.index_of_move_joint.get()]);
+            if is_inc {
+                self.index_of_move_joint.inc();
+            } else {
+                self.index_of_move_joint.dec();
+            }
+            self.viewer.set_temporal_color(
+                &self.link_names[self.index_of_move_joint.get()],
+                1.0,
+                0.0,
+                0.0,
+            );
+        }
+    }
+    fn handle_key_press(&mut self, code: Key) {
+        match code {
+            Key::LeftBracket => self.increment_move_joint_index(true),
+            Key::RightBracket => self.increment_move_joint_index(false),
+            Key::Period => {
+                self.index_of_arm.inc();
+                self.update_ik_target_marker();
+            }
+            Key::Comma => {
+                self.index_of_arm.dec();
+                self.update_ik_target_marker();
+            }
+            Key::C => {
+                self.viewer.remove_robot(&self.urdf_robot);
+                self.is_collision = !self.is_collision;
+                self.viewer.add_robot_with_base_dir_and_collision_flag(
+                    &self.urdf_robot,
+                    self.input_path.parent(),
+                    self.is_collision,
+                );
+                self.update_robot();
+            }
+            Key::L => {
+                // reload
+                self.reload_urdf();
+                self.viewer.add_robot_with_base_dir_and_collision_flag(
+                    &self.urdf_robot,
+                    self.input_path.parent(),
+                    self.is_collision,
+                );
+                self.update_robot();
+            }
+            Key::R => if self.has_joints() {
+                move_joint_by_random(&mut self.robot).unwrap_or(());
+                self.update_robot();
+            },
+            Key::Up => if self.has_joints() {
+                move_joint_by_index(self.index_of_move_joint.get(), 0.1, &mut self.robot)
+                    .unwrap_or(());
+                self.update_robot();
+            },
+            Key::Down => if self.has_joints() {
+                move_joint_by_index(self.index_of_move_joint.get(), -0.1, &mut self.robot)
+                    .unwrap_or(());
+                self.update_robot();
+            },
+            _ => {}
+        };
+    }
     fn run(&mut self) {
         let mut is_ctrl = false;
         let mut is_shift = false;
-        let mut is_collision = false;
         let mut last_cur_pos_y = 0f64;
         let mut last_cur_pos_x = 0f64;
         let solver = k::JacobianIKSolverBuilder::new().finalize();
@@ -383,81 +450,7 @@ impl UrdfViewerApp {
                         event.inhibited = true;
                     },
                     WindowEvent::Key(code, _, Action::Press, _) => {
-                        match code {
-                            Key::LeftBracket => if self.has_joints() {
-                                self.viewer.reset_temporal_color(
-                                    &self.link_names[self.index_of_move_joint.get()],
-                                );
-                                self.index_of_move_joint.inc();
-                                self.viewer.set_temporal_color(
-                                    &self.link_names[self.index_of_move_joint.get()],
-                                    1.0,
-                                    0.0,
-                                    0.0,
-                                );
-                            },
-                            Key::RightBracket => if self.has_joints() {
-                                self.viewer.reset_temporal_color(
-                                    &self.link_names[self.index_of_move_joint.get()],
-                                );
-                                self.index_of_move_joint.dec();
-                                self.viewer.set_temporal_color(
-                                    &self.link_names[self.index_of_move_joint.get()],
-                                    1.0,
-                                    0.0,
-                                    0.0,
-                                );
-                            },
-                            Key::Period => {
-                                self.index_of_arm.inc();
-                                self.update_ik_target_marker();
-                            }
-                            Key::Comma => {
-                                self.index_of_arm.dec();
-                                self.update_ik_target_marker();
-                            }
-                            Key::C => {
-                                self.viewer.remove_robot(&self.urdf_robot);
-                                is_collision = !is_collision;
-                                self.viewer.add_robot_with_base_dir_and_collision_flag(
-                                    &self.urdf_robot,
-                                    self.input_path.parent(),
-                                    is_collision,
-                                );
-                                self.update_robot();
-                            }
-                            Key::L => {
-                                // reload
-                                self.reload_urdf();
-                                self.viewer.add_robot_with_base_dir_and_collision_flag(
-                                    &self.urdf_robot,
-                                    self.input_path.parent(),
-                                    is_collision,
-                                );
-                                self.update_robot();
-                            }
-                            Key::R => if self.has_joints() {
-                                move_joint_by_random(&mut self.robot).unwrap_or(());
-                                self.update_robot();
-                            },
-                            Key::Up => if self.has_joints() {
-                                move_joint_by_index(
-                                    self.index_of_move_joint.get(),
-                                    0.1,
-                                    &mut self.robot,
-                                ).unwrap_or(());
-                                self.update_robot();
-                            },
-                            Key::Down => if self.has_joints() {
-                                move_joint_by_index(
-                                    self.index_of_move_joint.get(),
-                                    -0.1,
-                                    &mut self.robot,
-                                ).unwrap_or(());
-                                self.update_robot();
-                            },
-                            _ => {}
-                        };
+                        self.handle_key_press(code);
                         event.inhibited = true;
                     }
                     _ => {}
