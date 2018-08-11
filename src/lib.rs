@@ -422,11 +422,11 @@ impl Viewer {
     pub fn reset_temporal_color(&mut self, link_name: &str) {
         if let Some(colors) = self.original_colors.get(link_name) {
             if let Some(obj) = self.scenes.get_mut(link_name) {
-                let mut i = 0;
-                obj.apply_to_scene_nodes_mut(&mut |o| {
-                    o.set_color(colors[i][0], colors[i][1], colors[i][2]);
-                    i += 1;
-                });
+                for color in colors {
+                    obj.apply_to_scene_nodes_mut(&mut |o| {
+                        o.set_color(color[0], color[1], color[2]);
+                    });
+                }
             }
         }
     }
