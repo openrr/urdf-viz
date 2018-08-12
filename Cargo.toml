@@ -17,6 +17,7 @@ default = ["assimp"]
 [dependencies]
 alga = "0.6.0"
 env_logger = "0.4.2"
+failure = "0.1"
 glfw = { version = "0.19.0", default-features = false }
 k = "0.11.0"
 kiss3d = "0.15.0"

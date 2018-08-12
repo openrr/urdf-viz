@@ -29,6 +29,8 @@ extern crate assimp_sys;
 mod assimp_utils;
 
 extern crate alga;
+#[macro_use]
+extern crate failure;
 extern crate glfw;
 extern crate k;
 extern crate kiss3d;
