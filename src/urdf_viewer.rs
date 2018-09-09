@@ -25,8 +25,7 @@ extern crate urdf_rs;
 extern crate urdf_viz;
 
 use glfw::{Action, Key, Modifiers, WindowEvent};
-use k::urdf::FromUrdf;
-use k::{EndTransform, HasJoints, InverseKinematicsSolver, Manipulator};
+use k::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -36,10 +35,11 @@ static NATIVE_MOD: Modifiers = glfw::Modifiers::Super;
 #[cfg(not(target_os = "macos"))]
 static NATIVE_MOD: Modifiers = glfw::Modifiers::Control;
 
-fn move_joint_by_random(robot: &mut k::LinkTree<f32>) -> Result<(), k::JointError> {
+fn move_joint_by_random(robot: &mut k::Robot<f32>) -> Result<(), k::JointError> {
     let angles_vec = robot
-        .iter_movable()
-        .map(|link| match link.joint.limits {
+        .joint_limits()
+        .iter()
+        .map(|limit| match limit {
             Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
             None => (rand::random::<f32>() - 0.5) * 2.0,
         })
@@ -50,7 +50,7 @@ fn move_joint_by_random(robot: &mut k::LinkTree<f32>) -> Result<(), k::JointErro
 fn move_joint_by_index(
     index: usize,
     diff_angle: f32,
-    robot: &mut k::LinkTree<f32>,
+    robot: &mut k::Robot<f32>,
 ) -> Result<(), k::JointError> {
     let mut angles_vec = robot.joint_angles();
     assert!(index < robot.dof());
@@ -104,11 +104,10 @@ c:    toggle visual/collision
 struct UrdfViewerApp {
     input_path: PathBuf,
     urdf_robot: urdf_rs::Robot,
-    robot: k::LinkTree<f32>,
+    robot: k::Robot<f32>,
     viewer: urdf_viz::Viewer,
-    arms: Vec<k::Manipulator<f32>>,
+    end_links: Vec<k::JointNode<f32>>,
     joint_names: Vec<String>,
-    link_names: Vec<String>,
     input_end_link_names: Vec<String>,
     num_joints: usize,
     index_of_arm: LoopIndex,
@@ -127,7 +126,8 @@ impl UrdfViewerApp {
     ) -> Self {
         let input_path = PathBuf::from(input_file);
         let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(&input_path).unwrap();
-        let robot = k::LinkTree::<f32>::from_urdf_robot(&urdf_robo);
+        let robot: k::Robot<f32> = (&urdf_robo).into();
+        println!("{}", robot);
         let mut viewer = urdf_viz::Viewer::new("urdf-viz");
         if disable_texture {
             viewer.disable_texture();
@@ -141,30 +141,25 @@ impl UrdfViewerApp {
         let input_end_link_names = end_link_names.clone();
         if end_link_names.is_empty() {
             end_link_names = robot
-                .iter_node()
+                .iter()
                 .filter(|node| node.borrow().children.is_empty())
-                .map(|node| node.borrow().data.name.to_owned())
+                .map(|node| node.joint_name())
                 .collect::<Vec<_>>();
         }
-        println!("end_link_names = {:?}", end_link_names);
-        let arms = end_link_names
+        let end_links = end_link_names
             .iter()
-            .filter_map(|end_name| Manipulator::from_link_tree(&end_name, &robot))
-            .collect::<Vec<_>>();
+            .filter_map(|name| robot.find_joint(name).map(|j| j.clone()))
+            .collect::<Vec<k::JointNode<f32>>>();
+        println!("end_link_names = {:?}", end_link_names);
         let joint_names = robot.joint_names();
-        let link_names = robot
-            .iter_movable()
-            .map(|link| link.name.to_string())
-            .collect();
-        let num_arms = arms.len();
+        let num_arms = end_link_names.len();
         let num_joints = joint_names.len();
         println!("DoF={}", num_joints);
         println!("joint names={:?}", joint_names);
         UrdfViewerApp {
             input_path,
             viewer,
-            arms,
-            link_names,
+            end_links,
             input_end_link_names,
             urdf_robot: urdf_robo,
             robot,
@@ -177,7 +172,7 @@ impl UrdfViewerApp {
         }
     }
     fn has_arms(&self) -> bool {
-        !self.arms.is_empty()
+        !self.end_links.is_empty()
     }
     fn has_joints(&self) -> bool {
         self.num_joints > 0
@@ -189,14 +184,27 @@ impl UrdfViewerApp {
             self.update_ik_target_marker();
         }
     }
-    fn get_arm(&mut self) -> &mut k::Manipulator<f32> {
-        &mut self.arms[self.index_of_arm.get()]
+    fn get_end_link_name(&self) -> String {
+        self.end_links[self.index_of_arm.get()].joint_name()
+    }
+    fn get_end_link(&self) -> &k::JointNode<f32> {
+        &self.end_links[self.index_of_arm.get()]
+    }
+    fn get_end_transform(&self) -> na::Isometry3<f32> {
+        let name = self.get_end_link_name();
+        self.robot.update_transforms();
+        self.robot
+            .find_joint(&name)
+            .unwrap()
+            .world_transform()
+            .unwrap()
     }
     fn update_ik_target_marker(&mut self) {
         if self.has_arms() {
-            let trans = self.get_arm().end_transform();
+            let pose = self.get_end_transform();
+
             if let Some(obj) = self.viewer.scene_node_mut("ik_target") {
-                obj.set_local_transformation(trans);
+                obj.set_local_transformation(pose);
             };
         }
     }
@@ -212,26 +220,21 @@ impl UrdfViewerApp {
     fn reload_urdf(&mut self) {
         self.viewer.remove_robot(&self.urdf_robot);
         self.urdf_robot = urdf_rs::utils::read_urdf_or_xacro(&self.input_path).unwrap();
-        self.robot = k::LinkTree::<f32>::from_urdf_robot(&self.urdf_robot);
+        self.robot = (&self.urdf_robot).into();
         let end_link_names = if self.input_end_link_names.is_empty() {
             self.robot
-                .iter_node()
+                .iter()
                 .filter(|node| node.borrow().children.is_empty())
-                .map(|node| node.borrow().data.name.to_owned())
+                .map(|node| node.joint_name())
                 .collect::<Vec<_>>()
         } else {
             self.input_end_link_names.clone()
         };
-        self.arms = end_link_names
+        self.end_links = end_link_names
             .iter()
-            .filter_map(|end_name| Manipulator::from_link_tree(&end_name, &self.robot))
-            .collect::<Vec<_>>();
+            .filter_map(|name| self.robot.find_joint(name).map(|j| j.clone()))
+            .collect::<Vec<k::JointNode<f32>>>();
         self.joint_names = self.robot.joint_names();
-        self.link_names = self
-            .robot
-            .iter_movable()
-            .map(|link| link.name.to_string())
-            .collect();
     }
 
     fn set_joint_angles_from_request(
@@ -251,14 +254,14 @@ impl UrdfViewerApp {
     fn increment_move_joint_index(&mut self, is_inc: bool) {
         if self.has_joints() {
             self.viewer
-                .reset_temporal_color(&self.link_names[self.index_of_move_joint.get()]);
+                .reset_temporal_color(&self.joint_names[self.index_of_move_joint.get()]);
             if is_inc {
                 self.index_of_move_joint.inc();
             } else {
                 self.index_of_move_joint.dec();
             }
             self.viewer.set_temporal_color(
-                &self.link_names[self.index_of_move_joint.get()],
+                &self.joint_names[self.index_of_move_joint.get()],
                 1.0,
                 0.0,
                 0.0,
@@ -363,7 +366,7 @@ impl UrdfViewerApp {
                 }
             }
             if self.has_arms() {
-                let name = self.get_arm().name.to_owned();
+                let name = self.get_end_link_name();
                 self.viewer.draw_text(
                     &format!("IK target name [{}]", name),
                     60,
@@ -416,7 +419,8 @@ impl UrdfViewerApp {
                         if is_shift {
                             event.inhibited = true;
                             if self.has_arms() {
-                                let mut target = self.get_arm().end_transform();
+                                self.robot.update_transforms();
+                                let mut target = self.get_end_transform();
                                 let ik_move_gain = 0.002;
                                 target.translation.vector[2] -=
                                     ((y - last_cur_pos_y) * ik_move_gain) as f32;
@@ -430,11 +434,12 @@ impl UrdfViewerApp {
 
                                 self.update_ik_target_marker();
                                 {
-                                    let arm = self.get_arm();
-                                    solver.solve(arm, &target).unwrap_or_else(|err| {
-                                        println!("Err: {}", err);
-                                        0.0f32
-                                    });
+                                    solver.solve(&self.get_end_link(), &target).unwrap_or_else(
+                                        |err| {
+                                            println!("Err: {}", err);
+                                            0.0f32
+                                        },
+                                    );
                                 }
                                 self.update_robot();
                             }
