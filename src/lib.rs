@@ -55,7 +55,7 @@ mod arc_ball;
 pub use arc_ball::*;
 mod web_server;
 use assimp_utils::*;
-pub use web_server::JointNamesAndAngles;
+pub use web_server::JointNamesAndPositions;
 pub use web_server::WebServer;
 
 use na::Real;
@@ -296,9 +296,7 @@ impl Viewer {
         base_dir: Option<&Path>,
         is_collision: bool,
     ) {
-        for j in &urdf_robot.joints {
-            self.link_joint_map.insert(j.child.link.to_owned(), j.name.to_owned());
-        }
+        self.link_joint_map = k::urdf::link_to_joint_map(&urdf_robot);
 
         for l in &urdf_robot.links {
             let num = if is_collision {
@@ -339,23 +337,10 @@ impl Viewer {
                     error!("failed to create for {:?}", l);
                 }
             }
-            // Use joint name
-            let mut root_link = None;
-            let joint_name = match self.link_joint_map.get(&l.name) {
-                Some(j) => j.to_owned(),
-                // this is root, 
-                None => {
-                    root_link = Some(l.name.clone());
-                    k::urdf::ROOT_JOINT_NAME.to_owned()
-                }
-            };
-            if let Some(root) = root_link {
-                self.link_joint_map.insert(root, k::urdf::ROOT_JOINT_NAME.to_owned());
-            }
-
+            let joint_name = self.link_joint_map.get(&l.name).expect(&format!("joint for link '{}' not found", l.name));
             self.scenes
-                .insert(joint_name.clone(), scene_group);
-            self.original_colors.insert(joint_name, colors);
+                .insert(joint_name.to_owned(), scene_group);
+            self.original_colors.insert(joint_name.to_owned(), colors);
         }
     }
     pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
@@ -393,14 +378,14 @@ impl Viewer {
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
     }
-    pub fn update<T>(&mut self, robot: &k::Robot<T>)
+    pub fn update<T>(&mut self, robot: &k::Chain<T>)
     where
         T: Real + alga::general::SubsetOf<f32>,
     {
         robot.update_transforms();
         for link in robot.iter() {
             let trans = link.world_transform().unwrap();
-            let link_name = link.joint_name();
+            let link_name = link.name();
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&trans);
             match self.scenes.get_mut(&link_name) {
                 Some(obj) => {

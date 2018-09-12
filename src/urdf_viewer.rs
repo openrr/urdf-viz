@@ -35,27 +35,27 @@ static NATIVE_MOD: Modifiers = glfw::Modifiers::Super;
 #[cfg(not(target_os = "macos"))]
 static NATIVE_MOD: Modifiers = glfw::Modifiers::Control;
 
-fn move_joint_by_random(robot: &mut k::Robot<f32>) -> Result<(), k::JointError> {
+fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> {
     let angles_vec = robot
-        .joint_limits()
+        .limits()
         .iter()
         .map(|limit| match limit {
             Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
             None => (rand::random::<f32>() - 0.5) * 2.0,
         })
         .collect::<Vec<f32>>();
-    robot.set_joint_angles(&angles_vec)
+    robot.set_joint_positions(&angles_vec)
 }
 
 fn move_joint_by_index(
     index: usize,
     diff_angle: f32,
-    robot: &mut k::Robot<f32>,
+    robot: &mut k::Chain<f32>,
 ) -> Result<(), k::JointError> {
-    let mut angles_vec = robot.joint_angles();
+    let mut angles_vec = robot.joint_positions();
     assert!(index < robot.dof());
     angles_vec[index] += diff_angle;
-    robot.set_joint_angles(&angles_vec)
+    robot.set_joint_positions(&angles_vec)
 }
 
 struct LoopIndex {
@@ -104,10 +104,10 @@ c:    toggle visual/collision
 struct UrdfViewerApp {
     input_path: PathBuf,
     urdf_robot: urdf_rs::Robot,
-    robot: k::Robot<f32>,
+    robot: k::Chain<f32>,
     viewer: urdf_viz::Viewer,
-    end_links: Vec<k::JointNode<f32>>,
-    joint_names: Vec<String>,
+    arms: Vec<k::SerialChain<f32>>,
+    names: Vec<String>,
     input_end_link_names: Vec<String>,
     num_joints: usize,
     index_of_arm: LoopIndex,
@@ -126,7 +126,7 @@ impl UrdfViewerApp {
     ) -> Self {
         let input_path = PathBuf::from(input_file);
         let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(&input_path).unwrap();
-        let robot: k::Robot<f32> = (&urdf_robo).into();
+        let robot: k::Chain<f32> = (&urdf_robo).into();
         println!("{}", robot);
         let mut viewer = urdf_viz::Viewer::new("urdf-viz");
         if disable_texture {
@@ -143,28 +143,28 @@ impl UrdfViewerApp {
             end_link_names = robot
                 .iter()
                 .filter(|node| node.borrow().children.is_empty())
-                .map(|node| node.joint_name())
+                .map(|node| node.name())
                 .collect::<Vec<_>>();
         }
-        let end_links = end_link_names
+        let arms = end_link_names
             .iter()
-            .filter_map(|name| robot.find_joint(name).map(|j| j.clone()))
-            .collect::<Vec<k::JointNode<f32>>>();
+            .filter_map(|name| robot.find(name).map(|j| k::SerialChain::from_end(j)))
+            .collect::<Vec<_>>();
         println!("end_link_names = {:?}", end_link_names);
-        let joint_names = robot.joint_names();
+        let names = robot.names();
         let num_arms = end_link_names.len();
-        let num_joints = joint_names.len();
+        let num_joints = names.len();
         println!("DoF={}", num_joints);
-        println!("joint names={:?}", joint_names);
+        println!("joint names={:?}", names);
         UrdfViewerApp {
             input_path,
             viewer,
-            end_links,
+            arms,
             input_end_link_names,
             urdf_robot: urdf_robo,
             robot,
             num_joints,
-            joint_names,
+            names,
             index_of_arm: LoopIndex::new(num_arms),
             index_of_move_joint: LoopIndex::new(num_joints),
             web_server_port,
@@ -172,7 +172,7 @@ impl UrdfViewerApp {
         }
     }
     fn has_arms(&self) -> bool {
-        !self.end_links.is_empty()
+        !self.arms.is_empty()
     }
     fn has_joints(&self) -> bool {
         self.num_joints > 0
@@ -184,20 +184,11 @@ impl UrdfViewerApp {
             self.update_ik_target_marker();
         }
     }
-    fn get_end_link_name(&self) -> String {
-        self.end_links[self.index_of_arm.get()].joint_name()
-    }
-    fn get_end_link(&self) -> &k::JointNode<f32> {
-        &self.end_links[self.index_of_arm.get()]
+    fn get_arm(&self) -> &k::SerialChain<f32> {
+        &self.arms[self.index_of_arm.get()]
     }
     fn get_end_transform(&self) -> na::Isometry3<f32> {
-        let name = self.get_end_link_name();
-        self.robot.update_transforms();
-        self.robot
-            .find_joint(&name)
-            .unwrap()
-            .world_transform()
-            .unwrap()
+        self.get_arm().end_transform()
     }
     fn update_ik_target_marker(&mut self) {
         if self.has_arms() {
@@ -210,9 +201,9 @@ impl UrdfViewerApp {
     }
     fn update_robot(&mut self) {
         // this is hack to handle invalid mimic joints, like hsr
-        let joint_angles = self.robot.joint_angles();
+        let joint_positions = self.robot.joint_positions();
         self.robot
-            .set_joint_angles(&joint_angles)
+            .set_joint_positions(&joint_positions)
             .unwrap_or_else(|err| println!("failed to update robot joints {}", err));
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
@@ -225,43 +216,43 @@ impl UrdfViewerApp {
             self.robot
                 .iter()
                 .filter(|node| node.borrow().children.is_empty())
-                .map(|node| node.joint_name())
+                .map(|node| node.name())
                 .collect::<Vec<_>>()
         } else {
             self.input_end_link_names.clone()
         };
-        self.end_links = end_link_names
+        self.arms = end_link_names
             .iter()
-            .filter_map(|name| self.robot.find_joint(name).map(|j| j.clone()))
-            .collect::<Vec<k::JointNode<f32>>>();
-        self.joint_names = self.robot.joint_names();
+            .filter_map(|name| self.robot.find(name).map(|j| k::SerialChain::from_end(j)))
+            .collect::<Vec<_>>();
+        self.names = self.robot.names();
     }
 
-    fn set_joint_angles_from_request(
+    fn set_joint_positions_from_request(
         &mut self,
-        joint_angles: &urdf_viz::JointNamesAndAngles,
+        joint_positions: &urdf_viz::JointNamesAndPositions,
     ) -> Result<(), k::JointError> {
-        let mut angles = self.robot.joint_angles();
-        for (name, angle) in joint_angles.names.iter().zip(joint_angles.angles.iter()) {
-            if let Some(index) = self.joint_names.iter().position(|ref n| *n == name) {
+        let mut angles = self.robot.joint_positions();
+        for (name, angle) in joint_positions.names.iter().zip(joint_positions.positions.iter()) {
+            if let Some(index) = self.names.iter().position(|ref n| *n == name) {
                 angles[index] = *angle;
             } else {
                 println!("{} not found, but continues", name);
             }
         }
-        self.robot.set_joint_angles(&angles)
+        self.robot.set_joint_positions(&angles)
     }
     fn increment_move_joint_index(&mut self, is_inc: bool) {
         if self.has_joints() {
             self.viewer
-                .reset_temporal_color(&self.joint_names[self.index_of_move_joint.get()]);
+                .reset_temporal_color(&self.names[self.index_of_move_joint.get()]);
             if is_inc {
                 self.index_of_move_joint.inc();
             } else {
                 self.index_of_move_joint.dec();
             }
             self.viewer.set_temporal_color(
-                &self.joint_names[self.index_of_move_joint.get()],
+                &self.names[self.index_of_move_joint.get()],
                 1.0,
                 0.0,
                 0.0,
@@ -324,9 +315,9 @@ impl UrdfViewerApp {
         let mut last_cur_pos_x = 0f64;
         let solver = k::JacobianIKSolverBuilder::new().finalize();
         let web_server = urdf_viz::WebServer::new(self.web_server_port);
-        let (target_joint_angles, current_joint_angles) = web_server.clone_in_out();
-        if let Ok(mut cur_ja) = current_joint_angles.lock() {
-            cur_ja.names = self.joint_names.clone();
+        let (target_joint_positions, current_joint_positions) = web_server.clone_in_out();
+        if let Ok(mut cur_ja) = current_joint_positions.lock() {
+            cur_ja.names = self.names.clone();
         }
         std::thread::spawn(move || web_server.start());
 
@@ -341,16 +332,16 @@ impl UrdfViewerApp {
                 self.viewer.draw_text(
                     &format!(
                         "moving joint name [{}]",
-                        self.joint_names[self.index_of_move_joint.get()]
+                        self.names[self.index_of_move_joint.get()]
                     ),
                     60,
                     &na::Point2::new(10f32, 20.0),
                     &na::Point3::new(0.5f32, 0.5, 1.0),
                 );
 
-                if let Ok(mut ja) = target_joint_angles.lock() {
+                if let Ok(mut ja) = target_joint_positions.lock() {
                     if ja.requested {
-                        match self.set_joint_angles_from_request(&ja.joint_angles) {
+                        match self.set_joint_positions_from_request(&ja.joint_positions) {
                             Ok(_) => {
                                 self.update_robot();
                                 ja.requested = false;
@@ -361,12 +352,12 @@ impl UrdfViewerApp {
                         }
                     }
                 }
-                if let Ok(mut cur_ja) = current_joint_angles.lock() {
-                    cur_ja.angles = self.robot.joint_angles();
+                if let Ok(mut cur_ja) = current_joint_positions.lock() {
+                    cur_ja.positions = self.robot.joint_positions();
                 }
             }
             if self.has_arms() {
-                let name = self.get_end_link_name();
+                let name = self.get_arm().iter().last().unwrap().name();
                 self.viewer.draw_text(
                     &format!("IK target name [{}]", name),
                     60,
@@ -434,7 +425,7 @@ impl UrdfViewerApp {
 
                                 self.update_ik_target_marker();
                                 {
-                                    solver.solve(&self.get_end_link(), &target).unwrap_or_else(
+                                    solver.solve(&self.get_arm(), &target).unwrap_or_else(
                                         |err| {
                                             println!("Err: {}", err);
                                             0.0f32
