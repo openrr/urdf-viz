@@ -385,9 +385,9 @@ impl Viewer {
         robot.update_transforms();
         for link in robot.iter() {
             let trans = link.world_transform().unwrap();
-            let link_name = link.name();
+            let link_name = &link.joint().name;
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&trans);
-            match self.scenes.get_mut(&link_name) {
+            match self.scenes.get_mut(link_name) {
                 Some(obj) => {
                     obj.set_local_transformation(trans_f32);
                 }
