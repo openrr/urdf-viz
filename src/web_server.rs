@@ -66,10 +66,27 @@ impl WebServer {
                             Response::json(&ResultResponse { is_ok: true, reason: "".to_string() })
                         }
                     },
+                    (OPTIONS) (/set_joint_angles) => {
+                        Response::empty_204()
+                            .with_additional_header("Allow", "OPTIONS, POST")
+                            .with_additional_header("Access-Control-Allow-Methods", "POST")
+                            .with_additional_header("Access-Control-Allow-Origin", "*")
+                            .with_additional_header("Access-Control-Allow-Headers", "authorization,content-type")
+                            .with_additional_header("Access-Control-Max-Age", "86400")
+                    },
                     (GET) (/get_joint_angles) => {
                         let ja = try_or_404!(self.current_joint_angles.lock());
                         Response::json(&*ja)
                     },
+                    (OPTIONS) (/get_joint_angles) => {
+                        Response::empty_204()
+                            .with_additional_header("Allow", "OPTIONS, GET")
+                            .with_additional_header("Access-Control-Allow-Methods", "GET")
+                            .with_additional_header("Access-Control-Allow-Origin", "*")
+                            .with_additional_header("Access-Control-Allow-Headers", "authorization")
+                            .with_additional_header("Access-Control-Max-Age", "86400")
+                    },
+
                     _ => Response::empty_404(),
                 )
         });
