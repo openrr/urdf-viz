@@ -19,7 +19,6 @@ extern crate glfw;
 extern crate k;
 extern crate nalgebra as na;
 extern crate rand;
-#[macro_use]
 extern crate structopt;
 extern crate urdf_rs;
 extern crate urdf_viz;
@@ -39,7 +38,7 @@ fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> 
     let angles_vec = robot
         .iter_joints()
         .map(|j| 
-        match j.joint().limits {
+        match j.limits {
             Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
             None => (rand::random::<f32>() - 0.5) * 2.0,
         })
@@ -151,7 +150,7 @@ impl UrdfViewerApp {
             .filter_map(|name| robot.find(name).map(|j| k::SerialChain::from_end(j)))
             .collect::<Vec<_>>();
         println!("end_link_names = {:?}", end_link_names);
-        let names = robot.iter_joints().map(|j| j.joint().name.clone()).collect::<Vec<_>>();
+        let names = robot.iter_joints().map(|j| j.name.clone()).collect::<Vec<_>>();
         let num_arms = end_link_names.len();
         let num_joints = names.len();
         println!("DoF={}", num_joints);
@@ -225,7 +224,7 @@ impl UrdfViewerApp {
             .iter()
             .filter_map(|name| self.robot.find(name).map(|j| k::SerialChain::from_end(j)))
             .collect::<Vec<_>>();
-        self.names = self.robot.iter_joints().map(|j| j.joint().name.clone()).collect();
+        self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
     }
 
     fn set_joint_positions_from_request(
