@@ -75,7 +75,7 @@ impl WebServer {
                             .with_additional_header("Access-Control-Max-Age", "86400")
                     },
                     (GET) (/get_joint_angles) => {
-                        let ja = try_or_404!(self.current_joint_angles.lock());
+                        let ja = try_or_404!(self.current_joint_positions.lock());
                         Response::json(&*ja)
                     },
                     (OPTIONS) (/get_joint_angles) => {
