@@ -66,7 +66,6 @@ impl WebServer {
                             Response::json(&ResultResponse { is_ok: true, reason: "".to_string() })
                         }
                     },
-<<<<<<< HEAD
                     (OPTIONS) (/set_joint_angles) => {
                         Response::empty_204()
                             .with_additional_header("Allow", "OPTIONS, POST")
@@ -77,10 +76,6 @@ impl WebServer {
                     },
                     (GET) (/get_joint_angles) => {
                         let ja = try_or_404!(self.current_joint_angles.lock());
-=======
-                    (GET) (/get_joint_positions) => {
-                        let ja = try_or_404!(self.current_joint_positions.lock());
->>>>>>> Update k12
                         Response::json(&*ja)
                     },
                     (OPTIONS) (/get_joint_angles) => {
