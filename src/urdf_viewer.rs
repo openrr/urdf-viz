@@ -356,7 +356,7 @@ impl UrdfViewerApp {
                 }
             }
             if self.has_arms() {
-                let name = &self.get_arm().iter().last().unwrap().joint().to_owned();
+                let name = &self.get_arm().iter().last().unwrap().joint().name.to_owned();
                 self.viewer.draw_text(
                     &format!("IK target name [{}]", name),
                     60,
