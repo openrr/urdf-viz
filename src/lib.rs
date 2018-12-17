@@ -55,7 +55,7 @@ mod arc_ball;
 pub use arc_ball::*;
 mod web_server;
 use assimp_utils::*;
-pub use web_server::JointNamesAndAngles;
+pub use web_server::JointNamesAndPositions;
 pub use web_server::WebServer;
 
 use na::Real;
@@ -251,6 +251,7 @@ pub struct Viewer {
     font_data: &'static [u8],
     original_colors: HashMap<String, Vec<na::Point3<f32>>>,
     is_texture_enabled: bool,
+    link_joint_map: HashMap<String, String>,
 }
 
 impl Viewer {
@@ -269,6 +270,7 @@ impl Viewer {
             font_data: include_bytes!("font/Inconsolata.otf"),
             original_colors: HashMap::new(),
             is_texture_enabled: true,
+            link_joint_map: HashMap::new(),
         }
     }
     pub fn disable_texture(&mut self) {
@@ -294,6 +296,8 @@ impl Viewer {
         base_dir: Option<&Path>,
         is_collision: bool,
     ) {
+        self.link_joint_map = k::urdf::link_to_joint_map(&urdf_robot);
+
         for l in &urdf_robot.links {
             let num = if is_collision {
                 l.collision.len()
@@ -327,22 +331,20 @@ impl Viewer {
                     &mut scene_group,
                     self.is_texture_enabled,
                 ) {
-                    let origin = na::Isometry3::from_parts(
-                        k::urdf::translation_from(&origin_element.xyz),
-                        k::urdf::quaternion_from(&origin_element.rpy),
-                    );
                     // set initial origin offset
-                    base_group.set_local_transformation(origin);
+                    base_group.set_local_transformation(k::urdf::isometry_from(&origin_element));
                 } else {
                     error!("failed to create for {:?}", l);
                 }
             }
-            self.scenes.insert(l.name.to_string(), scene_group);
-            self.original_colors.insert(l.name.to_string(), colors);
+            let joint_name = self.link_joint_map.get(&l.name).expect(&format!("joint for link '{}' not found", l.name));
+            self.scenes
+                .insert(joint_name.to_owned(), scene_group);
+            self.original_colors.insert(joint_name.to_owned(), colors);
         }
     }
     pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
-        for l in &urdf_robot.links {
+        for l in &urdf_robot.joints {
             if let Some(mut scene) = self.scenes.get_mut(&l.name) {
                 self.window.remove(&mut scene);
             }
@@ -376,18 +378,16 @@ impl Viewer {
     pub fn render(&mut self) -> bool {
         self.window.render_with_camera(&mut self.arc_ball)
     }
-    pub fn update<R, T>(&mut self, robot: &R)
+    pub fn update<T>(&mut self, robot: &k::Chain<T>)
     where
-        R: k::HasLinks<T>,
         T: Real + alga::general::SubsetOf<f32>,
     {
-        for (trans, link_name) in robot
-            .link_transforms()
-            .iter()
-            .zip(robot.link_names().iter())
-        {
-            let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&*trans);
-            match self.scenes.get_mut(&*link_name) {
+        robot.update_transforms();
+        for link in robot.iter() {
+            let trans = link.world_transform().unwrap();
+            let link_name = &link.joint().name;
+            let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&trans);
+            match self.scenes.get_mut(link_name) {
                 Some(obj) => {
                     obj.set_local_transformation(trans_f32);
                 }
