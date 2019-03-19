@@ -1,9 +1,9 @@
-use camera::Camera;
-use event::{Action, Key, MouseButton, WindowEvent};
+use kiss3d::camera::Camera;
+use kiss3d::event::{Action, Key, MouseButton, WindowEvent};
 use na::{self, Isometry3, Matrix4, Perspective3, Point3, Vector2, Vector3};
-use resource::ShaderUniform;
+use kiss3d::resource::ShaderUniform;
 use std::f32;
-use window::Canvas;
+use kiss3d::window::Canvas;
 
 /// Arc-ball camera mode.
 ///
@@ -254,7 +254,7 @@ impl ArcBall {
     }
 
     fn handle_left_button_displacement(&mut self, dpos: &Vector2<f32>) {
-        self.yaw = self.yaw + dpos.x * self.yaw_step;
+        self.yaw = self.yaw - dpos.x * self.yaw_step;
         self.pitch = self.pitch - dpos.y * self.pitch_step;
 
         self.update_restrictions();
@@ -264,7 +264,7 @@ impl ArcBall {
     fn handle_right_button_displacement(&mut self, dpos: &Vector2<f32>) {
         let eye = self.eye();
         let dir = (self.at - eye).normalize();
-        let tangent = Vector3::y().cross(&dir).normalize();
+        let tangent = self.up_axis.cross(&dir).normalize();
         let bitangent = dir.cross(&tangent);
         let mult = self.dist / 1000.0;
 
@@ -303,8 +303,8 @@ impl Camera for ArcBall {
 
     fn eye(&self) -> Point3<f32> {
         let px = self.at.x + self.dist * self.yaw.cos() * self.pitch.sin();
-        let py = self.at.y + self.dist * self.pitch.cos();
-        let pz = self.at.z + self.dist * self.yaw.sin() * self.pitch.sin();
+        let py = self.at.y + self.dist * self.yaw.sin() * self.pitch.sin();
+        let pz = self.at.z + self.dist * self.pitch.cos();
 
         Point3::new(px, py, pz)
     }

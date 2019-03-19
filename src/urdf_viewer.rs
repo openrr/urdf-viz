@@ -15,29 +15,29 @@
  */
 
 extern crate env_logger;
-extern crate glfw;
 extern crate k;
 extern crate nalgebra as na;
 extern crate rand;
 extern crate structopt;
 extern crate urdf_rs;
 extern crate urdf_viz;
+extern crate kiss3d;
 
-use glfw::{Action, Key, Modifiers, WindowEvent};
+use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
 use k::prelude::*;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[cfg(target_os = "macos")]
-static NATIVE_MOD: Modifiers = glfw::Modifiers::Super;
+static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Super;
 
 #[cfg(not(target_os = "macos"))]
-static NATIVE_MOD: Modifiers = glfw::Modifiers::Control;
+static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Control;
 
 fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> {
     let angles_vec = robot
         .iter_joints()
-        .map(|j| 
+        .map(|j|
         match j.limits {
             Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
             None => (rand::random::<f32>() - 0.5) * 2.0,
@@ -260,8 +260,8 @@ impl UrdfViewerApp {
     }
     fn handle_key_press(&mut self, code: Key) {
         match code {
-            Key::LeftBracket => self.increment_move_joint_index(true),
-            Key::RightBracket => self.increment_move_joint_index(false),
+            Key::LBracket => self.increment_move_joint_index(true),
+            Key::RBracket => self.increment_move_joint_index(false),
             Key::Period => {
                 self.index_of_arm.inc();
                 self.update_ik_target_marker();
@@ -323,7 +323,7 @@ impl UrdfViewerApp {
         while self.viewer.render() {
             self.viewer.draw_text(
                 HOW_TO_USE_STR,
-                40,
+                40.0,
                 &na::Point2::new(2000.0, 10.0),
                 &na::Point3::new(1f32, 1.0, 1.0),
             );
@@ -333,7 +333,7 @@ impl UrdfViewerApp {
                         "moving joint name [{}]",
                         self.names[self.index_of_move_joint.get()]
                     ),
-                    60,
+                    60.0,
                     &na::Point2::new(10f32, 20.0),
                     &na::Point3::new(0.5f32, 0.5, 1.0),
                 );
@@ -359,7 +359,7 @@ impl UrdfViewerApp {
                 let name = &self.get_arm().iter().last().unwrap().joint().name.to_owned();
                 self.viewer.draw_text(
                     &format!("IK target name [{}]", name),
-                    60,
+                    60.0,
                     &na::Point2::new(10f32, 100.0),
                     &na::Point3::new(0.5f32, 0.8, 0.2),
                 );
@@ -367,7 +367,7 @@ impl UrdfViewerApp {
             if is_ctrl && !is_shift {
                 self.viewer.draw_text(
                     "moving joint by drag",
-                    60,
+                    60.0,
                     &na::Point2::new(10f32, 150.0),
                     &na::Point3::new(0.9f32, 0.5, 1.0),
                 );
@@ -375,7 +375,7 @@ impl UrdfViewerApp {
             if is_shift {
                 self.viewer.draw_text(
                     "solving ik",
-                    60,
+                    60.0,
                     &na::Point2::new(10f32, 150.0),
                     &na::Point3::new(0.9f32, 0.5, 1.0),
                 );
@@ -387,12 +387,12 @@ impl UrdfViewerApp {
                             is_ctrl = true;
                             event.inhibited = true;
                         }
-                        if mods.contains(glfw::Modifiers::Shift) {
+                        if mods.contains(kiss3d::event::Modifiers::Shift) {
                             is_shift = true;
                             event.inhibited = true;
                         }
                     }
-                    WindowEvent::CursorPos(x, y) => {
+                    WindowEvent::CursorPos(x, y, _modifiers) => {
                         if is_ctrl && !is_shift {
                             event.inhibited = true;
                             let move_gain = 0.005;
@@ -443,7 +443,7 @@ impl UrdfViewerApp {
                         is_shift = false;
                         event.inhibited = true;
                     },
-                    WindowEvent::Key(code, _, Action::Press, _) => {
+                    WindowEvent::Key(code, Action::Press, _modifiers) => {
                         self.handle_key_press(code);
                         event.inhibited = true;
                     }
