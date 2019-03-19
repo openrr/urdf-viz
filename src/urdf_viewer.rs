@@ -86,19 +86,7 @@ impl LoopIndex {
     }
 }
 
-const HOW_TO_USE_STR: &str = r"
-[:    joint ID +1
-]:    joint ID -1
-,:    IK target ID +1
-.:    IK target ID -1
-r:    set random angles
-Up:   joint angle +0.1
-Down: joint angle -0.1
-Ctrl+Drag: move joint
-Shift+Drag: IK (y, z)
-Shift+Ctrl+Drag: IK (x, z)
-c:    toggle visual/collision
-";
+const HOW_TO_USE_STR: &str = "[:    joint ID +1\n]:    joint ID -1\n,:    IK target ID +1\n.:    IK target ID -1\nr:    set random angles\nUp:   joint angle +0.1\nDown: joint angle -0.1\nCtrl+Drag: move joint\nShift+Drag: IK (y, z)\nShift+Ctrl+Drag: IK (x, z)\nc:    toggle visual/collision";
 
 struct UrdfViewerApp {
     input_path: PathBuf,
@@ -319,11 +307,12 @@ impl UrdfViewerApp {
             cur_ja.names = self.names.clone();
         }
         std::thread::spawn(move || web_server.start());
-
+        const FONT_SIZE_USAGE: f32 = 60.0;
+        const FONT_SIZE_INFO: f32 = 80.0;
         while self.viewer.render() {
             self.viewer.draw_text(
                 HOW_TO_USE_STR,
-                40.0,
+                FONT_SIZE_USAGE,
                 &na::Point2::new(2000.0, 10.0),
                 &na::Point3::new(1f32, 1.0, 1.0),
             );
@@ -333,7 +322,7 @@ impl UrdfViewerApp {
                         "moving joint name [{}]",
                         self.names[self.index_of_move_joint.get()]
                     ),
-                    60.0,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 20.0),
                     &na::Point3::new(0.5f32, 0.5, 1.0),
                 );
@@ -359,7 +348,7 @@ impl UrdfViewerApp {
                 let name = &self.get_arm().iter().last().unwrap().joint().name.to_owned();
                 self.viewer.draw_text(
                     &format!("IK target name [{}]", name),
-                    60.0,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 100.0),
                     &na::Point3::new(0.5f32, 0.8, 0.2),
                 );
@@ -367,7 +356,7 @@ impl UrdfViewerApp {
             if is_ctrl && !is_shift {
                 self.viewer.draw_text(
                     "moving joint by drag",
-                    60.0,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 150.0),
                     &na::Point3::new(0.9f32, 0.5, 1.0),
                 );
@@ -375,7 +364,7 @@ impl UrdfViewerApp {
             if is_shift {
                 self.viewer.draw_text(
                     "solving ik",
-                    60.0,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 150.0),
                     &na::Point3::new(0.9f32, 0.5, 1.0),
                 );

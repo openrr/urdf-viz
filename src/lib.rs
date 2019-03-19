@@ -259,8 +259,6 @@ impl Viewer {
         window.set_background_color(0.0, 0.0, 0.3);
         let mut arc_ball = ArcBall::new(eye, at);
         arc_ball.set_up_axis(na::Vector3::z());
-        //let font_data = include_bytes!("font/Inconsolata.otf");
-        //let font = kiss3d::text::Font::from_bytes(font_data).unwrap();
         let font = kiss3d::text::Font::default();
         Viewer {
             window,
@@ -403,7 +401,6 @@ impl Viewer {
         pos: &na::Point2<f32>,
         color: &na::Point3<f32>,
     ) {
-        /*
         self.window.draw_text(
             text,
             pos,
@@ -411,7 +408,6 @@ impl Viewer {
             &self.font,
             color,
         );
-        */
     }
     pub fn events(&self) -> kiss3d::event::EventManager {
         self.window.events()
