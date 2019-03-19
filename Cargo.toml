@@ -18,7 +18,7 @@ default = ["assimp"]
 alga = "0.8.0"
 env_logger = "0.4.2"
 failure = "0.1"
-k = {version="0.13", path="../k"}
+k = "0.14.0"
 kiss3d = "0.18.0"
 log = "0.3"
 nalgebra = "0.17.0"
