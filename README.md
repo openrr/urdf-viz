@@ -104,21 +104,21 @@ Default port number is 7777. You can change it by `-p` option.
 
 ### Set joint angles
 
-POST the JSON data, which format is like below. You have to specify the names of joints and angles.
-The length of `names` and `angles` have to be the same. You don't need write
+POST the JSON data, which format is like below. You have to specify the names of joints and positions (angles).
+The length of `names` and `positions` have to be the same. You don't need write
 all joint names, it means you can specify a part of the joints.
 
 ```json
 {
   "names": ["joint_name1", "joint_name2"],
-  "angles": [0.5, -0.1]
+  "positions": [0.5, -0.1]
 }
 ```
 
 You can try it using `curl`.
 
 ```bash
-$ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"names": ["r_shoulder_yaw", "r_shoulder_pitch"], "angles": [0.8, -0.8]}'  http://127.0.0.1:7777/set_joint_angles | jq
+$ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"names": ["r_shoulder_yaw", "r_shoulder_pitch"], "positions": [0.8, -0.8]}'  http://127.0.0.1:7777/set_joint_positions | jq
 {
   "is_ok": true,
   "reason": ""
@@ -130,7 +130,7 @@ $ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST
 The result JSON format of getting the joint angles is the same as the *Set* method.
 
 ```bash
-$ curl http://127.0.0.1:7777/get_joint_angles | jq
+$ curl http://127.0.0.1:7777/get_joint_positions | jq
 {
   "names": [
     "r_shoulder_yaw",
@@ -146,7 +146,7 @@ $ curl http://127.0.0.1:7777/get_joint_angles | jq
     "l_wrist_yaw",
     "l_wrist_pitch"
   ],
-  "angles": [
+  "positions": [
     0.8,
     -0.8,
     -1.3447506,
