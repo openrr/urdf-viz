@@ -1,18 +1,18 @@
 /*
-   Copyright 2017 Takashi Ogura
+  Copyright 2017 Takashi Ogura
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+      http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
- */
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
 
 //! urdf-viz
 //! ==================
@@ -31,7 +31,6 @@ mod assimp_utils;
 extern crate alga;
 #[macro_use]
 extern crate failure;
-extern crate glfw;
 extern crate k;
 extern crate kiss3d;
 #[macro_use]
@@ -57,8 +56,6 @@ mod web_server;
 use assimp_utils::*;
 pub use web_server::JointNamesAndPositions;
 pub use web_server::WebServer;
-
-use na::Real;
 
 #[cfg(feature = "assimp")]
 pub fn load_mesh<P>(
@@ -247,8 +244,7 @@ pub struct Viewer {
     pub window: kiss3d::window::Window,
     scenes: HashMap<String, SceneNode>,
     arc_ball: ArcBall,
-    font_map: HashMap<i32, Rc<kiss3d::text::Font>>,
-    font_data: &'static [u8],
+    font: Rc<kiss3d::text::Font>,
     original_colors: HashMap<String, Vec<na::Point3<f32>>>,
     is_texture_enabled: bool,
     link_joint_map: HashMap<String, String>,
@@ -261,13 +257,14 @@ impl Viewer {
         let mut window = kiss3d::window::Window::new_with_size(title, 1400, 1000);
         window.set_light(kiss3d::light::Light::StickToCamera);
         window.set_background_color(0.0, 0.0, 0.3);
-
+        let mut arc_ball = ArcBall::new(eye, at);
+        arc_ball.set_up_axis(na::Vector3::z());
+        let font = kiss3d::text::Font::default();
         Viewer {
             window,
             scenes: HashMap::new(),
-            arc_ball: ArcBall::new(eye, at),
-            font_map: HashMap::new(),
-            font_data: include_bytes!("font/Inconsolata.otf"),
+            arc_ball,
+            font,
             original_colors: HashMap::new(),
             is_texture_enabled: true,
             link_joint_map: HashMap::new(),
@@ -337,16 +334,18 @@ impl Viewer {
                     error!("failed to create for {:?}", l);
                 }
             }
-            let joint_name = self.link_joint_map.get(&l.name).expect(&format!("joint for link '{}' not found", l.name));
-            self.scenes
-                .insert(joint_name.to_owned(), scene_group);
+            let joint_name = self
+                .link_joint_map
+                .get(&l.name)
+                .expect(&format!("joint for link '{}' not found", l.name));
+            self.scenes.insert(joint_name.to_owned(), scene_group);
             self.original_colors.insert(joint_name.to_owned(), colors);
         }
     }
     pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
         for l in &urdf_robot.joints {
             if let Some(mut scene) = self.scenes.get_mut(&l.name) {
-                self.window.remove(&mut scene);
+                self.window.remove_node(&mut scene);
             }
         }
     }
@@ -380,7 +379,7 @@ impl Viewer {
     }
     pub fn update<T>(&mut self, robot: &k::Chain<T>)
     where
-        T: Real + alga::general::SubsetOf<f32>,
+        T: k::Real + alga::general::SubsetOf<f32>,
     {
         robot.update_transforms();
         for link in robot.iter() {
@@ -400,20 +399,13 @@ impl Viewer {
     pub fn draw_text(
         &mut self,
         text: &str,
-        size: i32,
+        size: f32,
         pos: &na::Point2<f32>,
         color: &na::Point3<f32>,
     ) {
-        self.window.draw_text(
-            text,
-            pos,
-            self.font_map
-                .entry(size)
-                .or_insert(kiss3d::text::Font::from_memory(self.font_data, size)),
-            color,
-        );
+        self.window.draw_text(text, pos, size, &self.font, color);
     }
-    pub fn events(&self) -> kiss3d::window::EventManager {
+    pub fn events(&self) -> kiss3d::event::EventManager {
         self.window.events()
     }
     pub fn set_temporal_color(&mut self, link_name: &str, r: f32, g: f32, b: f32) {

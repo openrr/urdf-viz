@@ -53,42 +53,42 @@ impl WebServer {
     pub fn start(self) {
         rouille::start_server(("0.0.0.0", self.port), move |request| {
             router!(request,
-                    (POST) (/set_joint_positions) => {
-                        let json: JointNamesAndPositions = try_or_400!(rouille::input::json_input(request));
-                        let mut ja = try_or_404!(self.target_joint_positions.lock());
-                        ja.joint_positions = json;
-                        if ja.joint_positions.names.len() != ja.joint_positions.positions.len() {
-                            Response::json(&ResultResponse { is_ok: false,
-                                                     reason: format!("names and positions size mismatch ({} != {})",
-                                                        ja.joint_positions.names.len(), ja.joint_positions.positions.len()) })
-                        } else {
-                            ja.requested = true;
-                            Response::json(&ResultResponse { is_ok: true, reason: "".to_string() })
-                        }
-                    },
-                    (OPTIONS) (/set_joint_positions) => {
-                        Response::empty_204()
-                            .with_additional_header("Allow", "OPTIONS, POST")
-                            .with_additional_header("Access-Control-Allow-Methods", "POST")
-                            .with_additional_header("Access-Control-Allow-Origin", "*")
-                            .with_additional_header("Access-Control-Allow-Headers", "authorization,content-type")
-                            .with_additional_header("Access-Control-Max-Age", "86400")
-                    },
-                    (GET) (/get_joint_positions) => {
-                        let ja = try_or_404!(self.current_joint_positions.lock());
-                        Response::json(&*ja)
-                    },
-                    (OPTIONS) (/get_joint_positions) => {
-                        Response::empty_204()
-                            .with_additional_header("Allow", "OPTIONS, GET")
-                            .with_additional_header("Access-Control-Allow-Methods", "GET")
-                            .with_additional_header("Access-Control-Allow-Origin", "*")
-                            .with_additional_header("Access-Control-Allow-Headers", "authorization")
-                            .with_additional_header("Access-Control-Max-Age", "86400")
-                    },
+                (POST) (/set_joint_positions) => {
+                    let json: JointNamesAndPositions = try_or_400!(rouille::input::json_input(request));
+                    let mut ja = try_or_404!(self.target_joint_positions.lock());
+                    ja.joint_positions = json;
+                    if ja.joint_positions.names.len() != ja.joint_positions.positions.len() {
+                        Response::json(&ResultResponse { is_ok: false,
+                                                 reason: format!("names and positions size mismatch ({} != {})",
+                                                    ja.joint_positions.names.len(), ja.joint_positions.positions.len()) })
+                    } else {
+                        ja.requested = true;
+                        Response::json(&ResultResponse { is_ok: true, reason: "".to_string() })
+                    }
+                },
+                (OPTIONS) (/set_joint_positions) => {
+                    Response::empty_204()
+                        .with_additional_header("Allow", "OPTIONS, POST")
+                        .with_additional_header("Access-Control-Allow-Methods", "POST")
+                        .with_additional_header("Access-Control-Allow-Origin", "*")
+                        .with_additional_header("Access-Control-Allow-Headers", "authorization,content-type")
+                        .with_additional_header("Access-Control-Max-Age", "86400")
+                },
+                (GET) (/get_joint_positions) => {
+                    let ja = try_or_404!(self.current_joint_positions.lock());
+                    Response::json(&*ja)
+                },
+                (OPTIONS) (/get_joint_positions) => {
+                    Response::empty_204()
+                        .with_additional_header("Allow", "OPTIONS, GET")
+                        .with_additional_header("Access-Control-Allow-Methods", "GET")
+                        .with_additional_header("Access-Control-Allow-Origin", "*")
+                        .with_additional_header("Access-Control-Allow-Headers", "authorization")
+                        .with_additional_header("Access-Control-Max-Age", "86400")
+                },
 
-                    _ => Response::empty_404(),
-                )
+                _ => Response::empty_404(),
+            )
         });
     }
 }

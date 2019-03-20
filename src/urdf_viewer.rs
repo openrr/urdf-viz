@@ -1,44 +1,43 @@
 /*
-   Copyright 2017 Takashi Ogura
+  Copyright 2017 Takashi Ogura
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+      http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
- */
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
 
 extern crate env_logger;
-extern crate glfw;
 extern crate k;
+extern crate kiss3d;
 extern crate nalgebra as na;
 extern crate rand;
 extern crate structopt;
 extern crate urdf_rs;
 extern crate urdf_viz;
 
-use glfw::{Action, Key, Modifiers, WindowEvent};
 use k::prelude::*;
+use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[cfg(target_os = "macos")]
-static NATIVE_MOD: Modifiers = glfw::Modifiers::Super;
+static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Super;
 
 #[cfg(not(target_os = "macos"))]
-static NATIVE_MOD: Modifiers = glfw::Modifiers::Control;
+static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Control;
 
 fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> {
     let angles_vec = robot
         .iter_joints()
-        .map(|j| 
-        match j.limits {
+        .map(|j| match j.limits {
             Some(ref range) => (range.max - range.min) * rand::random::<f32>() + range.min,
             None => (rand::random::<f32>() - 0.5) * 2.0,
         })
@@ -86,19 +85,7 @@ impl LoopIndex {
     }
 }
 
-const HOW_TO_USE_STR: &str = r"
-[:    joint ID +1
-]:    joint ID -1
-,:    IK target ID +1
-.:    IK target ID -1
-r:    set random angles
-Up:   joint angle +0.1
-Down: joint angle -0.1
-Ctrl+Drag: move joint
-Shift+Drag: IK (y, z)
-Shift+Ctrl+Drag: IK (x, z)
-c:    toggle visual/collision
-";
+const HOW_TO_USE_STR: &str = "[:    joint ID +1\n]:    joint ID -1\n,:    IK target ID +1\n.:    IK target ID -1\nr:    set random angles\nUp:   joint angle +0.1\nDown: joint angle -0.1\nCtrl+Drag: move joint\nShift+Drag: IK (y, z)\nShift+Ctrl+Drag: IK (x, z)\nc:    toggle visual/collision";
 
 struct UrdfViewerApp {
     input_path: PathBuf,
@@ -150,7 +137,10 @@ impl UrdfViewerApp {
             .filter_map(|name| robot.find(name).map(|j| k::SerialChain::from_end(j)))
             .collect::<Vec<_>>();
         println!("end_link_names = {:?}", end_link_names);
-        let names = robot.iter_joints().map(|j| j.name.clone()).collect::<Vec<_>>();
+        let names = robot
+            .iter_joints()
+            .map(|j| j.name.clone())
+            .collect::<Vec<_>>();
         let num_arms = end_link_names.len();
         let num_joints = names.len();
         println!("DoF={}", num_joints);
@@ -232,7 +222,11 @@ impl UrdfViewerApp {
         joint_positions: &urdf_viz::JointNamesAndPositions,
     ) -> Result<(), k::JointError> {
         let mut angles = self.robot.joint_positions();
-        for (name, angle) in joint_positions.names.iter().zip(joint_positions.positions.iter()) {
+        for (name, angle) in joint_positions
+            .names
+            .iter()
+            .zip(joint_positions.positions.iter())
+        {
             if let Some(index) = self.names.iter().position(|ref n| *n == name) {
                 angles[index] = *angle;
             } else {
@@ -260,8 +254,8 @@ impl UrdfViewerApp {
     }
     fn handle_key_press(&mut self, code: Key) {
         match code {
-            Key::LeftBracket => self.increment_move_joint_index(true),
-            Key::RightBracket => self.increment_move_joint_index(false),
+            Key::LBracket => self.increment_move_joint_index(true),
+            Key::RBracket => self.increment_move_joint_index(false),
             Key::Period => {
                 self.index_of_arm.inc();
                 self.update_ik_target_marker();
@@ -290,20 +284,26 @@ impl UrdfViewerApp {
                 );
                 self.update_robot();
             }
-            Key::R => if self.has_joints() {
-                move_joint_by_random(&mut self.robot).unwrap_or(());
-                self.update_robot();
-            },
-            Key::Up => if self.has_joints() {
-                move_joint_by_index(self.index_of_move_joint.get(), 0.1, &mut self.robot)
-                    .unwrap_or(());
-                self.update_robot();
-            },
-            Key::Down => if self.has_joints() {
-                move_joint_by_index(self.index_of_move_joint.get(), -0.1, &mut self.robot)
-                    .unwrap_or(());
-                self.update_robot();
-            },
+            Key::R => {
+                if self.has_joints() {
+                    move_joint_by_random(&mut self.robot).unwrap_or(());
+                    self.update_robot();
+                }
+            }
+            Key::Up => {
+                if self.has_joints() {
+                    move_joint_by_index(self.index_of_move_joint.get(), 0.1, &mut self.robot)
+                        .unwrap_or(());
+                    self.update_robot();
+                }
+            }
+            Key::Down => {
+                if self.has_joints() {
+                    move_joint_by_index(self.index_of_move_joint.get(), -0.1, &mut self.robot)
+                        .unwrap_or(());
+                    self.update_robot();
+                }
+            }
             _ => {}
         };
     }
@@ -319,11 +319,12 @@ impl UrdfViewerApp {
             cur_ja.names = self.names.clone();
         }
         std::thread::spawn(move || web_server.start());
-
+        const FONT_SIZE_USAGE: f32 = 60.0;
+        const FONT_SIZE_INFO: f32 = 80.0;
         while self.viewer.render() {
             self.viewer.draw_text(
                 HOW_TO_USE_STR,
-                40,
+                FONT_SIZE_USAGE,
                 &na::Point2::new(2000.0, 10.0),
                 &na::Point3::new(1f32, 1.0, 1.0),
             );
@@ -333,7 +334,7 @@ impl UrdfViewerApp {
                         "moving joint name [{}]",
                         self.names[self.index_of_move_joint.get()]
                     ),
-                    60,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 20.0),
                     &na::Point3::new(0.5f32, 0.5, 1.0),
                 );
@@ -356,10 +357,17 @@ impl UrdfViewerApp {
                 }
             }
             if self.has_arms() {
-                let name = &self.get_arm().iter().last().unwrap().joint().name.to_owned();
+                let name = &self
+                    .get_arm()
+                    .iter()
+                    .last()
+                    .unwrap()
+                    .joint()
+                    .name
+                    .to_owned();
                 self.viewer.draw_text(
                     &format!("IK target name [{}]", name),
-                    60,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 100.0),
                     &na::Point3::new(0.5f32, 0.8, 0.2),
                 );
@@ -367,7 +375,7 @@ impl UrdfViewerApp {
             if is_ctrl && !is_shift {
                 self.viewer.draw_text(
                     "moving joint by drag",
-                    60,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 150.0),
                     &na::Point3::new(0.9f32, 0.5, 1.0),
                 );
@@ -375,7 +383,7 @@ impl UrdfViewerApp {
             if is_shift {
                 self.viewer.draw_text(
                     "solving ik",
-                    60,
+                    FONT_SIZE_INFO,
                     &na::Point2::new(10f32, 150.0),
                     &na::Point3::new(0.9f32, 0.5, 1.0),
                 );
@@ -387,12 +395,12 @@ impl UrdfViewerApp {
                             is_ctrl = true;
                             event.inhibited = true;
                         }
-                        if mods.contains(glfw::Modifiers::Shift) {
+                        if mods.contains(kiss3d::event::Modifiers::Shift) {
                             is_shift = true;
                             event.inhibited = true;
                         }
                     }
-                    WindowEvent::CursorPos(x, y) => {
+                    WindowEvent::CursorPos(x, y, _modifiers) => {
                         if is_ctrl && !is_shift {
                             event.inhibited = true;
                             let move_gain = 0.005;
@@ -402,7 +410,8 @@ impl UrdfViewerApp {
                                     (((x - last_cur_pos_x) + (y - last_cur_pos_y)) * move_gain)
                                         as f32,
                                     &mut self.robot,
-                                ).unwrap_or(());
+                                )
+                                .unwrap_or(());
                                 self.update_robot();
                             }
                         }
@@ -424,11 +433,11 @@ impl UrdfViewerApp {
 
                                 self.update_ik_target_marker();
                                 {
-                                    solver.solve(&self.get_arm(), &target).unwrap_or_else(
-                                        |err| {
+                                    solver
+                                        .solve(&self.get_arm(), &target)
+                                        .unwrap_or_else(|err| {
                                             println!("Err: {}", err);
-                                        },
-                                    );
+                                        });
                                 }
                                 self.update_robot();
                             }
@@ -436,14 +445,16 @@ impl UrdfViewerApp {
                         last_cur_pos_x = x;
                         last_cur_pos_y = y;
                     }
-                    WindowEvent::MouseButton(_, Action::Release, _) => if is_ctrl {
-                        is_ctrl = false;
-                        event.inhibited = true;
-                    } else if is_shift {
-                        is_shift = false;
-                        event.inhibited = true;
-                    },
-                    WindowEvent::Key(code, _, Action::Press, _) => {
+                    WindowEvent::MouseButton(_, Action::Release, _) => {
+                        if is_ctrl {
+                            is_ctrl = false;
+                            event.inhibited = true;
+                        } else if is_shift {
+                            is_shift = false;
+                            event.inhibited = true;
+                        }
+                    }
+                    WindowEvent::Key(code, Action::Press, _modifiers) => {
                         self.handle_key_press(code);
                         event.inhibited = true;
                     }
@@ -462,10 +473,16 @@ pub struct Opt {
     #[structopt(short = "e", long = "end-link-name", help = "end link names")]
     pub end_link_names: Vec<String>,
     #[structopt(
-        short = "c", long = "collision", help = "Show collision element instead of visual"
+        short = "c",
+        long = "collision",
+        help = "Show collision element instead of visual"
     )]
     pub is_collision: bool,
-    #[structopt(short = "d", long = "disable-texture", help = "Disable texture rendering")]
+    #[structopt(
+        short = "d",
+        long = "disable-texture",
+        help = "Disable texture rendering"
+    )]
     pub disable_texture: bool,
     #[structopt(
         short = "p",
