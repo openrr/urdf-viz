@@ -42,7 +42,6 @@ extern crate rouille;
 extern crate serde_derive;
 extern crate urdf_rs;
 
-use alga::general::SubsetOf;
 use kiss3d::scene::SceneNode;
 use std::collections::HashMap;
 use std::path::Path;
@@ -379,12 +378,13 @@ impl Viewer {
     }
     pub fn update<T>(&mut self, robot: &k::Chain<T>)
     where
-        T: k::Real + alga::general::SubsetOf<f32>,
+        T: k::RealField + alga::general::SubsetOf<f32>,
     {
         robot.update_transforms();
         for link in robot.iter() {
             let trans = link.world_transform().unwrap();
             let link_name = &link.joint().name;
+            use alga::general::SubsetOf;
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&trans);
             match self.scenes.get_mut(link_name) {
                 Some(obj) => {
