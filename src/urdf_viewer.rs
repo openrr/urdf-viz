@@ -45,6 +45,11 @@ fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> 
     robot.set_joint_positions(&angles_vec)
 }
 
+fn move_joint_to_zero(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> {
+    let angles_vec = vec![0.0; robot.dof()];
+    robot.set_joint_positions(&angles_vec)
+}
+
 fn move_joint_by_index(
     index: usize,
     diff_angle: f32,
@@ -85,7 +90,7 @@ impl LoopIndex {
     }
 }
 
-const HOW_TO_USE_STR: &str = "[:    joint ID +1\n]:    joint ID -1\n,:    IK target ID +1\n.:    IK target ID -1\nr:    set random angles\nUp:   joint angle +0.1\nDown: joint angle -0.1\nCtrl+Drag: move joint\nShift+Drag: IK (y, z)\nShift+Ctrl+Drag: IK (x, z)\nc:    toggle visual/collision";
+const HOW_TO_USE_STR: &str = "[:    joint ID +1\n]:    joint ID -1\n,:    IK target ID +1\n.:    IK target ID -1\nr:    set random angles\nz:    reset angles\nUp:   joint angle +0.1\nDown: joint angle -0.1\nCtrl+Drag: move joint\nShift+Drag: IK (y, z)\nShift+Ctrl+Drag: IK (x, z)\nc:    toggle visual/collision";
 
 struct UrdfViewerApp {
     input_path: PathBuf,
@@ -287,6 +292,12 @@ impl UrdfViewerApp {
             Key::R => {
                 if self.has_joints() {
                     move_joint_by_random(&mut self.robot).unwrap_or(());
+                    self.update_robot();
+                }
+            }
+            Key::Z => {
+                if self.has_joints() {
+                    move_joint_to_zero(&mut self.robot).unwrap_or(());
                     self.update_robot();
                 }
             }
