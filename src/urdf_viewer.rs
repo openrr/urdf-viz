@@ -448,17 +448,17 @@ impl UrdfViewerApp {
                                 }
 
                                 self.update_ik_target_marker();
-                                {
-                                    solver
-                                        .solve_with_constraints(
-                                            &self.get_arm(),
-                                            &target,
-                                            &self.ik_constraints,
-                                        )
-                                        .unwrap_or_else(|err| {
-                                            println!("Err: {}", err);
-                                        });
-                                }
+                                let orig_angles = self.robot.joint_positions();
+                                solver
+                                    .solve_with_constraints(
+                                        &self.get_arm(),
+                                        &target,
+                                        &self.ik_constraints,
+                                    )
+                                    .unwrap_or_else(|err| {
+                                        self.robot.set_joint_positions_unchecked(&orig_angles);
+                                        println!("Err: {}", err);
+                                    });
                                 self.update_robot();
                             }
                         }
