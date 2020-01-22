@@ -105,6 +105,7 @@ struct UrdfViewerApp {
     index_of_move_joint: LoopIndex,
     web_server_port: u16,
     is_collision: bool,
+    ik_constraints: k::Constraints,
 }
 
 impl UrdfViewerApp {
@@ -163,7 +164,11 @@ impl UrdfViewerApp {
             index_of_move_joint: LoopIndex::new(num_joints),
             web_server_port,
             is_collision,
+            ik_constraints: k::Constraints::default(),
         }
+    }
+    pub fn set_ik_constraints(&mut self, ik_constraints: k::Constraints) {
+        self.ik_constraints = ik_constraints;
     }
     fn has_arms(&self) -> bool {
         !self.arms.is_empty()
@@ -445,7 +450,11 @@ impl UrdfViewerApp {
                                 self.update_ik_target_marker();
                                 {
                                     solver
-                                        .solve(&self.get_arm(), &target)
+                                        .solve_with_constraints(
+                                            &self.get_arm(),
+                                            &target,
+                                            &self.ik_constraints,
+                                        )
                                         .unwrap_or_else(|err| {
                                             println!("Err: {}", err);
                                         });
@@ -502,6 +511,18 @@ pub struct Opt {
         default_value = "7777"
     )]
     pub web_server_port: u16,
+    #[structopt(long = "ignore-ik-position-x")]
+    pub ignore_ik_position_x: bool,
+    #[structopt(long = "ignore-ik-position-y")]
+    pub ignore_ik_position_y: bool,
+    #[structopt(long = "ignore-ik-position-z")]
+    pub ignore_ik_position_z: bool,
+    #[structopt(long = "ignore-ik-rotation-x")]
+    pub ignore_ik_rotation_x: bool,
+    #[structopt(long = "ignore-ik-rotation-y")]
+    pub ignore_ik_rotation_y: bool,
+    #[structopt(long = "ignore-ik-rotation-z")]
+    pub ignore_ik_rotation_z: bool,
 }
 
 fn main() {
@@ -514,6 +535,14 @@ fn main() {
         opt.disable_texture,
         opt.web_server_port,
     );
+    let mut ik_constraints = k::Constraints::default();
+    ik_constraints.position_x = !opt.ignore_ik_position_x;
+    ik_constraints.position_y = !opt.ignore_ik_position_y;
+    ik_constraints.position_z = !opt.ignore_ik_position_z;
+    ik_constraints.rotation_x = !opt.ignore_ik_rotation_x;
+    ik_constraints.rotation_y = !opt.ignore_ik_rotation_y;
+    ik_constraints.rotation_z = !opt.ignore_ik_rotation_z;
+    app.set_ik_constraints(ik_constraints);
     app.init();
     app.run();
 }
