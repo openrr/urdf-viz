@@ -28,19 +28,11 @@ extern crate assimp_sys;
 #[cfg(feature = "assimp")]
 mod assimp_utils;
 
-extern crate alga;
-#[macro_use]
-extern crate failure;
-extern crate k;
-extern crate kiss3d;
-#[macro_use]
-extern crate log;
-extern crate nalgebra as na;
+use log::*;
+use nalgebra as na;
 #[macro_use]
 extern crate rouille;
-#[macro_use]
-extern crate serde_derive;
-extern crate urdf_rs;
+//use serde_derive::*;
 
 use kiss3d::scene::SceneNode;
 use std::collections::HashMap;
@@ -53,6 +45,7 @@ mod arc_ball;
 pub use arc_ball::*;
 mod web_server;
 use assimp_utils::*;
+use k::SubsetOf;
 pub use web_server::JointNamesAndPositions;
 pub use web_server::WebServer;
 
@@ -378,13 +371,12 @@ impl Viewer {
     }
     pub fn update<T>(&mut self, robot: &k::Chain<T>)
     where
-        T: k::RealField + alga::general::SubsetOf<f32>,
+        T: k::RealField + SubsetOf<f32> + SubsetOf<f64>,
     {
         robot.update_transforms();
         for link in robot.iter() {
             let trans = link.world_transform().unwrap();
             let link_name = &link.joint().name;
-            use alga::general::SubsetOf;
             let trans_f32: na::Isometry3<f32> = na::Isometry3::to_superset(&trans);
             match self.scenes.get_mut(link_name) {
                 Some(obj) => {

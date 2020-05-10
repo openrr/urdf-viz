@@ -14,10 +14,9 @@
   limitations under the License.
 */
 
-use assimp;
-use assimp_sys;
 use kiss3d::resource::Mesh;
-use na;
+use log::*;
+use nalgebra as na;
 use std::cell::RefCell;
 use std::rc::Rc;
 

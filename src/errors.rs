@@ -15,22 +15,20 @@
 */
 
 use std::io;
+use thiserror::Error;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum Error {
-    #[fail(display = "Error: {:?}", error)]
+    #[error("Error: {:?}", error)]
     Other { error: String },
-    #[fail(display = "IOError: {:?}", error)]
-    IoError { error: io::Error },
+    #[error("IOError: {:?}", source)]
+    IoError {
+        #[from]
+        source: io::Error,
+    },
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;
-
-impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Error {
-        Error::IoError { error }
-    }
-}
 
 impl<'a> From<&'a str> for Error {
     fn from(error: &'a str) -> Error {

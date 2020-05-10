@@ -34,7 +34,8 @@ use kiss3d::camera::Camera;
 use kiss3d::event::{Action, Key, MouseButton, WindowEvent};
 use kiss3d::resource::ShaderUniform;
 use kiss3d::window::Canvas;
-use na::{self, Isometry3, Matrix4, Perspective3, Point3, Vector2, Vector3};
+use na::{Isometry3, Matrix4, Perspective3, Point3, Vector2, Vector3};
+use nalgebra as na;
 use std::f32;
 
 /// Arc-ball camera mode.

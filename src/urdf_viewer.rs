@@ -14,17 +14,9 @@
   limitations under the License.
 */
 
-extern crate env_logger;
-extern crate k;
-extern crate kiss3d;
-extern crate nalgebra as na;
-extern crate rand;
-extern crate structopt;
-extern crate urdf_rs;
-extern crate urdf_viz;
-
 use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
+use nalgebra as na;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -34,7 +26,7 @@ static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Super;
 #[cfg(not(target_os = "macos"))]
 static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Control;
 
-fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> {
+fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::Error> {
     let angles_vec = robot
         .iter_joints()
         .map(|j| match j.limits {
@@ -45,7 +37,7 @@ fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> 
     robot.set_joint_positions(&angles_vec)
 }
 
-fn move_joint_to_zero(robot: &mut k::Chain<f32>) -> Result<(), k::JointError> {
+fn move_joint_to_zero(robot: &mut k::Chain<f32>) -> Result<(), k::Error> {
     let angles_vec = vec![0.0; robot.dof()];
     robot.set_joint_positions(&angles_vec)
 }
@@ -54,7 +46,7 @@ fn move_joint_by_index(
     index: usize,
     diff_angle: f32,
     robot: &mut k::Chain<f32>,
-) -> Result<(), k::JointError> {
+) -> Result<(), k::Error> {
     let mut angles_vec = robot.joint_positions();
     assert!(index < robot.dof());
     angles_vec[index] += diff_angle;
@@ -230,7 +222,7 @@ impl UrdfViewerApp {
     fn set_joint_positions_from_request(
         &mut self,
         joint_positions: &urdf_viz::JointNamesAndPositions,
-    ) -> Result<(), k::JointError> {
+    ) -> Result<(), k::Error> {
         let mut angles = self.robot.joint_positions();
         for (name, angle) in joint_positions
             .names
