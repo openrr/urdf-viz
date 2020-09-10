@@ -1,6 +1,6 @@
 [package]
 name = "urdf-viz"
-version = "0.17.0"
+version = "0.18.0"
 authors = ["Takashi Ogura <t.ogura@gmail.com>"]
 description = "URDF visualization"
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ default = ["assimp"]
 [dependencies]
 env_logger = "0.4.2"
 thiserror = "1.0"
-k = "0.17"
+k = "0.18"
 kiss3d = "0.24"
 log = "0.4"
 nalgebra = "0.21"
