@@ -18,9 +18,6 @@ matrix:
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
 
-before_install:
-  - sh ci/install.sh
-
 before_deploy:
   - sh ci/before_deploy.sh
 
