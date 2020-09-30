@@ -1,5 +1,4 @@
-use rouille;
-use rouille::Response;
+use rouille::*;
 use serde_derive::*;
 use std::sync::{Arc, Mutex};
 
