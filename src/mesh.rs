@@ -1,7 +1,7 @@
+#[cfg(feature = "assimp")]
 use crate::assimp_utils::*;
 use crate::errors::Result;
 use kiss3d::scene::SceneNode;
-use log::*;
 use nalgebra as na;
 use std::path::Path;
 
@@ -16,6 +16,7 @@ pub fn load_mesh<P>(
 where
     P: AsRef<Path>,
 {
+    use log::*;
     let mut base = group.add_group();
     let mut importer = assimp::Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
@@ -95,13 +96,16 @@ where
 #[cfg(not(feature = "assimp"))]
 pub fn load_mesh<P>(
     filename: P,
-    scale: na::Vector3<f32>,
-    opt_color: &Option<na::Point3<f32>>,
-    group: &mut SceneNode,
-    use_texture: bool,
+    _scale: na::Vector3<f32>,
+    _opt_color: &Option<na::Point3<f32>>,
+    _group: &mut SceneNode,
+    _use_texture: bool,
 ) -> Result<SceneNode>
 where
     P: AsRef<Path>,
 {
-    Err(Error::from("load mesh is disabled by feature"))
+    Err(crate::errors::Error::from(format!(
+        "load mesh is disabled by feature: {}",
+        filename.as_ref().display()
+    )))
 }
