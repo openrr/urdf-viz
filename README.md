@@ -163,6 +163,14 @@ $ curl http://127.0.0.1:7777/get_joint_positions | jq
 }
 ```
 
+## features
+
+default features is ["use-assimp"]. If you don't use mesh except for .obj files, you can skip install of assimp by disabling the feature like below.
+
+```bash
+cargo build --no-default-features
+```
+
 ## Gallery
 
 ![sawyer_1.png](img/sawyer_1.png)
