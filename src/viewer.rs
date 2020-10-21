@@ -20,11 +20,15 @@ pub struct Viewer {
 
 impl Viewer {
     pub fn new(title: &str) -> Viewer {
+        Self::with_background_color(title, (0.0, 0.0, 0.3))
+    }
+
+    pub fn with_background_color(title: &str, color: (f32, f32, f32)) -> Viewer {
         let eye = na::Point3::new(3.0f32, 1.0, 1.0);
         let at = na::Point3::new(0.0f32, 0.0, 0.25);
         let mut window = kiss3d::window::Window::new_with_size(title, 1400, 1000);
         window.set_light(kiss3d::light::Light::StickToCamera);
-        window.set_background_color(0.0, 0.0, 0.3);
+        window.set_background_color(color.0, color.1, color.2);
         let mut arc_ball = ArcBall::new(eye, at);
         arc_ball.set_up_axis(na::Vector3::z());
         let font = kiss3d::text::Font::default();
@@ -191,5 +195,40 @@ impl Viewer {
                 }
             }
         }
+    }
+    pub fn add_ground(
+        &mut self,
+        ground_height: f32,
+        panel_size: f32,
+        half_panel_num: i32,
+        ground_color1: (f32, f32, f32),
+        ground_color2: (f32, f32, f32),
+    ) -> Vec<SceneNode> {
+        let mut panels = Vec::new();
+        const PANEL_HEIGHT: f32 = 0.0001;
+
+        for i in -half_panel_num..half_panel_num {
+            for j in -half_panel_num..half_panel_num {
+                let mut c0 = self.window.add_cube(panel_size, panel_size, PANEL_HEIGHT);
+                if (i + j) % 2 == 0 {
+                    c0.set_color(ground_color1.0, ground_color1.1, ground_color1.2);
+                } else {
+                    c0.set_color(ground_color2.0, ground_color2.1, ground_color2.2);
+                }
+                let x_ind = j as f32 + 0.5;
+                let y_ind = i as f32 + 0.5;
+                let trans = na::Isometry3::from_parts(
+                    na::Translation3::new(
+                        panel_size * x_ind,
+                        panel_size * y_ind,
+                        ground_height - PANEL_HEIGHT * 0.5,
+                    ),
+                    na::UnitQuaternion::identity(),
+                );
+                c0.set_local_transformation(trans);
+                panels.push(c0);
+            }
+        }
+        panels
     }
 }

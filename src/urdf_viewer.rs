@@ -107,12 +107,14 @@ impl UrdfViewerApp {
         is_collision: bool,
         disable_texture: bool,
         web_server_port: u16,
+        background_color: (f32, f32, f32),
+        ground_height: Option<f32>,
     ) -> Self {
         let input_path = PathBuf::from(input_file);
         let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(&input_path).unwrap();
         let robot: k::Chain<f32> = (&urdf_robo).into();
         println!("{}", robot);
-        let mut viewer = urdf_viz::Viewer::new("urdf-viz");
+        let mut viewer = urdf_viz::Viewer::with_background_color("urdf-viz", background_color);
         if disable_texture {
             viewer.disable_texture();
         }
@@ -122,6 +124,9 @@ impl UrdfViewerApp {
             is_collision,
         );
         viewer.add_axis_cylinders("origin", 1.0);
+        if let Some(h) = ground_height {
+            viewer.add_ground(h, 0.5, 3, (0.0, 0.8, 0.2), (0.2, 0.2, 0.2));
+        }
         let input_end_link_names = end_link_names.clone();
         if end_link_names.is_empty() {
             end_link_names = robot
@@ -515,6 +520,16 @@ pub struct Opt {
     pub ignore_ik_rotation_y: bool,
     #[structopt(long = "ignore-ik-rotation-z")]
     pub ignore_ik_rotation_z: bool,
+
+    #[structopt(long = "bg-color-r", default_value = "0.0")]
+    pub back_ground_color_r: f32,
+    #[structopt(long = "bg-color-g", default_value = "0.0")]
+    pub back_ground_color_g: f32,
+    #[structopt(long = "bg-color-b", default_value = "0.3")]
+    pub back_ground_color_b: f32,
+
+    #[structopt(long = "ground-height")]
+    pub ground_height: Option<f32>,
 }
 
 fn main() {
@@ -526,6 +541,12 @@ fn main() {
         opt.is_collision,
         opt.disable_texture,
         opt.web_server_port,
+        (
+            opt.back_ground_color_r,
+            opt.back_ground_color_g,
+            opt.back_ground_color_b,
+        ),
+        opt.ground_height,
     );
     let mut ik_constraints = k::Constraints::default();
     ik_constraints.position_x = !opt.ignore_ik_position_x;
