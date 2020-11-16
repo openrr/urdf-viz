@@ -273,6 +273,30 @@ impl UrdfViewerApp {
                 self.index_of_arm.dec();
                 self.update_ik_target_marker();
             }
+            Key::A => {
+                let mut origin = self.robot.origin();
+                origin.translation.vector[1] += 0.1;
+                self.robot.set_origin(origin);
+                self.update_robot();
+            }
+            Key::S => {
+                let mut origin = self.robot.origin();
+                origin.translation.vector[0] -= 0.1;
+                self.robot.set_origin(origin);
+                self.update_robot();
+            }
+            Key::D => {
+                let mut origin = self.robot.origin();
+                origin.translation.vector[1] -= 0.1;
+                self.robot.set_origin(origin);
+                self.update_robot();
+            }
+            Key::W => {
+                let mut origin = self.robot.origin();
+                origin.translation.vector[0] += 0.1;
+                self.robot.set_origin(origin);
+                self.update_robot();
+            }
             Key::C => {
                 self.viewer.remove_robot(&self.urdf_robot);
                 self.is_collision = !self.is_collision;
