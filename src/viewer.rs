@@ -115,8 +115,12 @@ impl Viewer {
         }
     }
     pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
-        for l in &urdf_robot.joints {
-            if let Some(mut scene) = self.scenes.get_mut(&l.name) {
+        for l in &urdf_robot.links {
+            let joint_name = self
+                .link_joint_map
+                .get(&l.name)
+                .expect(&format!("{} not found", l.name));
+            if let Some(mut scene) = self.scenes.get_mut(joint_name) {
                 self.window.remove_node(&mut scene);
             }
         }
