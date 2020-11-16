@@ -226,6 +226,7 @@ impl UrdfViewerApp {
         self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
     }
 
+    /// Handle set_joint_positions request from web server
     fn set_joint_positions_from_request(
         &mut self,
         joint_positions: &urdf_viz::JointNamesAndPositions,
@@ -244,6 +245,22 @@ impl UrdfViewerApp {
         }
         self.robot.set_joint_positions(&angles)
     }
+
+    /// Handle set_origin request from web server
+    fn set_robot_origin_from_request(
+        &mut self,
+        origin: &urdf_viz::RobotOrigin,
+    ) -> Result<(), k::Error> {
+        let pos = origin.position;
+        let q = origin.quaternion;
+        let pose = na::Isometry3::from_parts(
+            na::Translation3::new(pos[0], pos[1], pos[2]),
+            na::UnitQuaternion::new_normalize(na::Quaternion::new(q[0], q[1], q[2], q[3])),
+        );
+        self.robot.set_origin(pose);
+        Ok(())
+    }
+
     fn increment_move_joint_index(&mut self, is_inc: bool) {
         if self.has_joints() {
             self.viewer
@@ -353,7 +370,12 @@ impl UrdfViewerApp {
         let mut last_cur_pos_x = 0f64;
         let solver = k::JacobianIKSolver::default();
         let web_server = urdf_viz::WebServer::new(self.web_server_port);
-        let (target_joint_positions, current_joint_positions) = web_server.clone_in_out();
+        let (
+            target_joint_positions,
+            current_joint_positions,
+            target_robot_origin,
+            current_robot_origin,
+        ) = web_server.clone_in_out();
         if let Ok(mut cur_ja) = current_joint_positions.lock() {
             cur_ja.names = self.names.clone();
         }
@@ -378,6 +400,7 @@ impl UrdfViewerApp {
                     &na::Point3::new(0.5f32, 0.5, 1.0),
                 );
 
+                // Joint positions for web server
                 if let Ok(mut ja) = target_joint_positions.lock() {
                     if ja.requested {
                         match self.set_joint_positions_from_request(&ja.joint_positions) {
@@ -393,6 +416,30 @@ impl UrdfViewerApp {
                 }
                 if let Ok(mut cur_ja) = current_joint_positions.lock() {
                     cur_ja.positions = self.robot.joint_positions();
+                }
+
+                // Robot orientation for web server
+                if let Ok(mut ro) = target_robot_origin.lock() {
+                    if ro.requested {
+                        match self.set_robot_origin_from_request(&ro.origin) {
+                            Ok(_) => {
+                                self.update_robot();
+                                ro.requested = false;
+                            }
+                            Err(err) => {
+                                println!("{}", err);
+                            }
+                        }
+                    }
+                }
+                if let Ok(mut cur_ro) = current_robot_origin.lock() {
+                    let o = self.robot.origin();
+                    for i in 0..3 {
+                        cur_ro.position[i] = o.translation.vector[i];
+                    }
+                    for i in 0..4 {
+                        cur_ro.quaternion[i] = o.rotation.quaternion().coords[i];
+                    }
                 }
             }
             if self.has_arms() {

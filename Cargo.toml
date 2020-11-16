@@ -19,7 +19,7 @@ use-assimp = ["assimp", "assimp-sys"]
 [dependencies]
 env_logger = "0.4.2"
 thiserror = "1.0"
-k = "0.18"
+k = "0.19"
 kiss3d = "0.24"
 log = "0.4"
 nalgebra = "0.21"

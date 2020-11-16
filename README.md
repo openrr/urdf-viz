@@ -163,6 +163,19 @@ $ curl http://127.0.0.1:7777/get_joint_positions | jq
 }
 ```
 
+### Set Robot Origin
+
+```bash
+curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"position":[0.2,0.0,0.0],"quaternion":[0.0,0.0,0.0,1.0]}' http://127.0.0.1:7777/set_robot_origin
+```
+
+### Get Robot Origin
+
+```bash
+$ curl http://127.0.0.1:7777/get_robot_origin
+{"position":[0.2,0.0,0.0],"quaternion":[0.0,0.0,1.0,0.0]}
+```
+
 ## features
 
 default features is ["use-assimp"]. If you don't use mesh except for .obj files, you can skip install of assimp by disabling the feature like below.
