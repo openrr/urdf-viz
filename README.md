@@ -169,11 +169,13 @@ $ curl http://127.0.0.1:7777/get_joint_positions | jq
 curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"position":[0.2,0.0,0.0],"quaternion":[0.0,0.0,0.0,1.0]}' http://127.0.0.1:7777/set_robot_origin
 ```
 
+The order of the quaternion elements is `w, i, j, k`.
+
 ### Get Robot Origin
 
 ```bash
 $ curl http://127.0.0.1:7777/get_robot_origin
-{"position":[0.2,0.0,0.0],"quaternion":[0.0,0.0,1.0,0.0]}
+{"position":[0.2,0.0,0.0],"quaternion":[1.0,0.0,0.0,0.0]}
 ```
 
 ## features
