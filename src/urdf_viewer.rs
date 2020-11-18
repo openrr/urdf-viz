@@ -437,9 +437,10 @@ impl UrdfViewerApp {
                     for i in 0..3 {
                         cur_ro.position[i] = o.translation.vector[i];
                     }
-                    for i in 0..4 {
-                        cur_ro.quaternion[i] = o.rotation.quaternion().coords[i];
-                    }
+                    cur_ro.quaternion[0] = o.rotation.quaternion().w;
+                    cur_ro.quaternion[1] = o.rotation.quaternion().i;
+                    cur_ro.quaternion[2] = o.rotation.quaternion().j;
+                    cur_ro.quaternion[3] = o.rotation.quaternion().k;
                 }
             }
             if self.has_arms() {
