@@ -1,6 +1,6 @@
 use crate::arc_ball::ArcBall;
 use crate::urdf::*;
-use k::SubsetOf;
+use kiss3d::ncollide3d::simba::scalar::SubsetOf;
 use kiss3d::scene::SceneNode;
 use log::*;
 use nalgebra as na;
@@ -155,7 +155,7 @@ impl Viewer {
     }
     pub fn update<T>(&mut self, robot: &k::Chain<T>)
     where
-        T: k::RealField + SubsetOf<f32> + SubsetOf<f64>,
+        T: k::RealField + k::SubsetOf<f64> + kiss3d::ncollide3d::simba::scalar::SubsetOf<f32>,
     {
         robot.update_transforms();
         for link in robot.iter() {

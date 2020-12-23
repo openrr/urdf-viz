@@ -19,10 +19,10 @@ use-assimp = ["assimp", "assimp-sys"]
 [dependencies]
 env_logger = "0.4.2"
 thiserror = "1.0"
-k = "0.20"
-kiss3d = "0.24"
+k = "0.21"
+kiss3d = "0.28"
 log = "0.4"
-nalgebra = "0.21"
+nalgebra = "0.23"
 rand = "0.3.0"
 serde = "1.0"
 serde_derive = "1.0"
