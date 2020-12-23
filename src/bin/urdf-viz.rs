@@ -82,7 +82,20 @@ impl LoopIndex {
     }
 }
 
-const HOW_TO_USE_STR: &str = "[:    joint ID +1\n]:    joint ID -1\n,:    IK target ID +1\n.:    IK target ID -1\nr:    set random angles\nz:    reset angles\nUp:   joint angle +0.1\nDown: joint angle -0.1\nCtrl+Drag: move joint\nShift+Drag: IK (y, z)\nShift+Ctrl+Drag: IK (x, z)\nc:    toggle visual/collision";
+const HOW_TO_USE_STR: &str = r#"[:    joint ID +1
+]:    joint ID -1
+,:    IK target ID +1
+.:    IK target ID -1
+Up:   joint angle +0.1
+Down: joint angle -0.1
+Ctrl+Drag: move joint
+Shift+Drag: IK (y, z)
+Shift+Ctrl+Drag: IK (x, z)
+l:    Reload the file
+r:    set random angles
+z:    reset angles
+c:    toggle visual/collision
+"#;
 
 struct UrdfViewerApp {
     input_path: PathBuf,
