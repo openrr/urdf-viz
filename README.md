@@ -1,4 +1,4 @@
-# urdf-viz [![Build Status](https://travis-ci.org/OTL/urdf-viz.svg?branch=master)](https://travis-ci.org/OTL/urdf-viz) [![Build status](https://ci.appveyor.com/api/projects/status/ea2ymvkh8c90e09t?svg=true)](https://ci.appveyor.com/project/OTL/urdf-viz) [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz)
+# urdf-viz [![Build Status](https://travis-ci.org/openrr/urdf-viz.svg?branch=master)](https://travis-ci.org/openrr/urdf-viz) [![Build status](https://ci.appveyor.com/api/projects/status/ea2ymvkh8c90e09t?svg=true)](https://ci.appveyor.com/project/OTL/urdf-viz) [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz)
 
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 `urdf-viz` is written in Rust-lang.
