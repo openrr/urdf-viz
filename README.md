@@ -1,4 +1,4 @@
-# urdf-viz [![Build Status](https://travis-ci.org/openrr/urdf-viz.svg?branch=master)](https://travis-ci.org/openrr/urdf-viz) [![Build status](https://ci.appveyor.com/api/projects/status/ea2ymvkh8c90e09t?svg=true)](https://ci.appveyor.com/project/OTL/urdf-viz) [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz)
+# urdf-viz [![Build Status](https://img.shields.io/github/workflow/status/openrr/urdf-viz/CI/main)](https://github.com/openrr/urdf-viz/actions?query=workflow%3ACI+branch%3Amain)  [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz)
 
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 `urdf-viz` is written in Rust-lang.
@@ -45,10 +45,12 @@ Install freetype by brew.
 brew install freetype
 ```
 
+<!-- TODO: re-add this
 ## Download binary
 
 If you don't want to install `rust` and `cargo`, you can find
 binary releases of `urdf-viz` for Ubuntu16.04/14.04 64bit, Windows, MacOS [here](https://github.com/OTL/urdf-viz/releases).
+-->
 
 ## How to use
 
