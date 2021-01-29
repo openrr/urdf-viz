@@ -1,5 +1,5 @@
 use rouille::*;
-use serde_derive::*;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]

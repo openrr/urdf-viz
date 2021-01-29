@@ -16,23 +16,18 @@ edition = "2018"
 default = ["use-assimp"]
 use-assimp = ["assimp", "assimp-sys"]
 
+# Note: k, kiss3d, nalgebra, serde, and urdf-rs are public dependencies.
 [dependencies]
-env_logger = "0.4.2"
-thiserror = "1.0"
-k = "0.21"
-kiss3d = "0.28"
+env_logger = "0.8"
+k = "0.22"
+kiss3d = "0.29"
 log = "0.4"
-nalgebra = "0.23"
-rand = "0.3.0"
-serde = "1.0"
-serde_derive = "1.0"
+nalgebra = "0.24"
+rand = "0.8"
+rouille = "3.0"
+serde = { version = "1.0", features = ["derive"] }
 structopt = "0.3"
-urdf-rs = "0.4.2"
-rouille = "2.1.0"
+thiserror = "1.0"
+urdf-rs = "0.6"
 assimp = { version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }
-
-# for MacOS, waiting kiss3d 0.28.1?
-[patch.crates-io]
-
-kiss3d = { git = 'https://github.com/sebcrozet/kiss3d', rev='6274d50' }
