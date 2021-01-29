@@ -33,6 +33,9 @@ pub fn add_geometry(
             }
             Ok(base)
         }
+        urdf_rs::Geometry::Capsule { .. } => {
+            todo!()
+        }
         urdf_rs::Geometry::Sphere { radius } => {
             let mut sphere = group.add_sphere(radius as f32);
             if let Some(color) = *opt_color {
@@ -44,6 +47,7 @@ pub fn add_geometry(
             ref filename,
             scale,
         } => {
+            let scale = scale.unwrap_or(DEFAULT_MESH_SCALE);
             let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);
             let path = Path::new(&replaced_filename);
             if !path.exists() {
@@ -80,10 +84,26 @@ pub fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -
     match urdf_robot
         .materials
         .iter()
-        .find(|mat| mat.name == visual.material.name)
+        .find(|mat| {
+            visual
+                .material
+                .as_ref()
+                .map_or(false, |m| mat.name == m.name)
+        })
         .cloned()
     {
-        Some(ref material) => material.color.rgba,
-        None => visual.material.color.rgba,
+        Some(ref material) => material
+            .color
+            .as_ref()
+            .map(|color| color.rgba)
+            .unwrap_or_default(),
+        None => visual
+            .material
+            .as_ref()
+            .and_then(|material| material.color.as_ref().map(|color| color.rgba))
+            .unwrap_or_default(),
     }
 }
+
+// https://github.com/openrr/urdf-rs/pull/3/files#diff-0fb2eeea3273a4c9b3de69ee949567f546dc8c06b1e190336870d00b54ea0979L36-L38
+const DEFAULT_MESH_SCALE: [f64; 3] = [1.0f64; 3];

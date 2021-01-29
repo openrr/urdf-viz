@@ -381,7 +381,7 @@ impl UrdfViewerApp {
         let mut is_shift = false;
         let mut last_cur_pos_y = 0f64;
         let mut last_cur_pos_x = 0f64;
-        let solver = k::JacobianIKSolver::default();
+        let solver = k::JacobianIkSolver::default();
         let web_server = urdf_viz::WebServer::new(self.web_server_port);
         let (
             target_joint_positions,
@@ -634,7 +634,7 @@ pub struct Opt {
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     let opt = Opt::from_args();
     let mut app = UrdfViewerApp::new(
         &opt.input_urdf_or_xacro,
