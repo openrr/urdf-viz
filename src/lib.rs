@@ -22,6 +22,9 @@
 //!
 
 #[cfg(feature = "assimp")]
+extern crate assimp_crate as assimp;
+
+#[cfg(feature = "assimp")]
 mod assimp_utils;
 
 mod errors;
