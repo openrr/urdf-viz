@@ -182,7 +182,7 @@ $ curl http://127.0.0.1:7777/get_robot_origin
 
 ## features
 
-default features is ["use-assimp"]. If you don't use mesh except for .obj files, you can skip install of assimp by disabling the feature like below.
+default features is ["assimp"]. If you don't use mesh except for .obj files, you can skip install of assimp by disabling the feature like below.
 
 ```bash
 cargo build --no-default-features

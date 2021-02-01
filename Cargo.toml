@@ -13,8 +13,8 @@ exclude = [".github/*", "img/*"]
 edition = "2018"
 
 [features]
-default = ["use-assimp"]
-use-assimp = ["assimp", "assimp-sys"]
+default = ["assimp"]
+assimp = ["assimp-crate", "assimp-sys"]
 
 # Note: k, kiss3d, nalgebra, serde, and urdf-rs are public dependencies.
 [dependencies]
@@ -29,5 +29,5 @@ serde = { version = "1.0", features = ["derive"] }
 structopt = "0.3"
 thiserror = "1.0"
 urdf-rs = "0.6"
-assimp = { version = "0.3.1", optional = true }
+assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }
