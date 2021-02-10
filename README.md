@@ -45,12 +45,11 @@ Install freetype by brew.
 brew install freetype
 ```
 
-<!-- TODO: re-add this
 ## Download binary
 
 If you don't want to install `rust` and `cargo`, you can find
-binary releases of `urdf-viz` for Ubuntu16.04/14.04 64bit, Windows, MacOS [here](https://github.com/OTL/urdf-viz/releases).
--->
+binary releases of `urdf-viz` for Linux, macOS [here](https://github.com/OTL/urdf-viz/releases).
+<!-- TODO: distribute binary for Windows -->
 
 ## How to use
 
