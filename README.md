@@ -48,7 +48,7 @@ brew install freetype
 ## Download binary
 
 If you don't want to install `rust` and `cargo`, you can find
-binary releases of `urdf-viz` for Linux, macOS [here](https://github.com/OTL/urdf-viz/releases).
+binary releases of `urdf-viz` for Linux, macOS [here](https://github.com/openrr/urdf-viz/releases).
 <!-- TODO: distribute binary for Windows -->
 
 ## How to use
@@ -214,7 +214,7 @@ cargo build --no-default-features
 
 * [kiss3d](https://github.com/sebcrozet/kiss3d): `urdf-viz` is strongly depend on `kiss3d`, which is super easy to use, great 3D graphic engine.
 * [nalgabra](https://github.com/sebcrozet/nalgebra): linear algebra library.
-* [k](https://github.com/OTL/k): kinematics library which is based on [nalgabra](https://github.com/sebcrozet/nalgebra). It can load URDF files using `urdf-rs`.
+* [k](https://github.com/openrr/k): kinematics library which is based on [nalgabra](https://github.com/sebcrozet/nalgebra). It can load URDF files using `urdf-rs`.
 * [assimp-rs](https://github.com/Eljay/assimp-rs): assimp rust interface. `kiss3d` supports `.obj` files natively, but urdf contains `dae` or `stl` files. These files are converted to kiss3d mesh model by `assim-rs`
-* [urdf-rs](https://github.com/OTL/urdf-rs): URDF file loader.
+* [urdf-rs](https://github.com/openrr/urdf-rs): URDF file loader.
 * [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
