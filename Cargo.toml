@@ -19,10 +19,10 @@ assimp = ["assimp-crate", "assimp-sys"]
 # Note: k, kiss3d, nalgebra, serde, and urdf-rs are public dependencies.
 [dependencies]
 env_logger = "0.8"
-k = "0.22"
-kiss3d = "0.29"
+k = "0.23"
+kiss3d = "0.30"
 log = "0.4"
-nalgebra = "0.24"
+nalgebra = "0.25"
 rand = "0.8"
 rouille = "3.0"
 serde = { version = "1.0", features = ["derive"] }
