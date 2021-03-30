@@ -25,6 +25,12 @@ and follow the instruction of the installer.
 
 ## Pre-requirements for build
 
+### Common
+
+You need [cmake](https://cmake.org/download/) to use assimp (mesh loader).
+It can be skipped if you use `--no-default-features`, but it will make it
+fail to show mesh files.
+
 ### On Linux
 
 If you have not installed ROS, you may need cmake, xorg-dev, glu to
