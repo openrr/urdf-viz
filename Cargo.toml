@@ -19,6 +19,7 @@ assimp = ["assimp-crate", "assimp-sys"]
 # Note: k, kiss3d, nalgebra, serde, and urdf-rs are public dependencies.
 [dependencies]
 actix-web = "3"
+ctrlc = { version = "3", features = ["termination"] }
 env_logger = "0.8"
 k = "0.23"
 kiss3d = "0.30"
