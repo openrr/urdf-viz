@@ -18,6 +18,7 @@ use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
 use nalgebra as na;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use structopt::StructOpt;
 
 #[cfg(target_os = "macos")]
@@ -392,10 +393,21 @@ impl UrdfViewerApp {
         if let Ok(mut cur_ja) = current_joint_positions.lock() {
             cur_ja.names = self.names.clone();
         }
+
         std::thread::spawn(move || web_server.start());
+
+        static ABORTED: AtomicBool = AtomicBool::new(false);
+        ctrlc::set_handler(|| {
+            ABORTED.store(true, Relaxed);
+        })
+        .unwrap();
+
         const FONT_SIZE_USAGE: f32 = 60.0;
         const FONT_SIZE_INFO: f32 = 80.0;
         while self.viewer.render() {
+            if ABORTED.load(Relaxed) {
+                break;
+            }
             self.viewer.draw_text(
                 HOW_TO_USE_STR,
                 FONT_SIZE_USAGE,
