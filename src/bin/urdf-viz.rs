@@ -94,7 +94,7 @@ Shift+Drag: IK (y, z)
 Shift+Ctrl+Drag: IK (x, z)
 l:    Reload the file
 r:    set random angles
-z:    reset angles
+z:    reset joint positions and origin
 c:    toggle visual/collision
 "#;
 
@@ -355,10 +355,11 @@ impl UrdfViewerApp {
                 }
             }
             Key::Z => {
+                self.robot.set_origin(na::Isometry::identity());
                 if self.has_joints() {
                     move_joint_to_zero(&mut self.robot).unwrap_or(());
-                    self.update_robot();
                 }
+                self.update_robot();
             }
             Key::Up => {
                 if self.has_joints() {
