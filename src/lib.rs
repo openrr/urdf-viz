@@ -29,8 +29,6 @@ mod assimp_utils;
 
 mod errors;
 pub use errors::*;
-mod arc_ball;
-pub use arc_ball::*;
 mod web_server;
 pub use web_server::*;
 mod viewer;
