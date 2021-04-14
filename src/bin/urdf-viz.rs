@@ -582,31 +582,23 @@ impl UrdfViewerApp {
     }
 }
 
+/// Option for visualizing urdf
 #[derive(StructOpt, Debug)]
-#[structopt(name = "urdf_viz", about = "Option for visualizing urdf")]
+#[structopt(name = "urdf_viz")]
 pub struct Opt {
-    #[structopt(help = "Input urdf or xacro")]
+    /// Input urdf or xacro
     pub input_urdf_or_xacro: String,
-    #[structopt(short = "e", long = "end-link-name", help = "end link names")]
+    /// end link names
+    #[structopt(short = "e", long = "end-link-name")]
     pub end_link_names: Vec<String>,
-    #[structopt(
-        short = "c",
-        long = "collision",
-        help = "Show collision element instead of visual"
-    )]
+    /// Show collision element instead of visual
+    #[structopt(short = "c", long = "collision")]
     pub is_collision: bool,
-    #[structopt(
-        short = "d",
-        long = "disable-texture",
-        help = "Disable texture rendering"
-    )]
+    /// Disable texture rendering
+    #[structopt(short = "d", long = "disable-texture")]
     pub disable_texture: bool,
-    #[structopt(
-        short = "p",
-        long = "web-server-port",
-        help = "Port number for web server interface",
-        default_value = "7777"
-    )]
+    /// Port number for web server interface
+    #[structopt(short = "p", long = "web-server-port", default_value = "7777")]
     pub web_server_port: u16,
     #[structopt(long = "ignore-ik-position-x")]
     pub ignore_ik_position_x: bool,
