@@ -83,8 +83,8 @@ impl LoopIndex {
     }
 }
 
-const HOW_TO_USE_STR: &str = r#"[:    joint ID +1
-]:    joint ID -1
+const HOW_TO_USE_STR: &str = r#"o:    joint ID +1
+p:    joint ID -1
 ,:    IK target ID +1
 .:    IK target ID -1
 Up:   joint angle +0.1
@@ -294,8 +294,8 @@ impl UrdfViewerApp {
     }
     fn handle_key_press(&mut self, code: Key) {
         match code {
-            Key::LBracket => self.increment_move_joint_index(true),
-            Key::RBracket => self.increment_move_joint_index(false),
+            Key::O | Key::LBracket => self.increment_move_joint_index(true),
+            Key::P | Key::RBracket => self.increment_move_joint_index(false),
             Key::Period => {
                 self.index_of_arm.inc();
                 self.update_ik_target_marker();
