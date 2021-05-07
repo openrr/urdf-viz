@@ -109,7 +109,7 @@ impl Viewer {
             let joint_name = self
                 .link_joint_map
                 .get(&l.name)
-                .expect(&format!("joint for link '{}' not found", l.name));
+                .unwrap_or_else(|| panic!("joint for link '{}' not found", l.name));
             self.scenes.insert(joint_name.to_owned(), scene_group);
             self.original_colors.insert(joint_name.to_owned(), colors);
         }
@@ -119,7 +119,7 @@ impl Viewer {
             let joint_name = self
                 .link_joint_map
                 .get(&l.name)
-                .expect(&format!("{} not found", l.name));
+                .unwrap_or_else(|| panic!("{} not found", l.name));
             if let Some(mut scene) = self.scenes.get_mut(joint_name) {
                 self.window.remove_node(&mut scene);
             }

@@ -58,8 +58,9 @@ where
 
     // Size of color and mesh are same, use each color for mesh
     if mesh_scenes.len() == colors.len() {
-        let mut count = 0;
-        for (mut mesh_scene, color) in mesh_scenes.into_iter().zip(colors.into_iter()) {
+        for (count, (mut mesh_scene, color)) in
+            mesh_scenes.into_iter().zip(colors.into_iter()).enumerate()
+        {
             mesh_scene.set_color(color[0], color[1], color[2]);
             // Is this OK?
             if count < textures.len() {
@@ -70,7 +71,6 @@ where
                     mesh_scene.set_texture_from_file(&texture_path, texture_path.to_str().unwrap());
                 }
             }
-            count += 1;
         }
     } else {
         // When size of mesh and color mismatch, use only first color/texture for all meshes.

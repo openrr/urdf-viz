@@ -115,6 +115,7 @@ struct UrdfViewerApp {
 }
 
 impl UrdfViewerApp {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         input_file: &str,
         mut end_link_names: Vec<String>,
@@ -656,13 +657,14 @@ fn main() {
         (opt.tile_color2_r, opt.tile_color2_g, opt.tile_color2_b),
         opt.ground_height,
     );
-    let mut ik_constraints = k::Constraints::default();
-    ik_constraints.position_x = !opt.ignore_ik_position_x;
-    ik_constraints.position_y = !opt.ignore_ik_position_y;
-    ik_constraints.position_z = !opt.ignore_ik_position_z;
-    ik_constraints.rotation_x = !opt.ignore_ik_rotation_x;
-    ik_constraints.rotation_y = !opt.ignore_ik_rotation_y;
-    ik_constraints.rotation_z = !opt.ignore_ik_rotation_z;
+    let ik_constraints = k::Constraints {
+        position_x: !opt.ignore_ik_position_x,
+        position_y: !opt.ignore_ik_position_y,
+        position_z: !opt.ignore_ik_position_z,
+        rotation_x: !opt.ignore_ik_rotation_x,
+        rotation_y: !opt.ignore_ik_rotation_y,
+        rotation_z: !opt.ignore_ik_rotation_z,
+    };
     app.set_ik_constraints(ik_constraints);
     app.init();
     app.run();

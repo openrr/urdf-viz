@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
   RUST_BACKTRACE: 1
 
 defaults:
@@ -22,6 +23,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
+    - name: Install Rust
+      # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
+      run: rustup update stable --no-self-update && rustup default stable
 
     - name: Install dependencies (linux)
       run: |
@@ -36,5 +40,6 @@ jobs:
       if: matrix.os == 'windows-latest'
 
     - run: cargo fmt -- --check
+    - run: cargo clippy --all-targets
     - run: cargo build --verbose
     - run: cargo test --verbose
