@@ -69,6 +69,7 @@ impl WebServer {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn clone_in_out(
         &self,
     ) -> (
