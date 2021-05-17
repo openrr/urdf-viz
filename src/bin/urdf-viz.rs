@@ -386,13 +386,8 @@ impl UrdfViewerApp {
         let mut last_cur_pos_x = 0f64;
         let solver = k::JacobianIkSolver::default();
         let web_server = urdf_viz::WebServer::new(self.web_server_port);
-        let (
-            target_joint_positions,
-            current_joint_positions,
-            target_robot_origin,
-            current_robot_origin,
-        ) = web_server.clone_in_out();
-        if let Ok(mut cur_ja) = current_joint_positions.lock() {
+        let data = web_server.data();
+        if let Ok(mut cur_ja) = data.current_joint_positions.lock() {
             cur_ja.names = self.names.clone();
         }
 
@@ -428,7 +423,7 @@ impl UrdfViewerApp {
                 );
 
                 // Joint positions for web server
-                if let Ok(mut ja) = target_joint_positions.lock() {
+                if let Ok(mut ja) = data.target_joint_positions.lock() {
                     if ja.requested {
                         match self.set_joint_positions_from_request(&ja.joint_positions) {
                             Ok(_) => {
@@ -441,12 +436,12 @@ impl UrdfViewerApp {
                         }
                     }
                 }
-                if let Ok(mut cur_ja) = current_joint_positions.lock() {
+                if let Ok(mut cur_ja) = data.current_joint_positions.lock() {
                     cur_ja.positions = self.robot.joint_positions();
                 }
 
                 // Robot orientation for web server
-                if let Ok(mut ro) = target_robot_origin.lock() {
+                if let Ok(mut ro) = data.target_robot_origin.lock() {
                     if ro.requested {
                         match self.set_robot_origin_from_request(&ro.origin) {
                             Ok(_) => {
@@ -459,7 +454,7 @@ impl UrdfViewerApp {
                         }
                     }
                 }
-                if let Ok(mut cur_ro) = current_robot_origin.lock() {
+                if let Ok(mut cur_ro) = data.current_robot_origin.lock() {
                     let o = self.robot.origin();
                     for i in 0..3 {
                         cur_ro.position[i] = o.translation.vector[i];
