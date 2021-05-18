@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: [ "v[0-9]+.*" ]
+    tags: ['v[0-9]+.*']
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install Rust
+        run: rustup update stable
 
       - name: Install dependencies (linux)
         run: |
@@ -25,24 +27,25 @@ jobs:
           sudo apt-get install xorg-dev libglu1-mesa-dev
 
       - run: cargo package
-
       - uses: taiki-e/create-gh-release-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - run: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   upload-assets:
     if: github.repository_owner == 'openrr'
-    needs: [ create-release ]
+    needs: [create-release]
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
+      - name: Install Rust
+        # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
+        run: rustup update stable --no-self-update
 
       - name: Install dependencies (linux)
         run: |
