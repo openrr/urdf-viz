@@ -27,6 +27,7 @@ extern crate assimp_crate as assimp;
 #[cfg(feature = "assimp")]
 mod assimp_utils;
 
+pub mod app;
 mod errors;
 pub use errors::*;
 mod web_server;
