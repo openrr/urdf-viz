@@ -14,9 +14,9 @@
   limitations under the License.
 */
 
+use k::nalgebra as na;
 use kiss3d::resource::Mesh;
 use log::*;
-use nalgebra as na;
 use std::cell::RefCell;
 use std::rc::Rc;
 

@@ -1,9 +1,9 @@
 use crate::errors::Error;
 use crate::errors::Result;
 use crate::mesh::load_mesh;
+use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
 use log::*;
-use nalgebra as na;
 use std::path::Path;
 
 pub fn add_geometry(

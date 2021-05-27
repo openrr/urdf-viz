@@ -1,8 +1,8 @@
 #[cfg(feature = "assimp")]
 use crate::assimp_utils::*;
 use crate::errors::Result;
+use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
-use nalgebra as na;
 use std::path::Path;
 
 #[cfg(feature = "assimp")]
