@@ -24,10 +24,10 @@ use structopt::StructOpt;
 use crate::{JointNamesAndPositions, RobotOrigin, Viewer, WebServer};
 
 #[cfg(target_os = "macos")]
-static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Super;
+static NATIVE_MOD: Modifiers = Modifiers::Super;
 
 #[cfg(not(target_os = "macos"))]
-static NATIVE_MOD: Modifiers = kiss3d::event::Modifiers::Control;
+static NATIVE_MOD: Modifiers = Modifiers::Control;
 
 fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::Error> {
     let angles_vec = robot
@@ -503,7 +503,7 @@ impl UrdfViewerApp {
                             is_ctrl = true;
                             event.inhibited = true;
                         }
-                        if mods.contains(kiss3d::event::Modifiers::Shift) {
+                        if mods.contains(Modifiers::Shift) {
                             is_shift = true;
                             event.inhibited = true;
                         }

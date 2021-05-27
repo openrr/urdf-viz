@@ -38,3 +38,7 @@ mod mesh;
 pub use mesh::*;
 mod urdf;
 pub use urdf::*;
+
+// re-export
+#[doc(no_inline)]
+pub use kiss3d::{self, event::*};
