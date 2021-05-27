@@ -14,9 +14,9 @@
   limitations under the License.
 */
 
+use k::nalgebra as na;
 use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
-use nalgebra as na;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use structopt::StructOpt;

@@ -15,7 +15,7 @@ edition = "2018"
 default = ["assimp"]
 assimp = ["assimp-crate", "assimp-sys"]
 
-# Note: k, kiss3d, nalgebra, serde, and urdf-rs are public dependencies.
+# Note: k, kiss3d, serde, and urdf-rs are public dependencies.
 [dependencies]
 actix-web = "3"
 ctrlc = { version = "3", features = ["termination"] }
@@ -23,11 +23,11 @@ env_logger = "0.8"
 k = "0.24"
 kiss3d = "0.31"
 log = "0.4"
-nalgebra = "0.26"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 structopt = "0.3"
 thiserror = "1.0"
 urdf-rs = "0.6"
+
 assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }

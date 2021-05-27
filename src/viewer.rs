@@ -1,9 +1,9 @@
 use crate::urdf::*;
+use k::nalgebra as na;
 use kiss3d::camera::ArcBall;
 use kiss3d::ncollide3d::simba::scalar::SubsetOf;
 use kiss3d::scene::SceneNode;
 use log::*;
-use nalgebra as na;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
