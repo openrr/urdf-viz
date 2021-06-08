@@ -15,7 +15,7 @@ defaults:
 jobs:
   create-release:
     if: github.repository_owner == 'openrr'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust
@@ -39,7 +39,7 @@ jobs:
     needs: [create-release]
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-18.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -51,7 +51,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install xorg-dev libglu1-mesa-dev
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:

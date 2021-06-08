@@ -19,7 +19,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-18.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -31,13 +31,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install xorg-dev libglu1-mesa-dev
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
       - name: Install dependencies (windows)
         run: |
           git clone https://github.com/PistonDevelopers/binaries
           mv binaries/x86_64/freetype.dll $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
           mv binaries/x86_64/freetype.lib $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
-        if: matrix.os == 'windows-latest'
+        if: startsWith(matrix.os, 'windows')
 
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets
