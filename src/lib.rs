@@ -30,7 +30,9 @@ mod assimp_utils;
 pub mod app;
 mod errors;
 pub use errors::*;
+#[cfg(not(target_arch = "wasm32"))]
 mod web_server;
+#[cfg(not(target_arch = "wasm32"))]
 pub use web_server::*;
 mod viewer;
 pub use viewer::*;
@@ -38,6 +40,7 @@ mod mesh;
 pub use mesh::*;
 mod urdf;
 pub use urdf::*;
+pub mod utils;
 
 // re-export
 #[doc(no_inline)]

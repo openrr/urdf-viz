@@ -11,14 +11,16 @@ documentation = "http://docs.rs/urdf-viz"
 exclude = [".github/*", "img/*"]
 edition = "2018"
 
+[workspace]
+resolver = "2"
+members = ["examples/wasm"]
+
 [features]
 default = ["assimp"]
 assimp = ["assimp-crate", "assimp-sys"]
 
-# Note: k, kiss3d, serde, and urdf-rs are public dependencies.
+# Note: k, kiss3d, serde, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
-actix-web = "3"
-ctrlc = { version = "3", features = ["termination"] }
 env_logger = "0.8"
 k = "0.24"
 kiss3d = "0.31"
@@ -31,3 +33,27 @@ urdf-rs = "0.6"
 
 assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+actix-web = "3"
+ctrlc = { version = "3", features = ["termination"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+futures = "0.3"
+getrandom = { version = "0.2", features = ["js"] }
+serde_qs = "0.8"
+tokio = { version = "1", features = ["sync"] }
+url = "2"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4.23"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Location",
+    "Url",
+    "FileReader",
+    "Blob",
+    "File",
+    "UrlSearchParams",
+    "Response",
+    "WebGlRenderingContext",
+] }

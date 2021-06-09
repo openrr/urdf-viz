@@ -20,27 +20,38 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {
-    #[error("Error: {:?}", error)]
-    Other { error: String },
-    #[error("IOError: {:?}", source)]
-    IoError {
-        #[from]
-        source: io::Error,
-    },
+    #[error("Error: {:?}", .0)]
+    Other(String),
+    #[error("IOError: {:?}", .0)]
+    IoError(#[from] io::Error),
+    #[error("UrdfError: {:?}", .0)]
+    Urdf(#[from] urdf_rs::UrdfError),
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 impl<'a> From<&'a str> for Error {
-    fn from(error: &'a str) -> Error {
-        Error::Other {
-            error: error.to_owned(),
-        }
+    fn from(error: &'a str) -> Self {
+        Error::Other(error.to_owned())
     }
 }
 
 impl From<String> for Error {
-    fn from(error: String) -> Error {
-        Error::Other { error }
+    fn from(error: String) -> Self {
+        Error::Other(error)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<wasm_bindgen::JsValue> for Error {
+    fn from(error: wasm_bindgen::JsValue) -> Self {
+        Error::Other(format!("{:?}", error))
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<Error> for wasm_bindgen::JsValue {
+    fn from(error: Error) -> Self {
+        Self::from_str(&error.to_string())
     }
 }

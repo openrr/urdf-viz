@@ -14,14 +14,23 @@
   limitations under the License.
 */
 
+#![cfg_attr(target_arch = "wasm32", allow(dead_code))]
+
 use k::nalgebra as na;
 use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
+use kiss3d::window::{self, Window};
+use serde::Deserialize;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::{
+    atomic::{AtomicBool, Ordering::Relaxed},
+    Arc,
+};
 use structopt::StructOpt;
 
-use crate::{JointNamesAndPositions, RobotOrigin, Viewer, WebServer};
+use crate::{utils::RobotModel, Viewer};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::{Data, JointNamesAndPositions, RobotOrigin, WebServer};
 
 #[cfg(target_os = "macos")]
 static NATIVE_MOD: Modifiers = Modifiers::Super;
@@ -102,9 +111,11 @@ c:    toggle visual/collision
 
 pub struct UrdfViewerApp {
     input_path: PathBuf,
-    urdf_robot: urdf_rs::Robot,
+    urdf_robot: RobotModel,
+    needs_reload: Arc<AtomicBool>,
     robot: k::Chain<f32>,
     viewer: Viewer,
+    window: Option<Window>,
     arms: Vec<k::SerialChain<f32>>,
     names: Vec<String>,
     input_end_link_names: Vec<String>,
@@ -120,6 +131,7 @@ impl UrdfViewerApp {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         input_file: &str,
+        urdf_robot: urdf_rs::Robot,
         mut end_link_names: Vec<String>,
         is_collision: bool,
         disable_texture: bool,
@@ -130,21 +142,21 @@ impl UrdfViewerApp {
         ground_height: Option<f32>,
     ) -> Self {
         let input_path = PathBuf::from(input_file);
-        let urdf_robo = urdf_rs::utils::read_urdf_or_xacro(&input_path).unwrap();
-        let robot: k::Chain<f32> = (&urdf_robo).into();
+        let robot: k::Chain<f32> = (&urdf_robot).into();
         println!("{}", robot);
-        let mut viewer = Viewer::with_background_color("urdf-viz", background_color);
+        let (mut viewer, mut window) = Viewer::with_background_color("urdf-viz", background_color);
         if disable_texture {
             viewer.disable_texture();
         }
         viewer.add_robot_with_base_dir_and_collision_flag(
-            &urdf_robo,
+            &mut window,
+            &urdf_robot,
             input_path.parent(),
             is_collision,
         );
-        viewer.add_axis_cylinders("origin", 1.0);
+        viewer.add_axis_cylinders(&mut window, "origin", 1.0);
         if let Some(h) = ground_height {
-            viewer.add_ground(h, 0.5, 3, tile_color1, tile_color2);
+            viewer.add_ground(&mut window, h, 0.5, 3, tile_color1, tile_color2);
         }
         let input_end_link_names = end_link_names.clone();
         if end_link_names.is_empty() {
@@ -167,12 +179,15 @@ impl UrdfViewerApp {
         let num_joints = names.len();
         println!("DoF={}", num_joints);
         println!("joint names={:?}", names);
+        let (urdf_robot, needs_reload) = RobotModel::new(urdf_robot);
         UrdfViewerApp {
             input_path,
             viewer,
+            window: Some(window),
             arms,
             input_end_link_names,
-            urdf_robot: urdf_robo,
+            urdf_robot,
+            needs_reload,
             robot,
             num_joints,
             names,
@@ -195,7 +210,9 @@ impl UrdfViewerApp {
     pub fn init(&mut self) {
         self.update_robot();
         if self.has_arms() {
-            self.viewer.add_axis_cylinders("ik_target", 0.2);
+            let mut window = self.window.as_mut().unwrap();
+            self.viewer
+                .add_axis_cylinders(&mut window, "ik_target", 0.2);
             self.update_ik_target_marker();
         }
     }
@@ -223,10 +240,14 @@ impl UrdfViewerApp {
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }
-    fn reload_urdf(&mut self) {
-        self.viewer.remove_robot(&self.urdf_robot);
-        self.urdf_robot = urdf_rs::utils::read_urdf_or_xacro(&self.input_path).unwrap();
-        self.robot = (&self.urdf_robot).into();
+    fn request_reload(&mut self) {
+        self.urdf_robot
+            .request_reload(self.input_path.to_str().unwrap());
+    }
+    fn reload_urdf(&mut self, window: &mut Window) {
+        let urdf_robot = self.urdf_robot.get();
+        self.viewer.remove_robot(window, urdf_robot);
+        self.robot = urdf_robot.into();
         let end_link_names = if self.input_end_link_names.is_empty() {
             self.robot
                 .iter()
@@ -242,8 +263,21 @@ impl UrdfViewerApp {
             .collect::<Vec<_>>();
         self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
     }
+    fn reload_and_update(&mut self, window: &mut Window) {
+        if self.needs_reload.swap(false, Relaxed) {
+            self.reload_urdf(window);
+            self.viewer.add_robot_with_base_dir_and_collision_flag(
+                window,
+                &self.urdf_robot.get(),
+                self.input_path.parent(),
+                self.is_collision,
+            );
+            self.update_robot();
+        }
+    }
 
     /// Handle set_joint_positions request from web server
+    #[cfg(not(target_arch = "wasm32"))]
     fn set_joint_positions_from_request(
         &mut self,
         joint_positions: &JointNamesAndPositions,
@@ -264,7 +298,8 @@ impl UrdfViewerApp {
     }
 
     /// Handle set_origin request from web server
-    fn set_robot_origin_from_request(&mut self, origin: &RobotOrigin) -> Result<(), k::Error> {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn set_robot_origin_from_request(&mut self, origin: &RobotOrigin) {
         let pos = origin.position;
         let q = origin.quaternion;
         let pose = na::Isometry3::from_parts(
@@ -272,7 +307,6 @@ impl UrdfViewerApp {
             na::UnitQuaternion::new_normalize(na::Quaternion::new(q[0], q[1], q[2], q[3])),
         );
         self.robot.set_origin(pose);
-        Ok(())
     }
 
     fn increment_move_joint_index(&mut self, is_inc: bool) {
@@ -292,7 +326,7 @@ impl UrdfViewerApp {
             );
         }
     }
-    fn handle_key_press(&mut self, code: Key) {
+    fn handle_key_press(&mut self, window: &mut Window, code: Key) {
         match code {
             Key::O | Key::LBracket => self.increment_move_joint_index(true),
             Key::P | Key::RBracket => self.increment_move_joint_index(false),
@@ -329,10 +363,11 @@ impl UrdfViewerApp {
                 self.update_robot();
             }
             Key::C => {
-                self.viewer.remove_robot(&self.urdf_robot);
+                self.viewer.remove_robot(window, self.urdf_robot.get());
                 self.is_collision = !self.is_collision;
                 self.viewer.add_robot_with_base_dir_and_collision_flag(
-                    &self.urdf_robot,
+                    window,
+                    self.urdf_robot.get(),
                     self.input_path.parent(),
                     self.is_collision,
                 );
@@ -340,13 +375,8 @@ impl UrdfViewerApp {
             }
             Key::L => {
                 // reload
-                self.reload_urdf();
-                self.viewer.add_robot_with_base_dir_and_collision_flag(
-                    &self.urdf_robot,
-                    self.input_path.parent(),
-                    self.is_collision,
-                );
-                self.update_robot();
+                self.request_reload();
+                self.reload_and_update(window);
             }
             Key::R => {
                 if self.has_joints() {
@@ -378,257 +408,366 @@ impl UrdfViewerApp {
             _ => {}
         };
     }
-    pub fn run(&mut self) {
-        let mut is_ctrl = false;
-        let mut is_shift = false;
-        let mut last_cur_pos_y = 0f64;
-        let mut last_cur_pos_x = 0f64;
+    pub fn run(mut self) {
+        let window = self.window.take().unwrap();
+        let is_ctrl = false;
+        let is_shift = false;
+        let last_cur_pos_y = 0f64;
+        let last_cur_pos_x = 0f64;
         let solver = k::JacobianIkSolver::default();
-        let web_server = WebServer::new(self.web_server_port);
-        let data = web_server.data();
-        if let Ok(mut cur_ja) = data.current_joint_positions.lock() {
-            cur_ja.names = self.names.clone();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let data = {
+            let web_server = WebServer::new(self.web_server_port);
+            let data = web_server.data();
+            if let Ok(mut cur_ja) = data.current_joint_positions.lock() {
+                cur_ja.names = self.names.clone();
+            }
+
+            std::thread::spawn(move || web_server.start());
+
+            ctrlc::set_handler(|| {
+                ABORTED.store(true, Relaxed);
+            })
+            .unwrap();
+
+            data
+        };
+
+        let state = AppState {
+            app: self,
+            #[cfg(not(target_arch = "wasm32"))]
+            data,
+            solver,
+            is_ctrl,
+            is_shift,
+            last_cur_pos_x,
+            last_cur_pos_y,
+        };
+        window.render_loop(state);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+static ABORTED: AtomicBool = AtomicBool::new(false);
+
+struct AppState {
+    app: UrdfViewerApp,
+    #[cfg(not(target_arch = "wasm32"))]
+    data: Arc<Data>,
+    solver: k::JacobianIkSolver<f32>,
+    is_ctrl: bool,
+    is_shift: bool,
+    last_cur_pos_y: f64,
+    last_cur_pos_x: f64,
+}
+
+impl AppState {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn handle_http_request(&mut self) {
+        // Joint positions for web server
+        if let Ok(mut ja) = self.data.target_joint_positions.lock() {
+            if ja.requested {
+                match self
+                    .app
+                    .set_joint_positions_from_request(&ja.joint_positions)
+                {
+                    Ok(_) => {
+                        self.app.update_robot();
+                        ja.requested = false;
+                    }
+                    Err(err) => {
+                        println!("{}", err);
+                    }
+                }
+            }
+        }
+        if let Ok(mut cur_ja) = self.data.current_joint_positions.lock() {
+            cur_ja.positions = self.app.robot.joint_positions();
         }
 
-        std::thread::spawn(move || web_server.start());
-
-        static ABORTED: AtomicBool = AtomicBool::new(false);
-        ctrlc::set_handler(|| {
-            ABORTED.store(true, Relaxed);
-        })
-        .unwrap();
-
-        const FONT_SIZE_USAGE: f32 = 60.0;
-        const FONT_SIZE_INFO: f32 = 80.0;
-        while self.viewer.render() {
-            if ABORTED.load(Relaxed) {
-                break;
+        // Robot orientation for web server
+        if let Ok(mut ro) = self.data.target_robot_origin.lock() {
+            if ro.requested {
+                self.app.set_robot_origin_from_request(&ro.origin);
+                self.app.update_robot();
+                ro.requested = false;
             }
-            self.viewer.draw_text(
-                HOW_TO_USE_STR,
-                FONT_SIZE_USAGE,
-                &na::Point2::new(2000.0, 10.0),
-                &na::Point3::new(1f32, 1.0, 1.0),
-            );
-            if self.has_joints() {
-                self.viewer.draw_text(
-                    &format!(
-                        "moving joint name [{}]",
-                        self.names[self.index_of_move_joint.get()]
-                    ),
-                    FONT_SIZE_INFO,
-                    &na::Point2::new(10f32, 20.0),
-                    &na::Point3::new(0.5f32, 0.5, 1.0),
-                );
-
-                // Joint positions for web server
-                if let Ok(mut ja) = data.target_joint_positions.lock() {
-                    if ja.requested {
-                        match self.set_joint_positions_from_request(&ja.joint_positions) {
-                            Ok(_) => {
-                                self.update_robot();
-                                ja.requested = false;
-                            }
-                            Err(err) => {
-                                println!("{}", err);
-                            }
-                        }
-                    }
-                }
-                if let Ok(mut cur_ja) = data.current_joint_positions.lock() {
-                    cur_ja.positions = self.robot.joint_positions();
-                }
-
-                // Robot orientation for web server
-                if let Ok(mut ro) = data.target_robot_origin.lock() {
-                    if ro.requested {
-                        match self.set_robot_origin_from_request(&ro.origin) {
-                            Ok(_) => {
-                                self.update_robot();
-                                ro.requested = false;
-                            }
-                            Err(err) => {
-                                println!("{}", err);
-                            }
-                        }
-                    }
-                }
-                if let Ok(mut cur_ro) = data.current_robot_origin.lock() {
-                    let o = self.robot.origin();
-                    for i in 0..3 {
-                        cur_ro.position[i] = o.translation.vector[i];
-                    }
-                    cur_ro.quaternion[0] = o.rotation.quaternion().w;
-                    cur_ro.quaternion[1] = o.rotation.quaternion().i;
-                    cur_ro.quaternion[2] = o.rotation.quaternion().j;
-                    cur_ro.quaternion[3] = o.rotation.quaternion().k;
-                }
+        }
+        if let Ok(mut cur_ro) = self.data.current_robot_origin.lock() {
+            let o = self.app.robot.origin();
+            for i in 0..3 {
+                cur_ro.position[i] = o.translation.vector[i];
             }
-            if self.has_arms() {
-                let name = &self
-                    .get_arm()
-                    .iter()
-                    .last()
-                    .unwrap()
-                    .joint()
-                    .name
-                    .to_owned();
-                self.viewer.draw_text(
-                    &format!("IK target name [{}]", name),
-                    FONT_SIZE_INFO,
-                    &na::Point2::new(10f32, 100.0),
-                    &na::Point3::new(0.5f32, 0.8, 0.2),
-                );
-            }
-            if is_ctrl && !is_shift {
-                self.viewer.draw_text(
-                    "moving joint by drag",
-                    FONT_SIZE_INFO,
-                    &na::Point2::new(10f32, 150.0),
-                    &na::Point3::new(0.9f32, 0.5, 1.0),
-                );
-            }
-            if is_shift {
-                self.viewer.draw_text(
-                    "solving ik",
-                    FONT_SIZE_INFO,
-                    &na::Point2::new(10f32, 150.0),
-                    &na::Point3::new(0.9f32, 0.5, 1.0),
-                );
-            }
-            for mut event in self.viewer.events().iter() {
-                match event.value {
-                    WindowEvent::MouseButton(_, Action::Press, mods) => {
-                        if mods.contains(NATIVE_MOD) {
-                            is_ctrl = true;
-                            event.inhibited = true;
-                        }
-                        if mods.contains(Modifiers::Shift) {
-                            is_shift = true;
-                            event.inhibited = true;
-                        }
-                    }
-                    WindowEvent::CursorPos(x, y, _modifiers) => {
-                        if is_ctrl && !is_shift {
-                            event.inhibited = true;
-                            let move_gain = 0.005;
-                            if self.has_joints() {
-                                move_joint_by_index(
-                                    self.index_of_move_joint.get(),
-                                    (((x - last_cur_pos_x) + (y - last_cur_pos_y)) * move_gain)
-                                        as f32,
-                                    &mut self.robot,
-                                )
-                                .unwrap_or(());
-                                self.update_robot();
-                            }
-                        }
-                        if is_shift {
-                            event.inhibited = true;
-                            if self.has_arms() {
-                                self.robot.update_transforms();
-                                let mut target = self.get_end_transform();
-                                let ik_move_gain = 0.002;
-                                target.translation.vector[2] -=
-                                    ((y - last_cur_pos_y) * ik_move_gain) as f32;
-                                if is_ctrl {
-                                    target.translation.vector[0] +=
-                                        ((x - last_cur_pos_x) * ik_move_gain) as f32;
-                                } else {
-                                    target.translation.vector[1] +=
-                                        ((x - last_cur_pos_x) * ik_move_gain) as f32;
-                                }
-
-                                self.update_ik_target_marker();
-                                let orig_angles = self.robot.joint_positions();
-                                solver
-                                    .solve_with_constraints(
-                                        &self.get_arm(),
-                                        &target,
-                                        &self.ik_constraints,
-                                    )
-                                    .unwrap_or_else(|err| {
-                                        self.robot.set_joint_positions_unchecked(&orig_angles);
-                                        println!("Err: {}", err);
-                                    });
-                                self.update_robot();
-                            }
-                        }
-                        last_cur_pos_x = x;
-                        last_cur_pos_y = y;
-                    }
-                    WindowEvent::MouseButton(_, Action::Release, _) => {
-                        if is_ctrl {
-                            is_ctrl = false;
-                            event.inhibited = true;
-                        } else if is_shift {
-                            is_shift = false;
-                            event.inhibited = true;
-                        }
-                    }
-                    WindowEvent::Key(code, Action::Press, _modifiers) => {
-                        self.handle_key_press(code);
-                        event.inhibited = true;
-                    }
-                    _ => {}
-                }
-            }
+            cur_ro.quaternion[0] = o.rotation.quaternion().w;
+            cur_ro.quaternion[1] = o.rotation.quaternion().i;
+            cur_ro.quaternion[2] = o.rotation.quaternion().j;
+            cur_ro.quaternion[3] = o.rotation.quaternion().k;
         }
     }
 }
 
+impl window::State for AppState {
+    fn step(&mut self, window: &mut Window) {
+        const FONT_SIZE_USAGE: f32 = 60.0;
+        const FONT_SIZE_INFO: f32 = 80.0;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if ABORTED.load(Relaxed) {
+            window.close();
+            return;
+        }
+
+        self.app.reload_and_update(window);
+
+        self.app.viewer.draw_text(
+            window,
+            HOW_TO_USE_STR,
+            FONT_SIZE_USAGE,
+            &na::Point2::new(2000.0, 10.0),
+            &na::Point3::new(1f32, 1.0, 1.0),
+        );
+        if self.app.has_joints() {
+            self.app.viewer.draw_text(
+                window,
+                &format!(
+                    "moving joint name [{}]",
+                    self.app.names[self.app.index_of_move_joint.get()]
+                ),
+                FONT_SIZE_INFO,
+                &na::Point2::new(10f32, 20.0),
+                &na::Point3::new(0.5f32, 0.5, 1.0),
+            );
+
+            #[cfg(not(target_arch = "wasm32"))]
+            self.handle_http_request();
+        }
+        if self.app.has_arms() {
+            let name = &self
+                .app
+                .get_arm()
+                .iter()
+                .last()
+                .unwrap()
+                .joint()
+                .name
+                .to_owned();
+            self.app.viewer.draw_text(
+                window,
+                &format!("IK target name [{}]", name),
+                FONT_SIZE_INFO,
+                &na::Point2::new(10f32, 100.0),
+                &na::Point3::new(0.5f32, 0.8, 0.2),
+            );
+        }
+        if self.is_ctrl && !self.is_shift {
+            self.app.viewer.draw_text(
+                window,
+                "moving joint by drag",
+                FONT_SIZE_INFO,
+                &na::Point2::new(10f32, 150.0),
+                &na::Point3::new(0.9f32, 0.5, 1.0),
+            );
+        }
+        if self.is_shift {
+            self.app.viewer.draw_text(
+                window,
+                "solving ik",
+                FONT_SIZE_INFO,
+                &na::Point2::new(10f32, 150.0),
+                &na::Point3::new(0.9f32, 0.5, 1.0),
+            );
+        }
+        for mut event in window.events().iter() {
+            self.app.reload_and_update(window);
+            match event.value {
+                WindowEvent::MouseButton(_, Action::Press, mods) => {
+                    if mods.contains(NATIVE_MOD) {
+                        self.is_ctrl = true;
+                        event.inhibited = true;
+                    }
+                    if mods.contains(Modifiers::Shift) {
+                        self.is_shift = true;
+                        event.inhibited = true;
+                    }
+                }
+                WindowEvent::CursorPos(x, y, _modifiers) => {
+                    if self.is_ctrl && !self.is_shift {
+                        event.inhibited = true;
+                        let move_gain = 0.005;
+                        if self.app.has_joints() {
+                            move_joint_by_index(
+                                self.app.index_of_move_joint.get(),
+                                (((x - self.last_cur_pos_x) + (y - self.last_cur_pos_y))
+                                    * move_gain) as f32,
+                                &mut self.app.robot,
+                            )
+                            .unwrap_or(());
+                            self.app.update_robot();
+                        }
+                    }
+                    if self.is_shift {
+                        event.inhibited = true;
+                        if self.app.has_arms() {
+                            self.app.robot.update_transforms();
+                            let mut target = self.app.get_end_transform();
+                            let ik_move_gain = 0.002;
+                            target.translation.vector[2] -=
+                                ((y - self.last_cur_pos_y) * ik_move_gain) as f32;
+                            if self.is_ctrl {
+                                target.translation.vector[0] +=
+                                    ((x - self.last_cur_pos_x) * ik_move_gain) as f32;
+                            } else {
+                                target.translation.vector[1] +=
+                                    ((x - self.last_cur_pos_x) * ik_move_gain) as f32;
+                            }
+
+                            self.app.update_ik_target_marker();
+                            let orig_angles = self.app.robot.joint_positions();
+                            self.solver
+                                .solve_with_constraints(
+                                    &self.app.get_arm(),
+                                    &target,
+                                    &self.app.ik_constraints,
+                                )
+                                .unwrap_or_else(|err| {
+                                    self.app.robot.set_joint_positions_unchecked(&orig_angles);
+                                    println!("Err: {}", err);
+                                });
+                            self.app.update_robot();
+                        }
+                    }
+                    self.last_cur_pos_x = x;
+                    self.last_cur_pos_y = y;
+                }
+                WindowEvent::MouseButton(_, Action::Release, _) => {
+                    if self.is_ctrl {
+                        self.is_ctrl = false;
+                        event.inhibited = true;
+                    } else if self.is_shift {
+                        self.is_shift = false;
+                        event.inhibited = true;
+                    }
+                }
+                WindowEvent::Key(code, Action::Press, _modifiers) => {
+                    self.app.handle_key_press(window, code);
+                    event.inhibited = true;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn cameras_and_effect_and_renderer(
+        &mut self,
+    ) -> (
+        Option<&mut dyn kiss3d::camera::Camera>,
+        Option<&mut dyn kiss3d::planar_camera::PlanarCamera>,
+        Option<&mut dyn kiss3d::renderer::Renderer>,
+        Option<&mut dyn kiss3d::post_processing::PostProcessingEffect>,
+    ) {
+        (Some(&mut self.app.viewer.arc_ball), None, None, None)
+    }
+}
+
 /// Option for visualizing urdf
-#[derive(StructOpt, Debug)]
-#[structopt(name = "urdf_viz")]
+#[derive(StructOpt, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Opt {
     /// Input urdf or xacro
+    #[serde(default, rename = "urdf")]
     pub input_urdf_or_xacro: String,
     /// end link names
     #[structopt(short = "e", long = "end-link-name")]
+    #[serde(default)]
     pub end_link_names: Vec<String>,
     /// Show collision element instead of visual
     #[structopt(short = "c", long = "collision")]
+    #[serde(default)]
     pub is_collision: bool,
     /// Disable texture rendering
     #[structopt(short = "d", long = "disable-texture")]
+    #[serde(default)]
     pub disable_texture: bool,
     /// Port number for web server interface
     #[structopt(short = "p", long = "web-server-port", default_value = "7777")]
+    #[serde(default = "default_web_server_port")]
     pub web_server_port: u16,
+
     #[structopt(long = "ignore-ik-position-x")]
+    #[serde(default)]
     pub ignore_ik_position_x: bool,
     #[structopt(long = "ignore-ik-position-y")]
+    #[serde(default)]
     pub ignore_ik_position_y: bool,
     #[structopt(long = "ignore-ik-position-z")]
+    #[serde(default)]
     pub ignore_ik_position_z: bool,
+
     #[structopt(long = "ignore-ik-rotation-x")]
+    #[serde(default)]
     pub ignore_ik_rotation_x: bool,
     #[structopt(long = "ignore-ik-rotation-y")]
+    #[serde(default)]
     pub ignore_ik_rotation_y: bool,
     #[structopt(long = "ignore-ik-rotation-z")]
+    #[serde(default)]
     pub ignore_ik_rotation_z: bool,
 
     #[structopt(long = "bg-color-r", default_value = "0.0")]
+    #[serde(default)]
     pub back_ground_color_r: f32,
     #[structopt(long = "bg-color-g", default_value = "0.0")]
+    #[serde(default)]
     pub back_ground_color_g: f32,
     #[structopt(long = "bg-color-b", default_value = "0.3")]
+    #[serde(default = "default_back_ground_color_b")]
     pub back_ground_color_b: f32,
 
     #[structopt(long = "tile-color1-r", default_value = "0.1")]
+    #[serde(default = "default_tile_color1")]
     pub tile_color1_r: f32,
     #[structopt(long = "tile-color1-g", default_value = "0.1")]
+    #[serde(default = "default_tile_color1")]
     pub tile_color1_g: f32,
     #[structopt(long = "tile-color1-b", default_value = "0.1")]
+    #[serde(default = "default_tile_color1")]
     pub tile_color1_b: f32,
 
     #[structopt(long = "tile-color2-r", default_value = "0.8")]
+    #[serde(default = "default_tile_color2")]
     pub tile_color2_r: f32,
     #[structopt(long = "tile-color2-g", default_value = "0.8")]
+    #[serde(default = "default_tile_color2")]
     pub tile_color2_g: f32,
     #[structopt(long = "tile-color2-b", default_value = "0.8")]
+    #[serde(default = "default_tile_color2")]
     pub tile_color2_b: f32,
 
     #[structopt(long = "ground-height")]
     pub ground_height: Option<f32>,
+}
+
+fn default_web_server_port() -> u16 {
+    7777
+}
+fn default_back_ground_color_b() -> f32 {
+    0.3
+}
+fn default_tile_color1() -> f32 {
+    0.1
+}
+fn default_tile_color2() -> f32 {
+    0.8
+}
+
+impl Opt {
+    #[cfg(target_arch = "wasm32")]
+    pub fn from_params() -> Result<Self, crate::Error> {
+        let href = web_sys::window().unwrap().location().href()?;
+        log::debug!("href={}", href);
+        let url = url::Url::parse(&href).map_err(|e| e.to_string())?;
+        Ok(serde_qs::from_str(url.query().unwrap_or_default()).map_err(|e| e.to_string())?)
+    }
 }

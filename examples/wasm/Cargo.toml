@@ -1,0 +1,18 @@
+[package]
+name = "urdf-viz-wasm"
+version = "0.1.0"
+authors = ["Taiki Endo <te316e89@gmail.com>"]
+edition = "2018"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+urdf-viz = { version = "*", path = "../..", default-features = false }
+console_error_panic_hook = "0.1"
+k = "0.24"
+log = "0.4"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+wasm-logger = "0.2"
