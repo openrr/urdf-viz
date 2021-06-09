@@ -74,7 +74,7 @@ impl WebServer {
 
     #[actix_web::main]
     pub async fn start(self) -> io::Result<()> {
-        let data = self.data.clone();
+        let data = self.data();
 
         HttpServer::new(move || {
             App::new()

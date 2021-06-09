@@ -3,15 +3,15 @@ use k::nalgebra as na;
 use kiss3d::camera::ArcBall;
 use kiss3d::ncollide3d::simba::scalar::SubsetOf;
 use kiss3d::scene::SceneNode;
+use kiss3d::window::Window;
 use log::*;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
 pub struct Viewer {
-    pub window: kiss3d::window::Window,
     scenes: HashMap<String, SceneNode>,
-    arc_ball: ArcBall,
+    pub arc_ball: ArcBall,
     font: Rc<kiss3d::text::Font>,
     original_colors: HashMap<String, Vec<na::Point3<f32>>>,
     is_texture_enabled: bool,
@@ -19,11 +19,11 @@ pub struct Viewer {
 }
 
 impl Viewer {
-    pub fn new(title: &str) -> Viewer {
+    pub fn new(title: &str) -> (Viewer, Window) {
         Self::with_background_color(title, (0.0, 0.0, 0.3))
     }
 
-    pub fn with_background_color(title: &str, color: (f32, f32, f32)) -> Viewer {
+    pub fn with_background_color(title: &str, color: (f32, f32, f32)) -> (Viewer, Window) {
         let eye = na::Point3::new(3.0f32, 1.0, 1.0);
         let at = na::Point3::new(0.0f32, 0.0, 0.25);
         let mut window = kiss3d::window::Window::new_with_size(title, 1400, 1000);
@@ -33,15 +33,15 @@ impl Viewer {
         arc_ball.set_up_axis(na::Vector3::z());
         arc_ball.set_dist_step(0.5);
         let font = kiss3d::text::Font::default();
-        Viewer {
-            window,
+        let viewer = Viewer {
             scenes: HashMap::new(),
             arc_ball,
             font,
             original_colors: HashMap::new(),
             is_texture_enabled: true,
             link_joint_map: HashMap::new(),
-        }
+        };
+        (viewer, window)
     }
     pub fn disable_texture(&mut self) {
         self.is_texture_enabled = false;
@@ -50,18 +50,20 @@ impl Viewer {
         self.is_texture_enabled = true;
     }
 
-    pub fn add_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
-        self.add_robot_with_base_dir(urdf_robot, None);
+    pub fn add_robot(&mut self, window: &mut Window, urdf_robot: &urdf_rs::Robot) {
+        self.add_robot_with_base_dir(window, urdf_robot, None);
     }
     pub fn add_robot_with_base_dir(
         &mut self,
+        window: &mut Window,
         urdf_robot: &urdf_rs::Robot,
         base_dir: Option<&Path>,
     ) {
-        self.add_robot_with_base_dir_and_collision_flag(urdf_robot, base_dir, false);
+        self.add_robot_with_base_dir_and_collision_flag(window, urdf_robot, base_dir, false);
     }
     pub fn add_robot_with_base_dir_and_collision_flag(
         &mut self,
+        window: &mut Window,
         urdf_robot: &urdf_rs::Robot,
         base_dir: Option<&Path>,
         is_collision: bool,
@@ -77,7 +79,7 @@ impl Viewer {
             if num == 0 {
                 continue;
             }
-            let mut scene_group = self.window.add_group();
+            let mut scene_group = window.add_group();
             let mut colors = Vec::new();
             for i in 0..num {
                 let (geom_element, origin_element) = if is_collision {
@@ -115,19 +117,19 @@ impl Viewer {
             self.original_colors.insert(joint_name.to_owned(), colors);
         }
     }
-    pub fn remove_robot(&mut self, urdf_robot: &urdf_rs::Robot) {
+    pub fn remove_robot(&mut self, window: &mut Window, urdf_robot: &urdf_rs::Robot) {
         for l in &urdf_robot.links {
             let joint_name = self
                 .link_joint_map
                 .get(&l.name)
                 .unwrap_or_else(|| panic!("{} not found", l.name));
             if let Some(mut scene) = self.scenes.get_mut(joint_name) {
-                self.window.remove_node(&mut scene);
+                window.remove_node(&mut scene);
             }
         }
     }
-    pub fn add_axis_cylinders(&mut self, name: &str, size: f32) {
-        let mut axis_group = self.window.add_group();
+    pub fn add_axis_cylinders(&mut self, window: &mut Window, name: &str, size: f32) {
+        let mut axis_group = window.add_group();
         let mut x = axis_group.add_cylinder(0.01, size);
         x.set_color(0.0, 0.0, 1.0);
         let mut y = axis_group.add_cylinder(0.01, size);
@@ -151,9 +153,6 @@ impl Viewer {
     pub fn scene_node_mut(&mut self, name: &str) -> Option<&mut SceneNode> {
         self.scenes.get_mut(name)
     }
-    pub fn render(&mut self) -> bool {
-        self.window.render_with_camera(&mut self.arc_ball)
-    }
     pub fn update<T>(&mut self, robot: &k::Chain<T>)
     where
         T: k::RealField + k::SubsetOf<f64> + kiss3d::ncollide3d::simba::scalar::SubsetOf<f32>,
@@ -175,15 +174,13 @@ impl Viewer {
     }
     pub fn draw_text(
         &mut self,
+        window: &mut Window,
         text: &str,
         size: f32,
         pos: &na::Point2<f32>,
         color: &na::Point3<f32>,
     ) {
-        self.window.draw_text(text, pos, size, &self.font, color);
-    }
-    pub fn events(&self) -> kiss3d::event::EventManager {
-        self.window.events()
+        window.draw_text(text, pos, size, &self.font, color);
     }
     pub fn set_temporal_color(&mut self, link_name: &str, r: f32, g: f32, b: f32) {
         if let Some(obj) = self.scenes.get_mut(link_name) {
@@ -203,6 +200,7 @@ impl Viewer {
     }
     pub fn add_ground(
         &mut self,
+        window: &mut Window,
         ground_height: f32,
         panel_size: f32,
         half_panel_num: i32,
@@ -214,7 +212,7 @@ impl Viewer {
 
         for i in -half_panel_num..half_panel_num {
             for j in -half_panel_num..half_panel_num {
-                let mut c0 = self.window.add_cube(panel_size, panel_size, PANEL_HEIGHT);
+                let mut c0 = window.add_cube(panel_size, panel_size, PANEL_HEIGHT);
                 if (i + j) % 2 == 0 {
                     c0.set_color(ground_color1.0, ground_color1.1, ground_color1.2);
                 } else {

@@ -18,6 +18,7 @@ defaults:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-18.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -26,6 +27,7 @@ jobs:
       - name: Install Rust
         # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
         run: rustup update stable --no-self-update
+      - run: cargo install cargo-hack
 
       - name: Install dependencies (linux)
         run: |
@@ -41,5 +43,18 @@ jobs:
 
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets
-      - run: cargo build --verbose
-      - run: cargo test --verbose
+      - run: cargo hack build --feature-powerset
+      - run: cargo test
+
+  wasm:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        run: rustup update stable
+      - run: rustup target add wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - run: cargo build --target wasm32-unknown-unknown --no-default-features --lib
+      - name: Build wasm example
+        run: cd examples/wasm && npm install && npm run build

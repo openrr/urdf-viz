@@ -17,11 +17,13 @@
 use structopt::StructOpt;
 use urdf_viz::app::*;
 
-fn main() {
+fn main() -> urdf_viz::Result<()> {
     env_logger::init();
     let opt = Opt::from_args();
+    let urdf_robot = urdf_rs::utils::read_urdf_or_xacro(&opt.input_urdf_or_xacro)?;
     let mut app = UrdfViewerApp::new(
         &opt.input_urdf_or_xacro,
+        urdf_robot,
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,
@@ -46,4 +48,5 @@ fn main() {
     app.set_ik_constraints(ik_constraints);
     app.init();
     app.run();
+    Ok(())
 }
