@@ -1,5 +1,4 @@
-use crate::errors::Error;
-use crate::errors::Result;
+use crate::errors::{Error, Result};
 use crate::mesh::load_mesh;
 use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
@@ -48,31 +47,31 @@ pub fn add_geometry(
             scale,
         } => {
             let scale = scale.unwrap_or(DEFAULT_MESH_SCALE);
-            let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);
-            let path = Path::new(&replaced_filename);
-            if !path.exists() {
-                return Err(Error::from(format!("{} not found", replaced_filename)));
-            }
+            let replaced_filename = if cfg!(target_arch = "wasm32") {
+                filename.to_string()
+            } else {
+                let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);
+                if !Path::new(&replaced_filename).exists() {
+                    return Err(Error::from(format!("{} not found", replaced_filename)));
+                }
+                replaced_filename
+            };
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
             if cfg!(feature = "assimp") {
                 debug!("filename = {}", replaced_filename);
-                load_mesh(path, na_scale, opt_color, group, use_texture)
-            } else if path.extension() == Some(std::ffi::OsStr::new("obj")) {
-                let mut base = group.add_obj(path, path, na_scale);
-                if let Some(color) = *opt_color {
-                    base.set_color(color[0], color[1], color[2]);
-                }
-                Ok(base)
+                load_mesh(replaced_filename, na_scale, opt_color, group, use_texture)
             } else {
-                error!(
-                    "{:?} is not supported, because assimp feature is disabled",
-                    path
-                );
-                let mut base = group.add_cube(0.05f32, 0.05, 0.05);
-                if let Some(color) = *opt_color {
-                    base.set_color(color[0], color[1], color[2]);
+                match load_mesh(replaced_filename, na_scale, opt_color, group, use_texture) {
+                    Ok(scene) => Ok(scene),
+                    Err(e) => {
+                        error!("{}", e);
+                        let mut base = group.add_cube(0.05f32, 0.05, 0.05);
+                        if let Some(color) = *opt_color {
+                            base.set_color(color[0], color[1], color[2]);
+                        }
+                        Ok(base)
+                    }
                 }
-                Ok(base)
             }
         }
     }

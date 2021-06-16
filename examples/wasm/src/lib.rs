@@ -18,7 +18,8 @@ async fn run() -> Result<(), JsValue> {
     if opt.input_urdf_or_xacro.is_empty() {
         opt.input_urdf_or_xacro = SAMPLE_URDF_PATH.to_string();
     }
-    let urdf_robot = urdf_viz::utils::read_urdf(&opt.input_urdf_or_xacro).await?;
+    let mut urdf_robot = urdf_viz::utils::read_urdf(&opt.input_urdf_or_xacro).await?;
+    urdf_viz::utils::load_mesh(&mut urdf_robot, &opt.input_urdf_or_xacro).await?;
     let mut app = UrdfViewerApp::new(
         &opt.input_urdf_or_xacro,
         urdf_robot,
