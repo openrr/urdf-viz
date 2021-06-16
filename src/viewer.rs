@@ -96,17 +96,21 @@ impl Viewer {
                     }
                     colors.push(color);
                 }
-                if let Ok(mut base_group) = add_geometry(
+                match add_geometry(
                     geom_element,
                     &opt_color,
                     base_dir,
                     &mut scene_group,
                     self.is_texture_enabled,
                 ) {
-                    // set initial origin offset
-                    base_group.set_local_transformation(k::urdf::isometry_from(&origin_element));
-                } else {
-                    error!("failed to create for {:?}", l);
+                    Ok(mut base_group) => {
+                        // set initial origin offset
+                        base_group
+                            .set_local_transformation(k::urdf::isometry_from(&origin_element));
+                    }
+                    Err(e) => {
+                        error!("failed to create for link '{}': {}", l.name, e);
+                    }
                 }
             }
             let joint_name = self

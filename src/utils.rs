@@ -49,31 +49,101 @@ mod native {
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {
-    use futures::future::FutureExt;
-    use log::error;
-    use std::sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
+    use std::{
+        path::Path,
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        },
     };
+
+    use futures::future::FutureExt;
+    use log::{debug, error};
+    use serde::{Deserialize, Serialize};
     use tokio::sync::{mpsc, watch};
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::Response;
 
-    use crate::Result;
+    use crate::{Error, Result};
+
+    #[derive(Serialize, Deserialize)]
+    pub(crate) struct Mesh {
+        pub(crate) kind: MeshKind,
+        pub(crate) path: String,
+        pub(crate) data: String,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub(crate) enum MeshKind {
+        Obj,
+        Other,
+    }
 
     pub(crate) fn window() -> Result<web_sys::Window> {
         Ok(web_sys::window().ok_or("failed to get window")?)
     }
 
-    pub async fn read_urdf(input_file: impl AsRef<str>) -> Result<urdf_rs::Robot> {
+    pub(crate) async fn read_to_string(input_file: impl AsRef<str>) -> Result<String> {
         let promise = window()?.fetch_with_str(input_file.as_ref());
 
         let response: Response = JsFuture::from(promise).await?.dyn_into().unwrap();
 
         let s = JsFuture::from(response.text()?).await?;
 
-        Ok(urdf_rs::read_from_string(&s.as_string().unwrap())?)
+        Ok(s.as_string().unwrap())
+    }
+
+    pub async fn read_urdf(input_file: impl AsRef<str>) -> Result<urdf_rs::Robot> {
+        let s = read_to_string(input_file).await?;
+        Ok(urdf_rs::read_from_string(&s)?)
+    }
+
+    pub async fn load_mesh(robot: &mut urdf_rs::Robot, urdf_path: impl AsRef<Path>) -> Result<()> {
+        let urdf_path = urdf_path.as_ref();
+        for geometry in robot.links.iter_mut().flat_map(|link| {
+            link.visual
+                .iter_mut()
+                .map(|v| &mut v.geometry)
+                .chain(link.collision.iter_mut().map(|c| &mut c.geometry))
+        }) {
+            if let urdf_rs::Geometry::Mesh { filename, .. } = geometry {
+                let input_file =
+                    if filename.starts_with("https://") || filename.starts_with("http://") {
+                        filename.clone()
+                    } else if filename.starts_with("package://") {
+                        return Err(Error::from(format!(
+                            "ros package ({}) is not supported in wasm",
+                            filename
+                        )));
+                    } else {
+                        // We don't use url::Url::path/set_path here, because
+                        // urdf_path may be a relative path to a file bundled
+                        // with the server. Path::with_file_name works for wasm
+                        // where the separator is /, so we use it.
+                        urdf_path
+                            .with_file_name(&filename)
+                            .to_str()
+                            .unwrap()
+                            .to_string()
+                    };
+                let (kind, data) = if input_file.ends_with(".obj") {
+                    debug!("loading {}", input_file);
+                    let data = read_to_string(&input_file).await?;
+                    (MeshKind::Obj, data)
+                } else {
+                    (MeshKind::Other, String::new())
+                };
+                let new = serde_json::to_string(&Mesh {
+                    kind,
+                    path: filename.clone(),
+                    data,
+                })
+                .unwrap();
+                *filename = new;
+            }
+        }
+        Ok(())
     }
 
     pub(crate) struct RobotModel {
@@ -91,9 +161,11 @@ mod wasm {
             let needs_reload_clone = needs_reload.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 while let Some(input_file) = request_receiver.recv().await {
-                    match read_urdf(input_file).await {
-                        Ok(robot) => {
-                            if response_sender.send(Arc::new(robot)).is_ok() {
+                    match read_urdf(&input_file).await {
+                        Ok(mut robot) => {
+                            if let Err(e) = load_mesh(&mut robot, input_file).await {
+                                error!("{}", e);
+                            } else if response_sender.send(Arc::new(robot)).is_ok() {
                                 needs_reload_clone.store(true, Ordering::Relaxed);
                             }
                         }
