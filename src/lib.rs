@@ -30,6 +30,8 @@ mod assimp_utils;
 pub mod app;
 mod errors;
 pub use errors::*;
+mod handle;
+pub use handle::*;
 #[cfg(not(target_arch = "wasm32"))]
 mod web_server;
 #[cfg(not(target_arch = "wasm32"))]
