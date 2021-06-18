@@ -14,8 +14,6 @@
   limitations under the License.
 */
 
-#![cfg_attr(target_arch = "wasm32", allow(dead_code))]
-
 use k::nalgebra as na;
 use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
@@ -28,9 +26,11 @@ use std::sync::{
 };
 use structopt::StructOpt;
 
-use crate::{utils::RobotModel, Viewer};
-#[cfg(not(target_arch = "wasm32"))]
-use crate::{Data, JointNamesAndPositions, RobotOrigin, WebServer};
+use crate::{
+    handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle},
+    utils::RobotModel,
+    Viewer,
+};
 
 #[cfg(target_os = "macos")]
 static NATIVE_MOD: Modifiers = Modifiers::Super;
@@ -122,7 +122,7 @@ pub struct UrdfViewerApp {
     num_joints: usize,
     index_of_arm: LoopIndex,
     index_of_move_joint: LoopIndex,
-    web_server_port: u16,
+    handle: Arc<RobotStateHandle>,
     is_collision: bool,
     ik_constraints: k::Constraints,
 }
@@ -135,7 +135,6 @@ impl UrdfViewerApp {
         mut end_link_names: Vec<String>,
         is_collision: bool,
         disable_texture: bool,
-        web_server_port: u16,
         background_color: (f32, f32, f32),
         tile_color1: (f32, f32, f32),
         tile_color2: (f32, f32, f32),
@@ -179,6 +178,8 @@ impl UrdfViewerApp {
         let num_joints = names.len();
         println!("DoF={}", num_joints);
         println!("joint names={:?}", names);
+        let handle = Arc::new(RobotStateHandle::default());
+        handle.current_joint_positions.lock().unwrap().names = names.clone();
         let (urdf_robot, needs_reload) = RobotModel::new(urdf_robot);
         UrdfViewerApp {
             input_path,
@@ -193,10 +194,13 @@ impl UrdfViewerApp {
             names,
             index_of_arm: LoopIndex::new(num_arms),
             index_of_move_joint: LoopIndex::new(num_joints),
-            web_server_port,
+            handle,
             is_collision,
             ik_constraints: k::Constraints::default(),
         }
+    }
+    pub fn handle(&self) -> Arc<RobotStateHandle> {
+        self.handle.clone()
     }
     pub fn set_ik_constraints(&mut self, ik_constraints: k::Constraints) {
         self.ik_constraints = ik_constraints;
@@ -276,8 +280,7 @@ impl UrdfViewerApp {
         }
     }
 
-    /// Handle set_joint_positions request from web server
-    #[cfg(not(target_arch = "wasm32"))]
+    /// Handle set_joint_positions request from server
     fn set_joint_positions_from_request(
         &mut self,
         joint_positions: &JointNamesAndPositions,
@@ -297,8 +300,7 @@ impl UrdfViewerApp {
         self.robot.set_joint_positions(&angles)
     }
 
-    /// Handle set_origin request from web server
-    #[cfg(not(target_arch = "wasm32"))]
+    /// Handle set_origin request from server
     fn set_robot_origin_from_request(&mut self, origin: &RobotOrigin) {
         let pos = origin.position;
         let q = origin.quaternion;
@@ -417,27 +419,13 @@ impl UrdfViewerApp {
         let solver = k::JacobianIkSolver::default();
 
         #[cfg(not(target_arch = "wasm32"))]
-        let data = {
-            let web_server = WebServer::new(self.web_server_port);
-            let data = web_server.data();
-            if let Ok(mut cur_ja) = data.current_joint_positions.lock() {
-                cur_ja.names = self.names.clone();
-            }
-
-            std::thread::spawn(move || web_server.start());
-
-            ctrlc::set_handler(|| {
-                ABORTED.store(true, Relaxed);
-            })
-            .unwrap();
-
-            data
-        };
+        ctrlc::set_handler(|| {
+            ABORTED.store(true, Relaxed);
+        })
+        .unwrap();
 
         let state = AppState {
             app: self,
-            #[cfg(not(target_arch = "wasm32"))]
-            data,
             solver,
             is_ctrl,
             is_shift,
@@ -453,8 +441,6 @@ static ABORTED: AtomicBool = AtomicBool::new(false);
 
 struct AppState {
     app: UrdfViewerApp,
-    #[cfg(not(target_arch = "wasm32"))]
-    data: Arc<Data>,
     solver: k::JacobianIkSolver<f32>,
     is_ctrl: bool,
     is_shift: bool,
@@ -463,47 +449,36 @@ struct AppState {
 }
 
 impl AppState {
-    #[cfg(not(target_arch = "wasm32"))]
-    fn handle_http_request(&mut self) {
-        // Joint positions for web server
-        if let Ok(mut ja) = self.data.target_joint_positions.lock() {
-            if ja.requested {
-                match self
-                    .app
-                    .set_joint_positions_from_request(&ja.joint_positions)
-                {
-                    Ok(_) => {
-                        self.app.update_robot();
-                        ja.requested = false;
-                    }
-                    Err(err) => {
-                        println!("{}", err);
-                    }
+    fn handle_request(&mut self) {
+        let handle = self.app.handle();
+
+        // Joint positions for server
+        if let Some(ja) = handle.target_joint_positions.lock().unwrap().take() {
+            match self.app.set_joint_positions_from_request(&ja) {
+                Ok(_) => {
+                    self.app.update_robot();
+                }
+                Err(err) => {
+                    println!("{}", err);
                 }
             }
         }
-        if let Ok(mut cur_ja) = self.data.current_joint_positions.lock() {
-            cur_ja.positions = self.app.robot.joint_positions();
-        }
+        handle.current_joint_positions.lock().unwrap().positions = self.app.robot.joint_positions();
 
-        // Robot orientation for web server
-        if let Ok(mut ro) = self.data.target_robot_origin.lock() {
-            if ro.requested {
-                self.app.set_robot_origin_from_request(&ro.origin);
-                self.app.update_robot();
-                ro.requested = false;
-            }
+        // Robot orientation for server
+        if let Some(ro) = handle.target_robot_origin.lock().unwrap().take() {
+            self.app.set_robot_origin_from_request(&ro);
+            self.app.update_robot();
         }
-        if let Ok(mut cur_ro) = self.data.current_robot_origin.lock() {
-            let o = self.app.robot.origin();
-            for i in 0..3 {
-                cur_ro.position[i] = o.translation.vector[i];
-            }
-            cur_ro.quaternion[0] = o.rotation.quaternion().w;
-            cur_ro.quaternion[1] = o.rotation.quaternion().i;
-            cur_ro.quaternion[2] = o.rotation.quaternion().j;
-            cur_ro.quaternion[3] = o.rotation.quaternion().k;
+        let mut cur_ro = handle.current_robot_origin.lock().unwrap();
+        let o = self.app.robot.origin();
+        for i in 0..3 {
+            cur_ro.position[i] = o.translation.vector[i];
         }
+        cur_ro.quaternion[0] = o.rotation.quaternion().w;
+        cur_ro.quaternion[1] = o.rotation.quaternion().i;
+        cur_ro.quaternion[2] = o.rotation.quaternion().j;
+        cur_ro.quaternion[3] = o.rotation.quaternion().k;
     }
 }
 
@@ -539,8 +514,7 @@ impl window::State for AppState {
                 &na::Point3::new(0.5f32, 0.5, 1.0),
             );
 
-            #[cfg(not(target_arch = "wasm32"))]
-            self.handle_http_request();
+            self.handle_request();
         }
         if self.app.has_arms() {
             let name = &self

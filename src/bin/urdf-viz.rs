@@ -15,7 +15,7 @@
 */
 
 use structopt::StructOpt;
-use urdf_viz::app::*;
+use urdf_viz::{app::*, WebServer};
 
 fn main() -> urdf_viz::Result<()> {
     env_logger::init();
@@ -27,7 +27,6 @@ fn main() -> urdf_viz::Result<()> {
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,
-        opt.web_server_port,
         (
             opt.back_ground_color_r,
             opt.back_ground_color_g,
@@ -47,6 +46,8 @@ fn main() -> urdf_viz::Result<()> {
     };
     app.set_ik_constraints(ik_constraints);
     app.init();
+    let web_server = WebServer::new(opt.web_server_port, app.handle());
+    std::thread::spawn(move || web_server.start());
     app.run();
     Ok(())
 }

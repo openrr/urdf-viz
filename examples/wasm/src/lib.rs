@@ -26,7 +26,6 @@ async fn run() -> Result<(), JsValue> {
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,
-        opt.web_server_port,
         (
             opt.back_ground_color_r,
             opt.back_ground_color_g,
