@@ -12,6 +12,7 @@ mod native {
 
     use log::error;
 
+    #[derive(Debug)]
     pub(crate) struct RobotModel {
         robot: urdf_rs::Robot,
         needs_reload: Arc<AtomicBool>,
@@ -214,6 +215,7 @@ mod wasm {
         Ok(())
     }
 
+    #[derive(Debug)]
     pub(crate) struct RobotModel {
         request_sender: mpsc::UnboundedSender<String>,
         response_receiver: watch::Receiver<Arc<urdf_rs::Robot>>,

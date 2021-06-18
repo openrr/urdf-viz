@@ -19,6 +19,7 @@ use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
 use kiss3d::window::{self, Window};
 use serde::Deserialize;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},
@@ -65,6 +66,7 @@ fn move_joint_by_index(
     robot.set_joint_positions(&angles_vec)
 }
 
+#[derive(Debug)]
 struct LoopIndex {
     index: usize,
     size: usize,
@@ -433,6 +435,28 @@ impl UrdfViewerApp {
             last_cur_pos_y,
         };
         window.render_loop(state);
+    }
+}
+
+impl fmt::Debug for UrdfViewerApp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // kiss3d::window::Window doesn't implement Debug.
+        f.debug_struct("UrdfViewerApp")
+            .field("input_path", &self.input_path)
+            .field("urdf_robot", &self.urdf_robot)
+            .field("needs_reload", &self.needs_reload)
+            .field("robot", &self.robot)
+            .field("viewer", &self.viewer)
+            .field("arms", &self.arms)
+            .field("names", &self.names)
+            .field("input_end_link_names", &self.input_end_link_names)
+            .field("num_joints", &self.num_joints)
+            .field("index_of_arm", &self.index_of_arm)
+            .field("index_of_move_joint", &self.index_of_move_joint)
+            .field("handle", &self.handle)
+            .field("is_collision", &self.is_collision)
+            .field("ik_constraints", &self.ik_constraints)
+            .finish()
     }
 }
 
