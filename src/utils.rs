@@ -50,7 +50,9 @@ mod native {
 #[cfg(target_arch = "wasm32")]
 mod wasm {
     use std::{
+        io::Cursor,
         path::Path,
+        str,
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
@@ -58,6 +60,7 @@ mod wasm {
     };
 
     use futures::future::FutureExt;
+    use js_sys::Uint8Array;
     use log::{debug, error};
     use serde::{Deserialize, Serialize};
     use tokio::sync::{mpsc, watch};
@@ -71,12 +74,50 @@ mod wasm {
     pub(crate) struct Mesh {
         pub(crate) kind: MeshKind,
         pub(crate) path: String,
-        pub(crate) data: String,
+        data: MeshData,
+    }
+
+    impl Mesh {
+        pub(crate) fn decode(data: &str) -> Result<Self> {
+            let mut mesh: Self = serde_json::from_str(data).map_err(|e| e.to_string())?;
+            match &mesh.data {
+                MeshData::None => {}
+                MeshData::Base64(s) => {
+                    mesh.data = MeshData::Bytes(base64::decode(s).map_err(|e| e.to_string())?);
+                }
+                MeshData::Bytes(_) => unreachable!(),
+            }
+            Ok(mesh)
+        }
+
+        pub(crate) fn reader(&self) -> Option<Cursor<&[u8]>> {
+            match &self.data {
+                MeshData::None => None,
+                MeshData::Bytes(bytes) => Some(Cursor::new(bytes)),
+                MeshData::Base64(_) => unreachable!(),
+            }
+        }
+
+        pub(crate) fn string(&self) -> Option<&str> {
+            match &self.data {
+                MeshData::None => None,
+                MeshData::Bytes(s) => str::from_utf8(s).ok(),
+                MeshData::Base64(..) => unreachable!(),
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize)]
+    enum MeshData {
+        Base64(String),
+        Bytes(Vec<u8>),
+        None,
     }
 
     #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     pub(crate) enum MeshKind {
         Obj,
+        Stl,
         Other,
     }
 
@@ -84,14 +125,32 @@ mod wasm {
         Ok(web_sys::window().ok_or("failed to get window")?)
     }
 
-    pub(crate) async fn read_to_string(input_file: impl AsRef<str>) -> Result<String> {
-        let promise = window()?.fetch_with_str(input_file.as_ref());
+    async fn fetch(input_file: &str) -> Result<Response> {
+        let promise = window()?.fetch_with_str(input_file);
 
-        let response: Response = JsFuture::from(promise).await?.dyn_into().unwrap();
+        let response = JsFuture::from(promise)
+            .await?
+            .dyn_into::<Response>()
+            .unwrap();
 
-        let s = JsFuture::from(response.text()?).await?;
+        Ok(response)
+    }
 
-        Ok(s.as_string().unwrap())
+    async fn read_to_string(input_file: impl AsRef<str>) -> Result<String> {
+        let promise = fetch(input_file.as_ref()).await?.text()?;
+
+        let s = JsFuture::from(promise).await?;
+
+        Ok(s.as_string()
+            .ok_or_else(|| format!("{} is not string", input_file.as_ref()))?)
+    }
+
+    async fn read(input_file: impl AsRef<str>) -> Result<Vec<u8>> {
+        let promise = fetch(input_file.as_ref()).await?.array_buffer()?;
+
+        let bytes = JsFuture::from(promise).await?;
+
+        Ok(Uint8Array::new(&bytes).to_vec())
     }
 
     pub async fn read_urdf(input_file: impl AsRef<str>) -> Result<urdf_rs::Robot> {
@@ -127,13 +186,22 @@ mod wasm {
                             .unwrap()
                             .to_string()
                     };
-                let (kind, data) = if input_file.ends_with(".obj") {
-                    debug!("loading {}", input_file);
-                    let data = read_to_string(&input_file).await?;
-                    (MeshKind::Obj, data)
+
+                let kind = if input_file.ends_with(".obj") || input_file.ends_with(".OBJ") {
+                    MeshKind::Obj
+                } else if input_file.ends_with(".stl") || input_file.ends_with(".STL") {
+                    MeshKind::Stl
                 } else {
-                    (MeshKind::Other, String::new())
+                    MeshKind::Other
                 };
+
+                let data = if kind != MeshKind::Other {
+                    debug!("loading {}", input_file);
+                    MeshData::Base64(base64::encode(read(&input_file).await?))
+                } else {
+                    MeshData::None
+                };
+
                 let new = serde_json::to_string(&Mesh {
                     kind,
                     path: filename.clone(),

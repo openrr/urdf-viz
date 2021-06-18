@@ -2,10 +2,13 @@
 use crate::assimp_utils::*;
 use crate::errors::Result;
 use k::nalgebra as na;
-use kiss3d::scene::SceneNode;
+use kiss3d::{resource::Mesh, scene::SceneNode};
 use log::*;
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
+use std::{cell::RefCell, io, rc::Rc};
+
+type RefCellMesh = Rc<RefCell<Mesh>>;
 
 #[cfg(feature = "assimp")]
 pub fn load_mesh(
@@ -99,26 +102,38 @@ pub fn load_mesh(
     group: &mut SceneNode,
     _use_texture: bool,
 ) -> Result<SceneNode> {
+    use std::{ffi::OsStr, fs::File};
+
     let filename = Path::new(filename.as_ref());
 
-    if filename.extension() == Some("obj".as_ref()) {
-        let mtl_path = filename.parent().unwrap_or_else(|| Path::new("."));
-        debug!(
-            "load obj: path = {}, mtl_path = {}",
-            filename.display(),
-            mtl_path.display()
-        );
-        let mut base = group.add_obj(filename, mtl_path, scale);
-        if let Some(color) = *opt_color {
-            base.set_color(color[0], color[1], color[2]);
+    match filename.extension().and_then(OsStr::to_str) {
+        Some("obj") | Some("OBJ") => {
+            let mtl_path = filename.parent().unwrap_or_else(|| Path::new("."));
+            debug!(
+                "load obj: path = {}, mtl_path = {}",
+                filename.display(),
+                mtl_path.display()
+            );
+            let mut base = group.add_obj(filename, mtl_path, scale);
+            if let Some(color) = *opt_color {
+                base.set_color(color[0], color[1], color[2]);
+            }
+            Ok(base)
         }
-        return Ok(base);
+        Some("stl") | Some("STL") => {
+            debug!("load stl: path = {}", filename.display());
+            let mesh = read_stl(File::open(filename)?)?;
+            let mut base = group.add_mesh(mesh, scale);
+            if let Some(color) = *opt_color {
+                base.set_color(color[0], color[1], color[2]);
+            }
+            Ok(base)
+        }
+        _ => Err(crate::errors::Error::from(format!(
+            "{} is not supported, because assimp feature is disabled",
+            filename.display()
+        ))),
     }
-
-    Err(crate::errors::Error::from(format!(
-        "{} is not supported, because assimp feature is disabled",
-        filename.display()
-    )))
 }
 
 /// NOTE: Unlike other platforms, the first argument should be the data loaded
@@ -132,34 +147,44 @@ pub fn load_mesh(
     group: &mut SceneNode,
     _use_texture: bool,
 ) -> Result<SceneNode> {
-    let data: crate::utils::Mesh = serde_json::from_str(data.as_ref()).unwrap();
+    use crate::utils::MeshKind;
 
-    if data.kind == crate::utils::MeshKind::Obj {
-        debug!("load obj: path = {}", data.path);
-        let mut base = add_obj(group, &data, scale);
-        if let Some(color) = *opt_color {
-            base.set_color(color[0], color[1], color[2]);
+    let data = crate::utils::Mesh::decode(data.as_ref())?;
+
+    match data.kind {
+        MeshKind::Obj => {
+            debug!("load obj: path = {}", data.path);
+            let mut base = add_obj(group, &data, scale);
+            if let Some(color) = *opt_color {
+                base.set_color(color[0], color[1], color[2]);
+            }
+            Ok(base)
         }
-        return Ok(base);
+        MeshKind::Stl => {
+            debug!("load stl: path = {}", data.path);
+            let mesh = read_stl(data.reader().unwrap())?;
+            let mut base = group.add_mesh(mesh, scale);
+            if let Some(color) = *opt_color {
+                base.set_color(color[0], color[1], color[2]);
+            }
+            Ok(base)
+        }
+        MeshKind::Other => Err(crate::errors::Error::from(format!(
+            "{} is not supported, because assimp feature is disabled",
+            data.path
+        ))),
     }
-
-    Err(crate::errors::Error::from(format!(
-        "{} is not supported, because assimp feature is disabled",
-        data.path
-    )))
 }
 
 // Refs: https://github.com/sebcrozet/kiss3d/blob/73ff15dc40aaf994f3e8e240c23bb660be71a6cd/src/scene/scene_node.rs#L807-L866
 #[cfg(not(feature = "assimp"))]
 #[cfg(target_arch = "wasm32")]
 fn add_obj(group: &mut SceneNode, data: &crate::utils::Mesh, scale: na::Vector3<f32>) -> SceneNode {
-    use std::{cell::RefCell, rc::Rc};
-
     let tex = kiss3d::resource::TextureManager::get_global_manager(|tm| tm.get_default());
     let mat = kiss3d::resource::MaterialManager::get_global_manager(|mm| mm.get_default());
 
     // TODO: mtl
-    let objs = kiss3d::loader::obj::parse(&data.data, ".".as_ref(), &data.path);
+    let objs = kiss3d::loader::obj::parse(data.string().unwrap(), ".".as_ref(), &data.path);
     let mut root;
 
     let self_root = objs.len() == 1;
@@ -189,4 +214,30 @@ fn add_obj(group: &mut SceneNode, data: &crate::utils::Mesh, scale: na::Vector3<
     } else {
         root
     }
+}
+
+pub fn read_stl(mut reader: impl io::Read + io::Seek) -> Result<RefCellMesh> {
+    let mesh = stl_io::read_stl(&mut reader)?;
+
+    let vertices = mesh
+        .vertices
+        .iter()
+        .map(|v| na::Point3::new(v[0], v[1], v[2]))
+        .collect();
+
+    let indices = mesh
+        .faces
+        .iter()
+        .map(|face| {
+            na::Point3::new(
+                face.vertices[0] as u16,
+                face.vertices[1] as u16,
+                face.vertices[2] as u16,
+            )
+        })
+        .collect();
+
+    Ok(Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+        vertices, indices, None, None, false,
+    ))))
 }
