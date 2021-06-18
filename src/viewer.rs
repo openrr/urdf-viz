@@ -6,6 +6,7 @@ use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
 use log::*;
 use std::collections::HashMap;
+use std::fmt;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -237,5 +238,17 @@ impl Viewer {
             }
         }
         panels
+    }
+}
+
+impl fmt::Debug for Viewer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // kiss3d::scene::SceneNode and kiss3d::text::Font don't implement Debug.
+        f.debug_struct("Viewer")
+            .field("scenes", &self.scenes.keys())
+            .field("original_colors", &self.original_colors)
+            .field("is_texture_enabled", &self.is_texture_enabled)
+            .field("link_joint_map", &self.link_joint_map)
+            .finish()
     }
 }
