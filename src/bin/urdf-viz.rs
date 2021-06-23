@@ -23,6 +23,7 @@ fn main() -> urdf_viz::Result<()> {
     env_logger::init();
     let opt = Opt::from_args();
     let urdf_robot = urdf_rs::utils::read_urdf_or_xacro(&opt.input_urdf_or_xacro)?;
+    let ik_constraints = opt.create_ik_constraints();
     let mut app = UrdfViewerApp::new(
         &opt.input_urdf_or_xacro,
         urdf_robot,
@@ -38,14 +39,6 @@ fn main() -> urdf_viz::Result<()> {
         (opt.tile_color2_r, opt.tile_color2_g, opt.tile_color2_b),
         opt.ground_height,
     );
-    let ik_constraints = k::Constraints {
-        position_x: !opt.ignore_ik_position_x,
-        position_y: !opt.ignore_ik_position_y,
-        position_z: !opt.ignore_ik_position_z,
-        rotation_x: !opt.ignore_ik_rotation_x,
-        rotation_y: !opt.ignore_ik_rotation_y,
-        rotation_z: !opt.ignore_ik_rotation_z,
-    };
     app.set_ik_constraints(ik_constraints);
     app.init();
     let web_server = WebServer::new(opt.web_server_port, app.handle());

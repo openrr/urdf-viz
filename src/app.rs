@@ -761,6 +761,17 @@ fn default_tile_color2() -> f32 {
 }
 
 impl Opt {
+    pub fn create_ik_constraints(&self) -> k::Constraints {
+        k::Constraints {
+            position_x: !self.ignore_ik_position_x,
+            position_y: !self.ignore_ik_position_y,
+            position_z: !self.ignore_ik_position_z,
+            rotation_x: !self.ignore_ik_rotation_x,
+            rotation_y: !self.ignore_ik_rotation_y,
+            rotation_z: !self.ignore_ik_rotation_z,
+        }
+    }
+
     #[cfg(target_arch = "wasm32")]
     pub fn from_params() -> Result<Self, crate::Error> {
         let href = crate::utils::window()?.location().href()?;
