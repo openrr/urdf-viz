@@ -763,7 +763,7 @@ fn default_tile_color2() -> f32 {
 impl Opt {
     #[cfg(target_arch = "wasm32")]
     pub fn from_params() -> Result<Self, crate::Error> {
-        let href = web_sys::window().unwrap().location().href()?;
+        let href = crate::utils::window()?.location().href()?;
         log::debug!("href={}", href);
         let url = url::Url::parse(&href).map_err(|e| e.to_string())?;
         Ok(serde_qs::from_str(url.query().unwrap_or_default()).map_err(|e| e.to_string())?)
