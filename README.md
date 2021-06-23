@@ -15,37 +15,36 @@ If you are using rust-lang already and `cargo` is installed, you can install by 
 cargo install urdf-viz
 ```
 
-#### (FYI) Install `cargo`
+If you don't use mesh other than `.obj` and `.stl` files, you can skip install
+of assimp by disabling the `assimp` feature like below.
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo build --no-default-features
 ```
 
-and follow the instruction of the installer.
+### Pre-requirements for build
 
-## Pre-requirements for build
-
-### Common
+#### Common
 
 You need [cmake](https://cmake.org/download/) to use assimp (mesh loader).
 It can be skipped if you use `--no-default-features`, but it will make it
-fail to show mesh files.
+fail to show mesh files other than `.obj` and `.stl`.
 
-### On Linux
+#### On Linux
 
-If you have not installed ROS, you may need cmake, xorg-dev, glu to
-compile assimp-sys and glfw-sys.
+If you have not installed ROS, you may need `cmake`, `xorg-dev`, `glu` to
+compile `assimp-sys` and `glfw-sys`.
 
 ```bash
 sudo apt-get install cmake xorg-dev libglu1-mesa-dev
 ```
 
-### On Windows
+#### On Windows
 
 You need freetype.lib in your PATH, which is required by `freetype-sys`.
 You can find binaries [here](https://github.com/PistonDevelopers/binaries)
 
-### On MacOS
+#### On MacOS
 
 Install freetype by brew.
 
@@ -53,11 +52,20 @@ Install freetype by brew.
 brew install freetype
 ```
 
-## Download binary
+### Download binary
 
-If you don't want to install `rust` and `cargo`, you can find
-binary releases of `urdf-viz` for Linux, macOS [here](https://github.com/openrr/urdf-viz/releases).
+You can download prebuilt binaries from the [release page](https://github.com/openrr/urdf-viz/releases).
+Prebuilt binaries are available for macOS and Linux.
+
 <!-- TODO: distribute binary for Windows -->
+
+### Install via Homebrew
+
+You can install urdf-viz using [Homebrew tap on macOS and Linux](https://github.com/openrr/homebrew-tap/blob/main/Formula/urdf-viz.rb):
+
+```sh
+brew install openrr/tap/urdf-viz
+```
 
 ## How to use
 
@@ -128,7 +136,7 @@ all joint names, it means you can specify a part of the joints.
 You can try it using `curl`.
 
 ```bash
-$ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"names": ["r_shoulder_yaw", "r_shoulder_pitch"], "positions": [0.8, -0.8]}'  http://127.0.0.1:7777/set_joint_positions | jq
+$ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"names": ["r_shoulder_yaw", "r_shoulder_pitch"], "positions": [0.8, -0.8]}' http://127.0.0.1:7777/set_joint_positions | jq
 {
   "is_ok": true,
   "reason": ""
@@ -176,7 +184,8 @@ $ curl http://127.0.0.1:7777/get_joint_positions | jq
 ### Set Robot Origin
 
 ```bash
-curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"position":[0.2,0.0,0.0],"quaternion":[0.0,0.0,0.0,1.0]}' http://127.0.0.1:7777/set_robot_origin
+$ curl -H "Accept: application/json" -H "Content-type: application/json" -X POST -d '{"position":[0.2,0.0,0.0],"quaternion":[0.0,0.0,0.0,1.0]}' http://127.0.0.1:7777/set_robot_origin
+{"is_ok":true,"reason":""}
 ```
 
 The order of the quaternion elements is `w, i, j, k`.
@@ -186,14 +195,6 @@ The order of the quaternion elements is `w, i, j, k`.
 ```bash
 $ curl http://127.0.0.1:7777/get_robot_origin
 {"position":[0.2,0.0,0.0],"quaternion":[1.0,0.0,0.0,0.0]}
-```
-
-## features
-
-default features is ["assimp"]. If you don't use mesh except for `.obj` and `.stl` files, you can skip install of assimp by disabling the feature like below.
-
-```bash
-cargo build --no-default-features
 ```
 
 ## Gallery
