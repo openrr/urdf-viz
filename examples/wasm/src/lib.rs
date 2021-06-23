@@ -20,6 +20,7 @@ async fn run() -> Result<(), JsValue> {
     }
     let mut urdf_robot = urdf_viz::utils::read_urdf(&opt.input_urdf_or_xacro).await?;
     urdf_viz::utils::load_mesh(&mut urdf_robot, &opt.input_urdf_or_xacro).await?;
+    let ik_constraints = opt.create_ik_constraints();
     let mut app = UrdfViewerApp::new(
         &opt.input_urdf_or_xacro,
         urdf_robot,
@@ -35,13 +36,6 @@ async fn run() -> Result<(), JsValue> {
         (opt.tile_color2_r, opt.tile_color2_g, opt.tile_color2_b),
         opt.ground_height,
     );
-    let mut ik_constraints = k::Constraints::default();
-    ik_constraints.position_x = !opt.ignore_ik_position_x;
-    ik_constraints.position_y = !opt.ignore_ik_position_y;
-    ik_constraints.position_z = !opt.ignore_ik_position_z;
-    ik_constraints.rotation_x = !opt.ignore_ik_rotation_x;
-    ik_constraints.rotation_y = !opt.ignore_ik_rotation_y;
-    ik_constraints.rotation_z = !opt.ignore_ik_rotation_z;
     app.set_ik_constraints(ik_constraints);
     app.init();
     app.run();
