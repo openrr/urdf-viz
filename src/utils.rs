@@ -122,7 +122,7 @@ mod wasm {
         Other,
     }
 
-    pub(crate) fn window() -> Result<web_sys::Window> {
+    pub fn window() -> Result<web_sys::Window> {
         Ok(web_sys::window().ok_or("failed to get window")?)
     }
 
@@ -137,7 +137,7 @@ mod wasm {
         Ok(response)
     }
 
-    async fn read_to_string(input_file: impl AsRef<str>) -> Result<String> {
+    pub async fn read_to_string(input_file: impl AsRef<str>) -> Result<String> {
         let promise = fetch(input_file.as_ref()).await?.text()?;
 
         let s = JsFuture::from(promise).await?;
@@ -146,7 +146,7 @@ mod wasm {
             .ok_or_else(|| format!("{} is not string", input_file.as_ref()))?)
     }
 
-    async fn read(input_file: impl AsRef<str>) -> Result<Vec<u8>> {
+    pub async fn read(input_file: impl AsRef<str>) -> Result<Vec<u8>> {
         let promise = fetch(input_file.as_ref()).await?.array_buffer()?;
 
         let bytes = JsFuture::from(promise).await?;
