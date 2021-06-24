@@ -217,22 +217,28 @@ fn add_obj(group: &mut SceneNode, data: &crate::utils::Mesh, scale: na::Vector3<
 }
 
 pub fn read_stl(mut reader: impl io::Read + io::Seek) -> Result<RefCellMesh> {
-    let mesh = stl_io::read_stl(&mut reader)?;
+    // TODO: Once https://github.com/hmeyer/stl_io/pull/14 is merged and released, compare with stl_io.
+    let mesh: nom_stl::IndexMesh = nom_stl::parse_stl(&mut reader)
+        .map_err(|e| match e {
+            nom_stl::Error::IOError(e) => Error::IoError(e),
+            nom_stl::Error::ParseError(e) => Error::Other(e),
+        })?
+        .into();
 
     let vertices = mesh
-        .vertices
+        .vertices()
         .iter()
         .map(|v| na::Point3::new(v[0], v[1], v[2]))
         .collect();
 
     let indices = mesh
-        .faces
+        .triangles()
         .iter()
         .map(|face| {
             na::Point3::new(
-                face.vertices[0] as u16,
-                face.vertices[1] as u16,
-                face.vertices[2] as u16,
+                face.vertices_indices()[0] as u16,
+                face.vertices_indices()[1] as u16,
+                face.vertices_indices()[2] as u16,
             )
         })
         .collect();
