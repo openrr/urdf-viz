@@ -1,11 +1,7 @@
-#[cfg(feature = "assimp")]
-use crate::assimp_utils::*;
-use crate::errors::Result;
+use crate::errors::{Error, Result};
 use k::nalgebra as na;
 use kiss3d::{resource::Mesh, scene::SceneNode};
 use log::*;
-#[cfg(not(target_arch = "wasm32"))]
-use std::path::Path;
 use std::{cell::RefCell, io, rc::Rc};
 
 type RefCellMesh = Rc<RefCell<Mesh>>;
@@ -18,6 +14,9 @@ pub fn load_mesh(
     group: &mut SceneNode,
     use_texture: bool,
 ) -> Result<SceneNode> {
+    use crate::assimp_utils::*;
+    use std::{ffi::OsStr, path::Path};
+
     let file_string = filename.as_ref();
     let filename = Path::new(file_string);
 
@@ -45,12 +44,10 @@ pub fn load_mesh(
         })
         .collect::<Vec<_>>();
     // use texture only for dae (collada)
-    let mut is_collada = false;
-    if let Some(ext) = filename.extension() {
-        if ext == "dae" || ext == "DAE" {
-            is_collada = true;
-        }
-    }
+    let is_collada = matches!(
+        filename.extension().and_then(OsStr::to_str),
+        Some("dae" | "DAE")
+    );
     // do not use texture, use only color in urdf file.
     if !use_texture || !is_collada {
         return Ok(base);
@@ -102,12 +99,12 @@ pub fn load_mesh(
     group: &mut SceneNode,
     _use_texture: bool,
 ) -> Result<SceneNode> {
-    use std::{ffi::OsStr, fs::File};
+    use std::{ffi::OsStr, fs::File, path::Path};
 
     let filename = Path::new(filename.as_ref());
 
     match filename.extension().and_then(OsStr::to_str) {
-        Some("obj") | Some("OBJ") => {
+        Some("obj" | "OBJ") => {
             let mtl_path = filename.parent().unwrap_or_else(|| Path::new("."));
             debug!(
                 "load obj: path = {}, mtl_path = {}",
@@ -120,7 +117,7 @@ pub fn load_mesh(
             }
             Ok(base)
         }
-        Some("stl") | Some("STL") => {
+        Some("stl" | "STL") => {
             debug!("load stl: path = {}", filename.display());
             let mesh = read_stl(File::open(filename)?)?;
             let mut base = group.add_mesh(mesh, scale);
