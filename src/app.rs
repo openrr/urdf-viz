@@ -26,6 +26,7 @@ use std::sync::{
     Arc,
 };
 use structopt::StructOpt;
+use tracing::*;
 
 use crate::{
     handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle},
@@ -242,7 +243,7 @@ impl UrdfViewerApp {
         let joint_positions = self.robot.joint_positions();
         self.robot
             .set_joint_positions(&joint_positions)
-            .unwrap_or_else(|err| println!("failed to update robot joints {}", err));
+            .unwrap_or_else(|err| error!("failed to update robot joints {}", err));
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }
@@ -296,7 +297,7 @@ impl UrdfViewerApp {
             if let Some(index) = self.names.iter().position(|ref n| *n == name) {
                 angles[index] = *angle;
             } else {
-                println!("{} not found, but continues", name);
+                warn!("{} not found, but continues", name);
             }
         }
         self.robot.set_joint_positions(&angles)
@@ -483,7 +484,7 @@ impl AppState {
                     self.app.update_robot();
                 }
                 Err(err) => {
-                    println!("{}", err);
+                    error!("{}", err);
                 }
             }
         }
@@ -630,7 +631,7 @@ impl window::State for AppState {
                                 )
                                 .unwrap_or_else(|err| {
                                     self.app.robot.set_joint_positions_unchecked(&orig_angles);
-                                    println!("Err: {}", err);
+                                    error!("{}", err);
                                 });
                             self.app.update_robot();
                         }
@@ -775,7 +776,7 @@ impl Opt {
     #[cfg(target_arch = "wasm32")]
     pub fn from_params() -> Result<Self, crate::Error> {
         let href = crate::utils::window()?.location().href()?;
-        log::debug!("href={}", href);
+        debug!("href={}", href);
         let url = url::Url::parse(&href).map_err(|e| e.to_string())?;
         Ok(serde_qs::from_str(url.query().unwrap_or_default()).map_err(|e| e.to_string())?)
     }

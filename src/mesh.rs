@@ -1,8 +1,8 @@
 use crate::errors::{Error, Result};
 use k::nalgebra as na;
 use kiss3d::{resource::Mesh, scene::SceneNode};
-use log::*;
 use std::{cell::RefCell, io, rc::Rc};
+use tracing::*;
 
 type RefCellMesh = Rc<RefCell<Mesh>>;
 

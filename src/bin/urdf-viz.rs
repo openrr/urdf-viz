@@ -17,11 +17,13 @@
 #![warn(rust_2018_idioms)]
 
 use structopt::StructOpt;
+use tracing::debug;
 use urdf_viz::{app::*, WebServer};
 
 fn main() -> urdf_viz::Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
     let opt = Opt::from_args();
+    debug!(?opt);
     let urdf_robot = urdf_rs::utils::read_urdf_or_xacro(&opt.input_urdf_or_xacro)?;
     let ik_constraints = opt.create_ik_constraints();
     let mut app = UrdfViewerApp::new(
