@@ -2,8 +2,8 @@ use crate::errors::{Error, Result};
 use crate::mesh::load_mesh;
 use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
-use log::*;
 use std::path::Path;
+use tracing::*;
 
 pub fn add_geometry(
     geometry: &urdf_rs::Geometry,

@@ -10,7 +10,7 @@ mod native {
         Arc,
     };
 
-    use log::error;
+    use tracing::error;
 
     #[derive(Debug)]
     pub(crate) struct RobotModel {
@@ -62,9 +62,9 @@ mod wasm {
 
     use futures::future::FutureExt;
     use js_sys::Uint8Array;
-    use log::{debug, error};
     use serde::{Deserialize, Serialize};
     use tokio::sync::{mpsc, watch};
+    use tracing::{debug, error};
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::Response;

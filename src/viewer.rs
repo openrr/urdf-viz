@@ -4,11 +4,11 @@ use kiss3d::camera::ArcBall;
 use kiss3d::ncollide3d::simba::scalar::SubsetOf;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
-use log::*;
 use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 use std::rc::Rc;
+use tracing::*;
 
 pub struct Viewer {
     scenes: HashMap<String, SceneNode>,

@@ -21,15 +21,14 @@ assimp = ["assimp-crate", "assimp-sys"]
 
 # Note: k, kiss3d, serde, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
-env_logger = "0.8"
 k = "0.24"
 kiss3d = "0.31"
-log = "0.4"
 nom_stl = "0.2"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 structopt = "0.3"
 thiserror = "1.0"
+tracing = { version = "0.1", features = ["log"] }
 urdf-rs = "0.6"
 
 assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
@@ -38,6 +37,7 @@ assimp-sys = { version = "0.3.1", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 actix-web = "3"
 ctrlc = { version = "3", features = ["termination"] }
+tracing-subscriber = "0.2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 base64 = "0.13"

@@ -16,9 +16,9 @@
 
 use k::nalgebra as na;
 use kiss3d::resource::Mesh;
-use log::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use tracing::*;
 
 const ASSIMP_DIFFUSE: &[u8] = b"$clr.diffuse\0";
 
