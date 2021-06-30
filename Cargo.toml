@@ -21,7 +21,7 @@ assimp = ["assimp-crate", "assimp-sys"]
 
 # Note: k, kiss3d, serde, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
-k = "0.24"
+k = "0.25"
 kiss3d = "0.31"
 nom_stl = "0.2"
 rand = "0.8"

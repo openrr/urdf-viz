@@ -770,6 +770,7 @@ impl Opt {
             rotation_x: !self.ignore_ik_rotation_x,
             rotation_y: !self.ignore_ik_rotation_y,
             rotation_z: !self.ignore_ik_rotation_z,
+            ..Default::default()
         }
     }
 
