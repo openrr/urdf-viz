@@ -673,6 +673,7 @@ impl window::State for AppState {
 /// Option for visualizing urdf
 #[derive(StructOpt, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
 pub struct Opt {
     /// Input urdf or xacro
     #[serde(default, rename = "urdf")]
