@@ -331,7 +331,12 @@ impl UrdfViewerApp {
             );
         }
     }
-    fn handle_key_press(&mut self, window: &mut Window, code: Key) {
+    fn handle_key_press(&mut self, window: &mut Window, code: Key, modifiers: Modifiers) {
+        let is_ctrl = modifiers.contains(NATIVE_MOD);
+        if is_ctrl {
+            // Heuristic for avoiding conflicts with browser keyboard shortcuts.
+            return;
+        }
         match code {
             Key::O | Key::LBracket => self.increment_move_joint_index(true),
             Key::P | Key::RBracket => self.increment_move_joint_index(false),
@@ -414,26 +419,20 @@ impl UrdfViewerApp {
         };
     }
     pub fn run(mut self) {
-        let window = self.window.take().unwrap();
-        let is_ctrl = false;
-        let is_shift = false;
-        let last_cur_pos_y = 0f64;
-        let last_cur_pos_x = 0f64;
-        let solver = k::JacobianIkSolver::default();
-
         #[cfg(not(target_arch = "wasm32"))]
         ctrlc::set_handler(|| {
             ABORTED.store(true, Relaxed);
         })
         .unwrap();
 
+        let window = self.window.take().unwrap();
         let state = AppState {
             app: self,
-            solver,
-            is_ctrl,
-            is_shift,
-            last_cur_pos_x,
-            last_cur_pos_y,
+            solver: k::JacobianIkSolver::default(),
+            is_ctrl: false,
+            is_shift: false,
+            last_cur_pos_x: 0.0,
+            last_cur_pos_y: 0.0,
         };
         window.render_loop(state);
     }
@@ -580,12 +579,12 @@ impl window::State for AppState {
         for mut event in window.events().iter() {
             self.app.reload_and_update(window);
             match event.value {
-                WindowEvent::MouseButton(_, Action::Press, mods) => {
-                    if mods.contains(NATIVE_MOD) {
+                WindowEvent::MouseButton(_, Action::Press, modifiers) => {
+                    if modifiers.contains(NATIVE_MOD) {
                         self.is_ctrl = true;
                         event.inhibited = true;
                     }
-                    if mods.contains(Modifiers::Shift) {
+                    if modifiers.contains(Modifiers::Shift) {
                         self.is_shift = true;
                         event.inhibited = true;
                     }
@@ -648,8 +647,8 @@ impl window::State for AppState {
                         event.inhibited = true;
                     }
                 }
-                WindowEvent::Key(code, Action::Press, _modifiers) => {
-                    self.app.handle_key_press(window, code);
+                WindowEvent::Key(code, Action::Press, modifiers) => {
+                    self.app.handle_key_press(window, code, modifiers);
                     event.inhibited = true;
                 }
                 _ => {}
