@@ -14,6 +14,8 @@
   limitations under the License.
 */
 
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
 use k::nalgebra as na;
 use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
@@ -25,6 +27,8 @@ use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},
     Arc,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 use structopt::StructOpt;
 use tracing::*;
 
@@ -433,6 +437,7 @@ impl UrdfViewerApp {
             is_shift: false,
             last_cur_pos_x: 0.0,
             last_cur_pos_y: 0.0,
+            instant: Instant::now(),
         };
         window.render_loop(state);
     }
@@ -470,6 +475,7 @@ struct AppState {
     is_shift: bool,
     last_cur_pos_y: f64,
     last_cur_pos_x: f64,
+    instant: Instant,
 }
 
 impl AppState {
@@ -516,6 +522,9 @@ impl window::State for AppState {
             window.close();
             return;
         }
+
+        info!("{:?}", self.instant.elapsed());
+        self.instant = Instant::now();
 
         self.app.reload_and_update(window);
 
