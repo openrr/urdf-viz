@@ -29,6 +29,8 @@ jobs:
 
       - run: cargo package
       - uses: taiki-e/create-gh-release-action@v1
+        with:
+          branch: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo publish
