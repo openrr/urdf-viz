@@ -18,11 +18,9 @@ async fn run() -> Result<(), JsValue> {
     if opt.input_urdf_or_xacro.is_empty() {
         opt.input_urdf_or_xacro = SAMPLE_URDF_PATH.to_string();
     }
-    let mut urdf_robot = urdf_viz::utils::read_urdf(&opt.input_urdf_or_xacro).await?;
-    urdf_viz::utils::load_mesh(&mut urdf_robot, &opt.input_urdf_or_xacro).await?;
+    let urdf_robot = urdf_viz::utils::RobotModel::new(&opt.input_urdf_or_xacro).await?;
     let ik_constraints = opt.create_ik_constraints();
     let mut app = UrdfViewerApp::new(
-        &opt.input_urdf_or_xacro,
         urdf_robot,
         opt.end_link_names,
         opt.is_collision,
@@ -35,7 +33,7 @@ async fn run() -> Result<(), JsValue> {
         (opt.tile_color1_r, opt.tile_color1_g, opt.tile_color1_b),
         (opt.tile_color2_r, opt.tile_color2_g, opt.tile_color2_b),
         opt.ground_height,
-    );
+    )?;
     app.set_ik_constraints(ik_constraints);
     app.init();
     app.run();

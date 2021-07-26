@@ -24,10 +24,9 @@ fn main() -> urdf_viz::Result<()> {
     tracing_subscriber::fmt::init();
     let opt = Opt::from_args();
     debug!(?opt);
-    let urdf_robot = urdf_rs::utils::read_urdf_or_xacro(&opt.input_urdf_or_xacro)?;
+    let urdf_robot = urdf_viz::utils::RobotModel::new(&opt.input_urdf_or_xacro)?;
     let ik_constraints = opt.create_ik_constraints();
     let mut app = UrdfViewerApp::new(
-        &opt.input_urdf_or_xacro,
         urdf_robot,
         opt.end_link_names,
         opt.is_collision,
@@ -40,7 +39,7 @@ fn main() -> urdf_viz::Result<()> {
         (opt.tile_color1_r, opt.tile_color1_g, opt.tile_color1_b),
         (opt.tile_color2_r, opt.tile_color2_g, opt.tile_color2_b),
         opt.ground_height,
-    );
+    )?;
     app.set_ik_constraints(ik_constraints);
     app.init();
     let web_server = WebServer::new(opt.web_server_port, app.handle());
