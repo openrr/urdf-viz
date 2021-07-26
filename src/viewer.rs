@@ -69,7 +69,7 @@ impl Viewer {
         base_dir: Option<&Path>,
         is_collision: bool,
     ) {
-        self.link_joint_map = k::urdf::link_to_joint_map(&urdf_robot);
+        self.link_joint_map = k::urdf::link_to_joint_map(urdf_robot);
 
         for l in &urdf_robot.links {
             let num = if is_collision {
@@ -106,8 +106,7 @@ impl Viewer {
                 ) {
                     Ok(mut base_group) => {
                         // set initial origin offset
-                        base_group
-                            .set_local_transformation(k::urdf::isometry_from(&origin_element));
+                        base_group.set_local_transformation(k::urdf::isometry_from(origin_element));
                     }
                     Err(e) => {
                         error!("failed to create for link '{}': {}", l.name, e);

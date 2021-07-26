@@ -21,17 +21,17 @@ use kiss3d::window::{self, Window};
 use serde::Deserialize;
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::{
-    atomic::{AtomicBool, Ordering::Relaxed},
-    Arc,
-};
+use std::sync::{atomic::Ordering::Relaxed, Arc};
 use structopt::StructOpt;
 use tracing::*;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::atomic::AtomicBool;
 
 use crate::{
     handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle},
     utils::RobotModel,
-    Viewer,
+    Error, Viewer,
 };
 
 #[cfg(target_os = "macos")]
@@ -115,7 +115,6 @@ c:    toggle visual/collision
 pub struct UrdfViewerApp {
     input_path: PathBuf,
     urdf_robot: RobotModel,
-    needs_reload: Arc<AtomicBool>,
     robot: k::Chain<f32>,
     viewer: Viewer,
     window: Option<Window>,
@@ -133,8 +132,7 @@ pub struct UrdfViewerApp {
 impl UrdfViewerApp {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        input_file: &str,
-        urdf_robot: urdf_rs::Robot,
+        mut urdf_robot: RobotModel,
         mut end_link_names: Vec<String>,
         is_collision: bool,
         disable_texture: bool,
@@ -142,9 +140,9 @@ impl UrdfViewerApp {
         tile_color1: (f32, f32, f32),
         tile_color2: (f32, f32, f32),
         ground_height: Option<f32>,
-    ) -> Self {
-        let input_path = PathBuf::from(input_file);
-        let robot: k::Chain<f32> = (&urdf_robot).into();
+    ) -> Result<Self, Error> {
+        let input_path = PathBuf::from(&urdf_robot.path);
+        let robot: k::Chain<f32> = urdf_robot.get().into();
         println!("{}", robot);
         let (mut viewer, mut window) = Viewer::with_background_color("urdf-viz", background_color);
         if disable_texture {
@@ -152,7 +150,7 @@ impl UrdfViewerApp {
         }
         viewer.add_robot_with_base_dir_and_collision_flag(
             &mut window,
-            &urdf_robot,
+            urdf_robot.get(),
             input_path.parent(),
             is_collision,
         );
@@ -181,26 +179,25 @@ impl UrdfViewerApp {
         let num_joints = names.len();
         println!("DoF={}", num_joints);
         println!("joint names={:?}", names);
-        let handle = Arc::new(RobotStateHandle::default());
-        handle.current_joint_positions.lock().unwrap().names = names.clone();
-        let (urdf_robot, needs_reload) = RobotModel::new(urdf_robot);
-        UrdfViewerApp {
+        let mut handle = RobotStateHandle::default();
+        handle.current_joint_positions.write().unwrap().names = names.clone();
+        handle.urdf_text = Some(urdf_robot.urdf_text.clone());
+        Ok(UrdfViewerApp {
             input_path,
             viewer,
             window: Some(window),
             arms,
             input_end_link_names,
             urdf_robot,
-            needs_reload,
             robot,
             num_joints,
             names,
             index_of_arm: LoopIndex::new(num_arms),
             index_of_move_joint: LoopIndex::new(num_joints),
-            handle,
+            handle: Arc::new(handle),
             is_collision,
             ik_constraints: k::Constraints::default(),
-        }
+        })
     }
     pub fn handle(&self) -> Arc<RobotStateHandle> {
         self.handle.clone()
@@ -271,11 +268,11 @@ impl UrdfViewerApp {
         self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
     }
     fn reload_and_update(&mut self, window: &mut Window) {
-        if self.needs_reload.swap(false, Relaxed) {
+        if self.urdf_robot.needs_reload.swap(false, Relaxed) {
             self.reload_urdf(window);
             self.viewer.add_robot_with_base_dir_and_collision_flag(
                 window,
-                &self.urdf_robot.get(),
+                self.urdf_robot.get(),
                 self.input_path.parent(),
                 self.is_collision,
             );
@@ -294,7 +291,7 @@ impl UrdfViewerApp {
             .iter()
             .zip(joint_positions.positions.iter())
         {
-            if let Some(index) = self.names.iter().position(|ref n| *n == name) {
+            if let Some(index) = self.names.iter().position(|n| n == name) {
                 angles[index] = *angle;
             } else {
                 warn!("{} not found, but continues", name);
@@ -444,7 +441,6 @@ impl fmt::Debug for UrdfViewerApp {
         f.debug_struct("UrdfViewerApp")
             .field("input_path", &self.input_path)
             .field("urdf_robot", &self.urdf_robot)
-            .field("needs_reload", &self.needs_reload)
             .field("robot", &self.robot)
             .field("viewer", &self.viewer)
             .field("arms", &self.arms)
@@ -477,7 +473,7 @@ impl AppState {
         let handle = self.app.handle();
 
         // Joint positions for server
-        if let Some(ja) = handle.target_joint_positions.lock().unwrap().take() {
+        if let Some(ja) = handle.take_target_joint_positions() {
             match self.app.set_joint_positions_from_request(&ja) {
                 Ok(_) => {
                     self.app.update_robot();
@@ -487,14 +483,15 @@ impl AppState {
                 }
             }
         }
-        handle.current_joint_positions.lock().unwrap().positions = self.app.robot.joint_positions();
+        handle.current_joint_positions.write().unwrap().positions =
+            self.app.robot.joint_positions();
 
         // Robot orientation for server
-        if let Some(ro) = handle.target_robot_origin.lock().unwrap().take() {
+        if let Some(ro) = handle.take_target_robot_origin() {
             self.app.set_robot_origin_from_request(&ro);
             self.app.update_robot();
         }
-        let mut cur_ro = handle.current_robot_origin.lock().unwrap();
+        let mut cur_ro = handle.current_robot_origin.write().unwrap();
         let o = self.app.robot.origin();
         for i in 0..3 {
             cur_ro.position[i] = o.translation.vector[i];
@@ -624,7 +621,7 @@ impl window::State for AppState {
                             let orig_angles = self.app.robot.joint_positions();
                             self.solver
                                 .solve_with_constraints(
-                                    &self.app.get_arm(),
+                                    self.app.get_arm(),
                                     &target,
                                     &self.app.ik_constraints,
                                 )
@@ -775,7 +772,7 @@ impl Opt {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn from_params() -> Result<Self, crate::Error> {
+    pub fn from_params() -> Result<Self, Error> {
         let href = crate::utils::window()?.location().href()?;
         debug!("href={}", href);
         let url = url::Url::parse(&href).map_err(|e| e.to_string())?;

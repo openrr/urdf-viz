@@ -197,6 +197,12 @@ $ curl http://127.0.0.1:7777/get_robot_origin
 {"position":[0.2,0.0,0.0],"quaternion":[1.0,0.0,0.0,0.0]}
 ```
 
+### Get URDF Text
+
+```bash
+curl http://127.0.0.1:7777/get_urdf_text
+```
+
 ## Gallery
 
 ![sawyer_1.png](img/sawyer_1.png)
