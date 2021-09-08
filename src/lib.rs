@@ -40,6 +40,7 @@ mod mesh;
 pub use mesh::*;
 mod urdf;
 pub use urdf::*;
+mod point_cloud;
 pub mod utils;
 
 // re-export

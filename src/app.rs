@@ -30,6 +30,7 @@ use std::sync::atomic::AtomicBool;
 
 use crate::{
     handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle},
+    point_cloud::PointCloudRenderer,
     utils::RobotModel,
     Error, Viewer,
 };
@@ -430,6 +431,7 @@ impl UrdfViewerApp {
             is_shift: false,
             last_cur_pos_x: 0.0,
             last_cur_pos_y: 0.0,
+            point_cloud_renderer: PointCloudRenderer::new(10.0),
         };
         window.render_loop(state);
     }
@@ -466,6 +468,7 @@ struct AppState {
     is_shift: bool,
     last_cur_pos_y: f64,
     last_cur_pos_x: f64,
+    point_cloud_renderer: PointCloudRenderer,
 }
 
 impl AppState {
@@ -500,6 +503,19 @@ impl AppState {
         cur_ro.quaternion[1] = o.rotation.quaternion().i;
         cur_ro.quaternion[2] = o.rotation.quaternion().j;
         cur_ro.quaternion[3] = o.rotation.quaternion().k;
+
+        if let Some(points) = handle.take_point_cloud() {
+            if points.points.len() == points.colors.len() {
+                self.point_cloud_renderer
+                    .insert(points.id, &points.points, &points.colors);
+            } else {
+                warn!(
+                    "points={},colors={}",
+                    points.points.len(),
+                    points.colors.len()
+                );
+            }
+        }
     }
 }
 
@@ -573,6 +589,7 @@ impl window::State for AppState {
                 &na::Point3::new(0.9f32, 0.5, 1.0),
             );
         }
+
         for mut event in window.events().iter() {
             self.app.reload_and_update(window);
             match event.value {
@@ -662,7 +679,12 @@ impl window::State for AppState {
         Option<&mut dyn kiss3d::renderer::Renderer>,
         Option<&mut dyn kiss3d::post_processing::PostProcessingEffect>,
     ) {
-        (Some(&mut self.app.viewer.arc_ball), None, None, None)
+        (
+            Some(&mut self.app.viewer.arc_ball),
+            None,
+            Some(&mut self.point_cloud_renderer),
+            None,
+        )
     }
 }
 
