@@ -13,6 +13,13 @@ pub struct RobotOrigin {
     pub quaternion: [f32; 4],
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PointsAndColors {
+    pub id: Option<String>,
+    pub points: Vec<[f32; 3]>,
+    pub colors: Vec<[f32; 3]>,
+}
+
 /// Handle to get and modify the state of the robot.
 #[derive(Debug, Default)]
 pub struct RobotStateHandle {
@@ -20,6 +27,7 @@ pub struct RobotStateHandle {
     pub(crate) current_joint_positions: RwLock<JointNamesAndPositions>,
     target_robot_origin: Mutex<Option<RobotOrigin>>,
     pub(crate) current_robot_origin: RwLock<RobotOrigin>,
+    point_cloud: Mutex<Option<PointsAndColors>>,
     pub(crate) urdf_text: Option<Arc<RwLock<String>>>,
 }
 
@@ -44,11 +52,19 @@ impl RobotStateHandle {
         *self.target_robot_origin.lock().unwrap() = Some(robot_origin);
     }
 
+    pub fn set_point_cloud(&self, points_and_colors: PointsAndColors) {
+        *self.point_cloud.lock().unwrap() = Some(points_and_colors);
+    }
+
     pub(crate) fn take_target_joint_positions(&self) -> Option<JointNamesAndPositions> {
         self.target_joint_positions.lock().unwrap().take()
     }
 
     pub(crate) fn take_target_robot_origin(&self) -> Option<RobotOrigin> {
         self.target_robot_origin.lock().unwrap().take()
+    }
+
+    pub(crate) fn take_point_cloud(&self) -> Option<PointsAndColors> {
+        self.point_cloud.lock().unwrap().take()
     }
 }
