@@ -44,6 +44,20 @@ mod native {
             })
         }
 
+        pub async fn from_text(
+            path: impl Into<String>,
+            urdf_text: impl Into<String>,
+        ) -> Result<Self> {
+            let path = path.into();
+            let urdf_text = urdf_text.into();
+            let robot = urdf_rs::read_from_string(&urdf_text)?;
+            Ok(Self {
+                path,
+                urdf_text: Arc::new(RwLock::new(urdf_text)),
+                robot,
+            })
+        }
+
         pub(crate) fn get(&mut self) -> &urdf_rs::Robot {
             &self.robot
         }
@@ -237,10 +251,24 @@ mod wasm {
             let path = path.into();
             let (mut robot, urdf_text) = read_urdf(&path).await?;
             load_mesh(&mut robot, &path).await?;
-            let urdf_text = Arc::new(RwLock::new(urdf_text));
             Ok(Self {
                 path,
-                urdf_text,
+                urdf_text: Arc::new(RwLock::new(urdf_text)),
+                robot,
+            })
+        }
+
+        pub async fn from_text(
+            path: impl Into<String>,
+            urdf_text: impl Into<String>,
+        ) -> Result<Self> {
+            let path = path.into();
+            let urdf_text = urdf_text.into();
+            let mut robot = urdf_rs::read_from_string(&urdf_text)?;
+            load_mesh(&mut robot, &path).await?;
+            Ok(Self {
+                path,
+                urdf_text: Arc::new(RwLock::new(urdf_text)),
                 robot,
             })
         }
