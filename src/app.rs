@@ -25,6 +25,9 @@ use std::sync::Arc;
 use structopt::StructOpt;
 use tracing::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+
 use crate::{
     handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle},
     point_cloud::PointCloudRenderer,
@@ -417,13 +420,10 @@ impl UrdfViewerApp {
     }
     pub fn run(mut self) {
         #[cfg(not(target_arch = "wasm32"))]
-        {
-            let handle = self.handle();
-            ctrlc::set_handler(move || {
-                handle.abort();
-            })
-            .unwrap();
-        }
+        ctrlc::set_handler(|| {
+            ABORTED.store(true, Relaxed);
+        })
+        .unwrap();
 
         let window = self.window.take().unwrap();
         let state = AppState {
@@ -459,6 +459,9 @@ impl fmt::Debug for UrdfViewerApp {
             .finish()
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+static ABORTED: AtomicBool = AtomicBool::new(false);
 
 struct AppState {
     app: UrdfViewerApp,
@@ -523,7 +526,8 @@ impl window::State for AppState {
         const FONT_SIZE_USAGE: f32 = 60.0;
         const FONT_SIZE_INFO: f32 = 80.0;
 
-        if self.app.handle.is_aborted() {
+        #[cfg(not(target_arch = "wasm32"))]
+        if ABORTED.load(Relaxed) {
             window.close();
             return;
         }

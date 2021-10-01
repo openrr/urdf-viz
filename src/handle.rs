@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::sync::{
-    atomic::{AtomicBool, Ordering::Relaxed},
-    Arc, Mutex, RwLock, RwLockReadGuard,
-};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct JointNamesAndPositions {
@@ -41,7 +38,6 @@ pub struct RobotStateHandle {
     pub(crate) current_robot_origin: RwLock<RobotOrigin>,
     point_cloud: Mutex<Option<PointsAndColors>>,
     pub(crate) urdf_text: Option<Arc<RwLock<String>>>,
-    aborted: AtomicBool,
 }
 
 impl RobotStateHandle {
@@ -69,10 +65,6 @@ impl RobotStateHandle {
         *self.point_cloud.lock().unwrap() = Some(points_and_colors);
     }
 
-    pub fn abort(&self) {
-        self.aborted.store(true, Relaxed);
-    }
-
     pub(crate) fn take_target_joint_positions(&self) -> Option<JointNamesAndPositions> {
         self.target_joint_positions.lock().unwrap().take()
     }
@@ -83,9 +75,5 @@ impl RobotStateHandle {
 
     pub(crate) fn take_point_cloud(&self) -> Option<PointsAndColors> {
         self.point_cloud.lock().unwrap().take()
-    }
-
-    pub(crate) fn is_aborted(&self) -> bool {
-        self.aborted.load(Relaxed)
     }
 }
