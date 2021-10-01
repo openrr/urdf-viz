@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
 
+use crate::utils::RobotModel;
+
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct JointNamesAndPositions {
     pub names: Vec<String>,
@@ -38,6 +40,7 @@ pub struct RobotStateHandle {
     pub(crate) current_robot_origin: RwLock<RobotOrigin>,
     point_cloud: Mutex<Option<PointsAndColors>>,
     pub(crate) urdf_text: Option<Arc<RwLock<String>>>,
+    robot: Mutex<Option<RobotModel>>,
 }
 
 impl RobotStateHandle {
@@ -65,6 +68,10 @@ impl RobotStateHandle {
         *self.point_cloud.lock().unwrap() = Some(points_and_colors);
     }
 
+    pub fn set_robot(&self, robot: RobotModel) {
+        *self.robot.lock().unwrap() = Some(robot);
+    }
+
     pub(crate) fn take_target_joint_positions(&self) -> Option<JointNamesAndPositions> {
         self.target_joint_positions.lock().unwrap().take()
     }
@@ -75,5 +82,9 @@ impl RobotStateHandle {
 
     pub(crate) fn take_point_cloud(&self) -> Option<PointsAndColors> {
         self.point_cloud.lock().unwrap().take()
+    }
+
+    pub(crate) fn take_robot(&self) -> Option<RobotModel> {
+        self.robot.lock().unwrap().take()
     }
 }
