@@ -62,8 +62,8 @@ mod native {
             &self.robot
         }
 
-        pub(crate) fn reload(&mut self, input_file: impl AsRef<str>) {
-            match read_urdf(input_file.as_ref()) {
+        pub(crate) fn reload(&mut self) {
+            match read_urdf(&self.path) {
                 Ok((robot, text)) => {
                     self.robot = robot;
                     *self.urdf_text.write().unwrap() = text;

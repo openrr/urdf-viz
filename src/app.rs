@@ -122,7 +122,6 @@ pub struct UrdfViewerApp {
     arms: Vec<k::SerialChain<f32>>,
     names: Vec<String>,
     input_end_link_names: Vec<String>,
-    num_joints: usize,
     index_of_arm: LoopIndex,
     index_of_move_joint: LoopIndex,
     handle: Arc<RobotStateHandle>,
@@ -192,7 +191,6 @@ impl UrdfViewerApp {
             input_end_link_names,
             urdf_robot,
             robot,
-            num_joints,
             names,
             index_of_arm: LoopIndex::new(num_arms),
             index_of_move_joint: LoopIndex::new(num_joints),
@@ -215,7 +213,7 @@ impl UrdfViewerApp {
         !self.arms.is_empty()
     }
     fn has_joints(&self) -> bool {
-        self.num_joints > 0
+        !self.names.is_empty()
     }
     pub fn init(&mut self) {
         self.update_robot();
@@ -250,23 +248,17 @@ impl UrdfViewerApp {
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }
-    #[cfg(not(target_arch = "wasm32"))]
-    fn reload(&mut self, window: &mut Window) {
-        self.urdf_robot.reload(self.input_path.to_str().unwrap());
-        self.reload_urdf(window);
-        self.viewer.add_robot_with_base_dir_and_collision_flag(
-            window,
-            self.urdf_robot.get(),
-            self.input_path.parent(),
-            self.is_collision,
-        );
-        self.update_robot();
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    fn reload_urdf(&mut self, window: &mut Window) {
+    fn reload(&mut self, window: &mut Window, reload_fn: impl FnOnce(&mut RobotModel)) {
+        // remove previous robot
+        self.viewer.remove_robot(window, self.urdf_robot.get());
+
+        // update urdf_robot
+        reload_fn(&mut self.urdf_robot);
+
+        // update robot based on new urdf_robot
         let urdf_robot = self.urdf_robot.get();
-        self.viewer.remove_robot(window, urdf_robot);
         self.robot = urdf_robot.into();
+        self.input_path = PathBuf::from(&self.urdf_robot.path);
         let end_link_names = if self.input_end_link_names.is_empty() {
             self.robot
                 .iter()
@@ -281,6 +273,14 @@ impl UrdfViewerApp {
             .filter_map(|name| self.robot.find(name).map(|j| k::SerialChain::from_end(j)))
             .collect::<Vec<_>>();
         self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
+
+        self.viewer.add_robot_with_base_dir_and_collision_flag(
+            window,
+            self.urdf_robot.get(),
+            self.input_path.parent(),
+            self.is_collision,
+        );
+        self.update_robot();
     }
 
     /// Handle set_joint_positions request from server
@@ -386,7 +386,7 @@ impl UrdfViewerApp {
             #[cfg(not(target_arch = "wasm32"))]
             Key::L => {
                 // reload
-                self.reload(window);
+                self.reload(window, |urdf_robot| urdf_robot.reload());
             }
             Key::R => {
                 if self.has_joints() {
@@ -450,7 +450,6 @@ impl fmt::Debug for UrdfViewerApp {
             .field("arms", &self.arms)
             .field("names", &self.names)
             .field("input_end_link_names", &self.input_end_link_names)
-            .field("num_joints", &self.num_joints)
             .field("index_of_arm", &self.index_of_arm)
             .field("index_of_move_joint", &self.index_of_move_joint)
             .field("handle", &self.handle)
@@ -474,48 +473,54 @@ struct AppState {
 }
 
 impl AppState {
-    fn handle_request(&mut self) {
+    fn handle_request(&mut self, window: &mut Window) {
         let handle = self.app.handle();
 
-        // Joint positions for server
-        if let Some(ja) = handle.take_target_joint_positions() {
-            match self.app.set_joint_positions_from_request(&ja) {
-                Ok(_) => {
-                    self.app.update_robot();
-                }
-                Err(err) => {
-                    error!("{}", err);
+        if let Some(robot) = handle.take_robot() {
+            self.app.reload(window, |urdf_robot| *urdf_robot = robot);
+        }
+
+        if self.app.has_joints() {
+            // Joint positions for server
+            if let Some(ja) = handle.take_target_joint_positions() {
+                match self.app.set_joint_positions_from_request(&ja) {
+                    Ok(_) => {
+                        self.app.update_robot();
+                    }
+                    Err(err) => {
+                        error!("{}", err);
+                    }
                 }
             }
-        }
-        handle.current_joint_positions.write().unwrap().positions =
-            self.app.robot.joint_positions();
+            handle.current_joint_positions.write().unwrap().positions =
+                self.app.robot.joint_positions();
 
-        // Robot orientation for server
-        if let Some(ro) = handle.take_target_robot_origin() {
-            self.app.set_robot_origin_from_request(&ro);
-            self.app.update_robot();
-        }
-        let mut cur_ro = handle.current_robot_origin.write().unwrap();
-        let o = self.app.robot.origin();
-        for i in 0..3 {
-            cur_ro.position[i] = o.translation.vector[i];
-        }
-        cur_ro.quaternion[0] = o.rotation.quaternion().w;
-        cur_ro.quaternion[1] = o.rotation.quaternion().i;
-        cur_ro.quaternion[2] = o.rotation.quaternion().j;
-        cur_ro.quaternion[3] = o.rotation.quaternion().k;
+            // Robot orientation for server
+            if let Some(ro) = handle.take_target_robot_origin() {
+                self.app.set_robot_origin_from_request(&ro);
+                self.app.update_robot();
+            }
+            let mut cur_ro = handle.current_robot_origin.write().unwrap();
+            let o = self.app.robot.origin();
+            for i in 0..3 {
+                cur_ro.position[i] = o.translation.vector[i];
+            }
+            cur_ro.quaternion[0] = o.rotation.quaternion().w;
+            cur_ro.quaternion[1] = o.rotation.quaternion().i;
+            cur_ro.quaternion[2] = o.rotation.quaternion().j;
+            cur_ro.quaternion[3] = o.rotation.quaternion().k;
 
-        if let Some(points) = handle.take_point_cloud() {
-            if points.points.len() == points.colors.len() {
-                self.point_cloud_renderer
-                    .insert(points.id, &points.points, &points.colors);
-            } else {
-                warn!(
-                    "points={},colors={}",
-                    points.points.len(),
-                    points.colors.len()
-                );
+            if let Some(points) = handle.take_point_cloud() {
+                if points.points.len() == points.colors.len() {
+                    self.point_cloud_renderer
+                        .insert(points.id, &points.points, &points.colors);
+                } else {
+                    warn!(
+                        "points={},colors={}",
+                        points.points.len(),
+                        points.colors.len()
+                    );
+                }
             }
         }
     }
@@ -539,6 +544,7 @@ impl window::State for AppState {
             &na::Point2::new(2000.0, 10.0),
             &na::Point3::new(1f32, 1.0, 1.0),
         );
+        self.handle_request(window);
         if self.app.has_joints() {
             self.app.viewer.draw_text(
                 window,
@@ -550,8 +556,6 @@ impl window::State for AppState {
                 &na::Point2::new(10f32, 20.0),
                 &na::Point3::new(0.5f32, 0.5, 1.0),
             );
-
-            self.handle_request();
         }
         if self.app.has_arms() {
             let name = &self
