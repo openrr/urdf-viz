@@ -128,6 +128,7 @@ pub struct UrdfViewerApp {
     handle: Arc<RobotStateHandle>,
     is_collision: bool,
     ik_constraints: k::Constraints,
+    point_size: f32,
 }
 
 impl UrdfViewerApp {
@@ -198,6 +199,7 @@ impl UrdfViewerApp {
             handle: Arc::new(handle),
             is_collision,
             ik_constraints: k::Constraints::default(),
+            point_size: 10.0,
         })
     }
     pub fn handle(&self) -> Arc<RobotStateHandle> {
@@ -205,6 +207,9 @@ impl UrdfViewerApp {
     }
     pub fn set_ik_constraints(&mut self, ik_constraints: k::Constraints) {
         self.ik_constraints = ik_constraints;
+    }
+    pub fn set_point_size(&mut self, point_size: f32) {
+        self.point_size = point_size;
     }
     fn has_arms(&self) -> bool {
         !self.arms.is_empty()
@@ -425,13 +430,13 @@ impl UrdfViewerApp {
 
         let window = self.window.take().unwrap();
         let state = AppState {
+            point_cloud_renderer: PointCloudRenderer::new(self.point_size),
             app: self,
             solver: k::JacobianIkSolver::default(),
             is_ctrl: false,
             is_shift: false,
             last_cur_pos_x: 0.0,
             last_cur_pos_y: 0.0,
-            point_cloud_renderer: PointCloudRenderer::new(10.0),
         };
         window.render_loop(state);
     }
