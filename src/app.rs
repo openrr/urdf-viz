@@ -21,12 +21,12 @@ use kiss3d::window::{self, Window};
 use serde::Deserialize;
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::{atomic::Ordering::Relaxed, Arc};
+use std::sync::Arc;
 use structopt::StructOpt;
 use tracing::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
 use crate::{
     handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle},
@@ -250,10 +250,19 @@ impl UrdfViewerApp {
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }
-    fn request_reload(&mut self) {
-        self.urdf_robot
-            .request_reload(self.input_path.to_str().unwrap());
+    #[cfg(not(target_arch = "wasm32"))]
+    fn reload(&mut self, window: &mut Window) {
+        self.urdf_robot.reload(self.input_path.to_str().unwrap());
+        self.reload_urdf(window);
+        self.viewer.add_robot_with_base_dir_and_collision_flag(
+            window,
+            self.urdf_robot.get(),
+            self.input_path.parent(),
+            self.is_collision,
+        );
+        self.update_robot();
     }
+    #[cfg(not(target_arch = "wasm32"))]
     fn reload_urdf(&mut self, window: &mut Window) {
         let urdf_robot = self.urdf_robot.get();
         self.viewer.remove_robot(window, urdf_robot);
@@ -272,18 +281,6 @@ impl UrdfViewerApp {
             .filter_map(|name| self.robot.find(name).map(|j| k::SerialChain::from_end(j)))
             .collect::<Vec<_>>();
         self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
-    }
-    fn reload_and_update(&mut self, window: &mut Window) {
-        if self.urdf_robot.needs_reload.swap(false, Relaxed) {
-            self.reload_urdf(window);
-            self.viewer.add_robot_with_base_dir_and_collision_flag(
-                window,
-                self.urdf_robot.get(),
-                self.input_path.parent(),
-                self.is_collision,
-            );
-            self.update_robot();
-        }
     }
 
     /// Handle set_joint_positions request from server
@@ -386,10 +383,10 @@ impl UrdfViewerApp {
                 );
                 self.update_robot();
             }
+            #[cfg(not(target_arch = "wasm32"))]
             Key::L => {
                 // reload
-                self.request_reload();
-                self.reload_and_update(window);
+                self.reload(window);
             }
             Key::R => {
                 if self.has_joints() {
@@ -535,8 +532,6 @@ impl window::State for AppState {
             return;
         }
 
-        self.app.reload_and_update(window);
-
         self.app.viewer.draw_text(
             window,
             HOW_TO_USE_STR,
@@ -596,7 +591,6 @@ impl window::State for AppState {
         }
 
         for mut event in window.events().iter() {
-            self.app.reload_and_update(window);
             match event.value {
                 WindowEvent::MouseButton(_, Action::Press, modifiers) => {
                     if modifiers.contains(NATIVE_MOD) {

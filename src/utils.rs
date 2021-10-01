@@ -9,10 +9,7 @@ mod native {
         ffi::OsStr,
         fs,
         path::Path,
-        sync::{
-            atomic::{AtomicBool, Ordering},
-            Arc, RwLock,
-        },
+        sync::{Arc, RwLock},
     };
 
     use tracing::error;
@@ -33,7 +30,6 @@ mod native {
     pub struct RobotModel {
         pub(crate) path: String,
         pub(crate) urdf_text: Arc<RwLock<String>>,
-        pub(crate) needs_reload: Arc<AtomicBool>,
         robot: urdf_rs::Robot,
     }
 
@@ -41,11 +37,9 @@ mod native {
         pub fn new(path: impl Into<String>) -> Result<Self> {
             let path = path.into();
             let (robot, urdf_text) = read_urdf(&path)?;
-            let needs_reload = Arc::new(AtomicBool::new(false));
             Ok(Self {
                 path,
                 urdf_text: Arc::new(RwLock::new(urdf_text)),
-                needs_reload,
                 robot,
             })
         }
@@ -54,12 +48,11 @@ mod native {
             &self.robot
         }
 
-        pub(crate) fn request_reload(&mut self, input_file: impl AsRef<str>) {
+        pub(crate) fn reload(&mut self, input_file: impl AsRef<str>) {
             match read_urdf(input_file.as_ref()) {
                 Ok((robot, text)) => {
                     self.robot = robot;
                     *self.urdf_text.write().unwrap() = text;
-                    self.needs_reload.store(true, Ordering::Relaxed);
                 }
                 Err(e) => {
                     error!("{}", e);
@@ -75,17 +68,12 @@ mod wasm {
         io::Cursor,
         path::Path,
         str,
-        sync::{
-            atomic::{AtomicBool, Ordering},
-            Arc, RwLock,
-        },
+        sync::{Arc, RwLock},
     };
 
-    use futures::future::FutureExt;
     use js_sys::Uint8Array;
     use serde::{Deserialize, Serialize};
-    use tokio::sync::{mpsc, watch};
-    use tracing::{debug, error};
+    use tracing::debug;
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::Response;
@@ -241,10 +229,7 @@ mod wasm {
     pub struct RobotModel {
         pub(crate) path: String,
         pub(crate) urdf_text: Arc<RwLock<String>>,
-        pub(crate) needs_reload: Arc<AtomicBool>,
-        request_sender: mpsc::UnboundedSender<String>,
-        response_receiver: watch::Receiver<Arc<urdf_rs::Robot>>,
-        cache: Arc<urdf_rs::Robot>,
+        robot: urdf_rs::Robot,
     }
 
     impl RobotModel {
@@ -252,51 +237,16 @@ mod wasm {
             let path = path.into();
             let (mut robot, urdf_text) = read_urdf(&path).await?;
             load_mesh(&mut robot, &path).await?;
-            let robot = Arc::new(robot);
-            let (request_sender, mut request_receiver) = mpsc::unbounded_channel();
-            let (response_sender, response_receiver) = watch::channel(robot.clone());
-            let needs_reload = Arc::new(AtomicBool::new(false));
-            let needs_reload_clone = needs_reload.clone();
             let urdf_text = Arc::new(RwLock::new(urdf_text));
-            let urdf_text_clone = urdf_text.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                while let Some(input_file) = request_receiver.recv().await {
-                    match read_urdf(&input_file).await {
-                        Ok((mut robot, text)) => {
-                            if let Err(e) = load_mesh(&mut robot, input_file).await {
-                                error!("{}", e);
-                            } else if response_sender.send(Arc::new(robot)).is_ok() {
-                                *urdf_text_clone.write().unwrap() = text;
-                                needs_reload_clone.store(true, Ordering::Relaxed);
-                            }
-                        }
-                        Err(e) => {
-                            error!("{}", e);
-                        }
-                    }
-                }
-            });
             Ok(Self {
                 path,
                 urdf_text,
-                needs_reload,
-                request_sender,
-                response_receiver,
-                cache: robot,
+                robot,
             })
         }
 
         pub(crate) fn get(&mut self) -> &urdf_rs::Robot {
-            // Update cache
-            // https://github.com/tokio-rs/tokio/issues/3666
-            if let Some(Ok(())) = self.response_receiver.changed().now_or_never() {
-                self.cache = self.response_receiver.borrow().clone();
-            }
-            &self.cache
-        }
-
-        pub(crate) fn request_reload(&self, input_file: impl AsRef<str>) {
-            let _ = self.request_sender.send(input_file.as_ref().to_owned());
+            &self.robot
         }
     }
 }
