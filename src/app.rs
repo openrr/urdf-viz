@@ -480,6 +480,19 @@ impl AppState {
             self.app.reload(window, |urdf_robot| *urdf_robot = robot);
         }
 
+        if let Some(points) = handle.take_point_cloud() {
+            if points.points.len() == points.colors.len() {
+                self.point_cloud_renderer
+                    .insert(points.id, &points.points, &points.colors);
+            } else {
+                warn!(
+                    "points={},colors={}",
+                    points.points.len(),
+                    points.colors.len()
+                );
+            }
+        }
+
         if self.app.has_joints() {
             // Joint positions for server
             if let Some(ja) = handle.take_target_joint_positions() {
@@ -509,19 +522,6 @@ impl AppState {
             cur_ro.quaternion[1] = o.rotation.quaternion().i;
             cur_ro.quaternion[2] = o.rotation.quaternion().j;
             cur_ro.quaternion[3] = o.rotation.quaternion().k;
-
-            if let Some(points) = handle.take_point_cloud() {
-                if points.points.len() == points.colors.len() {
-                    self.point_cloud_renderer
-                        .insert(points.id, &points.points, &points.colors);
-                } else {
-                    warn!(
-                        "points={},colors={}",
-                        points.points.len(),
-                        points.colors.len()
-                    );
-                }
-            }
         }
     }
 }
