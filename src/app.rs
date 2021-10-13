@@ -271,7 +271,14 @@ impl UrdfViewerApp {
             .iter()
             .filter_map(|name| self.robot.find(name).map(k::SerialChain::from_end))
             .collect::<Vec<_>>();
-        self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
+        let names: Vec<_> = self.robot.iter_joints().map(|j| j.name.clone()).collect();
+        if self.names != names {
+            let dof = names.len();
+            self.names = names.clone();
+            let mut current_joint_positions = self.handle.current_joint_positions.write().unwrap();
+            current_joint_positions.names = names;
+            current_joint_positions.positions = vec![0.0; dof];
+        }
 
         self.viewer.add_robot_with_base_dir_and_collision_flag(
             window,
