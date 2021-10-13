@@ -127,8 +127,8 @@ impl Viewer {
                 .link_joint_map
                 .get(&l.name)
                 .unwrap_or_else(|| panic!("{} not found", l.name));
-            if let Some(mut scene) = self.scenes.get_mut(joint_name) {
-                window.remove_node(&mut scene);
+            if let Some(scene) = self.scenes.get_mut(joint_name) {
+                window.remove_node(scene);
             }
         }
     }

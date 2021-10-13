@@ -169,7 +169,7 @@ impl UrdfViewerApp {
         }
         let arms = end_link_names
             .iter()
-            .filter_map(|name| robot.find(name).map(|j| k::SerialChain::from_end(j)))
+            .filter_map(|name| robot.find(name).map(k::SerialChain::from_end))
             .collect::<Vec<_>>();
         println!("end_link_names = {:?}", end_link_names);
         let names = robot
@@ -218,9 +218,8 @@ impl UrdfViewerApp {
     pub fn init(&mut self) {
         self.update_robot();
         if self.has_arms() {
-            let mut window = self.window.as_mut().unwrap();
-            self.viewer
-                .add_axis_cylinders(&mut window, "ik_target", 0.2);
+            let window = self.window.as_mut().unwrap();
+            self.viewer.add_axis_cylinders(window, "ik_target", 0.2);
             self.update_ik_target_marker();
         }
     }
@@ -270,7 +269,7 @@ impl UrdfViewerApp {
         };
         self.arms = end_link_names
             .iter()
-            .filter_map(|name| self.robot.find(name).map(|j| k::SerialChain::from_end(j)))
+            .filter_map(|name| self.robot.find(name).map(k::SerialChain::from_end))
             .collect::<Vec<_>>();
         self.names = self.robot.iter_joints().map(|j| j.name.clone()).collect();
 
