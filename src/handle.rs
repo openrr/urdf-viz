@@ -69,6 +69,8 @@ impl RobotStateHandle {
     }
 
     pub fn set_robot(&self, robot: RobotModel) {
+        // set_robot may change name or number of joints, so reset target_joint_positions.
+        *self.target_joint_positions.lock().unwrap() = None;
         *self.robot.lock().unwrap() = Some(robot);
     }
 
