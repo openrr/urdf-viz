@@ -7,7 +7,6 @@ license = "Apache-2.0"
 keywords = ["robotics", "urdf", "visualization"]
 categories = ["visualization"]
 repository = "https://github.com/openrr/urdf-viz"
-documentation = "http://docs.rs/urdf-viz"
 exclude = [".github/*", "img/*"]
 edition = "2018"
 
