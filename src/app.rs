@@ -181,7 +181,7 @@ impl UrdfViewerApp {
         println!("DoF={}", num_joints);
         println!("joint names={:?}", names);
         let mut handle = RobotStateHandle::default();
-        handle.current_joint_positions.write().unwrap().names = names.clone();
+        handle.current_joint_positions.lock().unwrap().names = names.clone();
         handle.urdf_text = Some(urdf_robot.urdf_text.clone());
         Ok(UrdfViewerApp {
             input_path,
@@ -275,7 +275,7 @@ impl UrdfViewerApp {
         if self.names != names {
             let dof = names.len();
             self.names = names.clone();
-            let mut current_joint_positions = self.handle.current_joint_positions.write().unwrap();
+            let mut current_joint_positions = self.handle.current_joint_positions.lock().unwrap();
             current_joint_positions.names = names;
             current_joint_positions.positions = vec![0.0; dof];
         }
@@ -511,7 +511,7 @@ impl AppState {
                     }
                 }
             }
-            handle.current_joint_positions.write().unwrap().positions =
+            handle.current_joint_positions.lock().unwrap().positions =
                 self.app.robot.joint_positions();
 
             // Robot orientation for server
@@ -519,7 +519,7 @@ impl AppState {
                 self.app.set_robot_origin_from_request(&ro);
                 self.app.update_robot();
             }
-            let mut cur_ro = handle.current_robot_origin.write().unwrap();
+            let mut cur_ro = handle.current_robot_origin.lock().unwrap();
             let o = self.app.robot.origin();
             for i in 0..3 {
                 cur_ro.position[i] = o.translation.vector[i];

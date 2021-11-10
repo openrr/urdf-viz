@@ -9,7 +9,7 @@ mod native {
         ffi::OsStr,
         fs,
         path::Path,
-        sync::{Arc, RwLock},
+        sync::{Arc, Mutex},
     };
 
     use tracing::error;
@@ -29,7 +29,7 @@ mod native {
     #[derive(Debug)]
     pub struct RobotModel {
         pub(crate) path: String,
-        pub(crate) urdf_text: Arc<RwLock<String>>,
+        pub(crate) urdf_text: Arc<Mutex<String>>,
         robot: urdf_rs::Robot,
     }
 
@@ -39,7 +39,7 @@ mod native {
             let (robot, urdf_text) = read_urdf(&path)?;
             Ok(Self {
                 path,
-                urdf_text: Arc::new(RwLock::new(urdf_text)),
+                urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
             })
         }
@@ -53,7 +53,7 @@ mod native {
             let robot = urdf_rs::read_from_string(&urdf_text)?;
             Ok(Self {
                 path,
-                urdf_text: Arc::new(RwLock::new(urdf_text)),
+                urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
             })
         }
@@ -66,7 +66,7 @@ mod native {
             match read_urdf(&self.path) {
                 Ok((robot, text)) => {
                     self.robot = robot;
-                    *self.urdf_text.write().unwrap() = text;
+                    *self.urdf_text.lock().unwrap() = text;
                 }
                 Err(e) => {
                     error!("{}", e);
@@ -82,7 +82,7 @@ mod wasm {
         io::Cursor,
         path::Path,
         str,
-        sync::{Arc, RwLock},
+        sync::{Arc, Mutex},
     };
 
     use js_sys::Uint8Array;
@@ -242,7 +242,7 @@ mod wasm {
     #[derive(Debug)]
     pub struct RobotModel {
         pub(crate) path: String,
-        pub(crate) urdf_text: Arc<RwLock<String>>,
+        pub(crate) urdf_text: Arc<Mutex<String>>,
         robot: urdf_rs::Robot,
     }
 
@@ -253,7 +253,7 @@ mod wasm {
             load_mesh(&mut robot, &path).await?;
             Ok(Self {
                 path,
-                urdf_text: Arc::new(RwLock::new(urdf_text)),
+                urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
             })
         }
@@ -268,7 +268,7 @@ mod wasm {
             load_mesh(&mut robot, &path).await?;
             Ok(Self {
                 path,
-                urdf_text: Arc::new(RwLock::new(urdf_text)),
+                urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
             })
         }
