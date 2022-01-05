@@ -16,13 +16,13 @@
 
 #![warn(rust_2018_idioms)]
 
-use structopt::StructOpt;
+use clap::Parser;
 use tracing::debug;
 use urdf_viz::{app::*, WebServer};
 
 fn main() -> urdf_viz::Result<()> {
     tracing_subscriber::fmt::init();
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     debug!(?opt);
     let urdf_robot = urdf_viz::utils::RobotModel::new(&opt.input_urdf_or_xacro)?;
     let ik_constraints = opt.create_ik_constraints();
