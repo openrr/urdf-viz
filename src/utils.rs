@@ -5,13 +5,9 @@ pub use wasm::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
-    use std::{
-        ffi::OsStr,
-        fs,
-        path::Path,
-        sync::{Arc, Mutex},
-    };
+    use std::{ffi::OsStr, fs, path::Path, sync::Arc};
 
+    use parking_lot::Mutex;
     use tracing::error;
 
     use crate::Result;
@@ -66,7 +62,7 @@ mod native {
             match read_urdf(&self.path) {
                 Ok((robot, text)) => {
                     self.robot = robot;
-                    *self.urdf_text.lock().unwrap() = text;
+                    *self.urdf_text.lock() = text;
                 }
                 Err(e) => {
                     error!("{}", e);
@@ -78,14 +74,10 @@ mod native {
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {
-    use std::{
-        io::Cursor,
-        path::Path,
-        str,
-        sync::{Arc, Mutex},
-    };
+    use std::{io::Cursor, path::Path, str, sync::Arc};
 
     use js_sys::Uint8Array;
+    use parking_lot::Mutex;
     use serde::{Deserialize, Serialize};
     use tracing::debug;
     use wasm_bindgen::JsCast;
