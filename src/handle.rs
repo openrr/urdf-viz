@@ -1,5 +1,6 @@
+use parking_lot::{Mutex, MutexGuard};
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::{ops, sync::Arc};
 
 use crate::utils::RobotModel;
 
@@ -43,50 +44,72 @@ pub struct RobotStateHandle {
     robot: Mutex<Option<RobotModel>>,
 }
 
+// Wrapper type to prevent parking_lot updates from becoming a breaking change.
+macro_rules! impl_guard {
+    ($guard_name:ident($target:ident)) => {
+        #[derive(Debug)]
+        pub struct $guard_name<'a>(MutexGuard<'a, $target>);
+        impl ops::Deref for $guard_name<'_> {
+            type Target = $target;
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+        impl ops::DerefMut for $guard_name<'_> {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+    };
+}
+impl_guard!(JointNamesAndPositionsLockGuard(JointNamesAndPositions));
+impl_guard!(RobotOriginLockGuard(RobotOrigin));
+impl_guard!(UrdfTextLockGuard(String));
+
 impl RobotStateHandle {
-    pub fn current_joint_positions(&self) -> MutexGuard<'_, JointNamesAndPositions> {
-        self.current_joint_positions.lock().unwrap()
+    pub fn current_joint_positions(&self) -> JointNamesAndPositionsLockGuard<'_> {
+        JointNamesAndPositionsLockGuard(self.current_joint_positions.lock())
     }
 
-    pub fn current_robot_origin(&self) -> MutexGuard<'_, RobotOrigin> {
-        self.current_robot_origin.lock().unwrap()
+    pub fn current_robot_origin(&self) -> RobotOriginLockGuard<'_> {
+        RobotOriginLockGuard(self.current_robot_origin.lock())
     }
 
-    pub fn urdf_text(&self) -> Option<MutexGuard<'_, String>> {
-        Some(self.urdf_text.as_ref()?.lock().unwrap())
+    pub fn urdf_text(&self) -> Option<UrdfTextLockGuard<'_>> {
+        Some(UrdfTextLockGuard(self.urdf_text.as_ref()?.lock()))
     }
 
     pub fn set_target_joint_positions(&self, joint_positions: JointNamesAndPositions) {
-        *self.target_joint_positions.lock().unwrap() = Some(joint_positions);
+        *self.target_joint_positions.lock() = Some(joint_positions);
     }
 
     pub fn set_target_robot_origin(&self, robot_origin: RobotOrigin) {
-        *self.target_robot_origin.lock().unwrap() = Some(robot_origin);
+        *self.target_robot_origin.lock() = Some(robot_origin);
     }
 
     pub fn set_point_cloud(&self, points_and_colors: PointsAndColors) {
-        *self.point_cloud.lock().unwrap() = Some(points_and_colors);
+        *self.point_cloud.lock() = Some(points_and_colors);
     }
 
     pub fn set_robot(&self, robot: RobotModel) {
         // set_robot may change name or number of joints, so reset target_joint_positions.
-        *self.target_joint_positions.lock().unwrap() = None;
-        *self.robot.lock().unwrap() = Some(robot);
+        *self.target_joint_positions.lock() = None;
+        *self.robot.lock() = Some(robot);
     }
 
     pub fn take_target_joint_positions(&self) -> Option<JointNamesAndPositions> {
-        self.target_joint_positions.lock().unwrap().take()
+        self.target_joint_positions.lock().take()
     }
 
     pub fn take_target_robot_origin(&self) -> Option<RobotOrigin> {
-        self.target_robot_origin.lock().unwrap().take()
+        self.target_robot_origin.lock().take()
     }
 
     pub(crate) fn take_point_cloud(&self) -> Option<PointsAndColors> {
-        self.point_cloud.lock().unwrap().take()
+        self.point_cloud.lock().take()
     }
 
     pub(crate) fn take_robot(&self) -> Option<RobotModel> {
-        self.robot.lock().unwrap().take()
+        self.robot.lock().take()
     }
 }
