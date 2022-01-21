@@ -65,7 +65,7 @@ mod native {
                     *self.urdf_text.lock() = text;
                 }
                 Err(e) => {
-                    error!("{}", e);
+                    error!("{e}");
                 }
             }
         }
@@ -189,8 +189,7 @@ mod wasm {
                         filename.clone()
                     } else if filename.starts_with("package://") {
                         return Err(Error::from(format!(
-                            "ros package ({}) is not supported in wasm",
-                            filename
+                            "ros package ({filename}) is not supported in wasm",
                         )));
                     } else {
                         // We don't use url::Url::path/set_path here, because
@@ -213,7 +212,7 @@ mod wasm {
                 };
 
                 let data = if kind != MeshKind::Other {
-                    debug!("loading {}", input_file);
+                    debug!("loading {input_file}");
                     MeshData::Base64(base64::encode(read(&input_file).await?))
                 } else {
                     MeshData::None

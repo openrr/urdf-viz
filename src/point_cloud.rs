@@ -107,10 +107,9 @@ uniform   mat4 proj;
 uniform   mat4 view;
 void main() {{
     gl_Position = proj * view * vec4(position, 1.0);
-    gl_PointSize = {:.1};
+    gl_PointSize = {point_size:.1};
     Color = color;
 }}",
-        point_size
     )
 }
 
