@@ -144,7 +144,7 @@ impl UrdfViewerApp {
     ) -> Result<Self, Error> {
         let input_path = PathBuf::from(&urdf_robot.path);
         let robot: k::Chain<f32> = urdf_robot.get().into();
-        println!("{}", robot);
+        println!("{robot}");
         let (mut viewer, mut window) = Viewer::with_background_color("urdf-viz", background_color);
         if disable_texture {
             viewer.disable_texture();
@@ -171,15 +171,15 @@ impl UrdfViewerApp {
             .iter()
             .filter_map(|name| robot.find(name).map(k::SerialChain::from_end))
             .collect::<Vec<_>>();
-        println!("end_link_names = {:?}", end_link_names);
+        println!("end_link_names = {end_link_names:?}");
         let names = robot
             .iter_joints()
             .map(|j| j.name.clone())
             .collect::<Vec<_>>();
         let num_arms = end_link_names.len();
         let num_joints = names.len();
-        println!("DoF={}", num_joints);
-        println!("joint names={:?}", names);
+        println!("DoF={num_joints}");
+        println!("joint names={names:?}");
         let mut handle = RobotStateHandle::default();
         handle.current_joint_positions.lock().names = names.clone();
         handle.urdf_text = Some(urdf_robot.urdf_text.clone());
@@ -243,7 +243,7 @@ impl UrdfViewerApp {
         let joint_positions = self.robot.joint_positions();
         self.robot
             .set_joint_positions(&joint_positions)
-            .unwrap_or_else(|err| error!("failed to update robot joints {}", err));
+            .unwrap_or_else(|err| error!("failed to update robot joints {err}"));
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
     }
@@ -303,7 +303,7 @@ impl UrdfViewerApp {
             if let Some(index) = self.names.iter().position(|n| n == name) {
                 angles[index] = *angle;
             } else {
-                warn!("{} not found, but continues", name);
+                warn!("{name} not found, but continues");
             }
         }
         self.robot.set_joint_positions(&angles)
@@ -507,7 +507,7 @@ impl AppState {
                         self.app.update_robot();
                     }
                     Err(err) => {
-                        error!("{}", err);
+                        error!("{err}");
                     }
                 }
             }
@@ -574,7 +574,7 @@ impl window::State for AppState {
                 .to_owned();
             self.app.viewer.draw_text(
                 window,
-                &format!("IK target name [{}]", name),
+                &format!("IK target name [{name}]"),
                 FONT_SIZE_INFO,
                 &na::Point2::new(10f32, 100.0),
                 &na::Point3::new(0.5f32, 0.8, 0.2),
@@ -652,7 +652,7 @@ impl window::State for AppState {
                                 )
                                 .unwrap_or_else(|err| {
                                     self.app.robot.set_joint_positions_unchecked(&orig_angles);
-                                    error!("{}", err);
+                                    error!("{err}");
                                 });
                             self.app.update_robot();
                         }
@@ -804,7 +804,7 @@ impl Opt {
     #[cfg(target_arch = "wasm32")]
     pub fn from_params() -> Result<Self, Error> {
         let href = crate::utils::window()?.location().href()?;
-        debug!("href={}", href);
+        debug!("href={href}");
         let url = url::Url::parse(&href).map_err(|e| e.to_string())?;
         Ok(serde_qs::from_str(url.query().unwrap_or_default()).map_err(|e| e.to_string())?)
     }

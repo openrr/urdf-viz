@@ -109,7 +109,7 @@ impl Viewer {
                         base_group.set_local_transformation(k::urdf::isometry_from(origin_element));
                     }
                     Err(e) => {
-                        error!("failed to create for link '{}': {}", l.name, e);
+                        error!("failed to create for link '{}': {e}", l.name);
                     }
                 }
             }
@@ -171,7 +171,7 @@ impl Viewer {
                     obj.set_local_transformation(trans_f32);
                 }
                 None => {
-                    debug!("{} not found", link_name);
+                    debug!("{link_name} not found");
                 }
             }
         }

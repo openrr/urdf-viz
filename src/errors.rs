@@ -45,7 +45,7 @@ impl From<String> for Error {
 #[cfg(target_arch = "wasm32")]
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(error: wasm_bindgen::JsValue) -> Self {
-        Error::Other(format!("{:?}", error))
+        Error::Other(format!("{error:?}"))
     }
 }
 
