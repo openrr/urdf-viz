@@ -1,9 +1,15 @@
-use crate::errors::{Error, Result};
+#[cfg(not(feature = "assimp"))]
+use crate::errors::Error;
+use crate::errors::Result;
 use k::nalgebra as na;
-use kiss3d::{resource::Mesh, scene::SceneNode};
+#[cfg(not(feature = "assimp"))]
+use kiss3d::resource::Mesh;
+use kiss3d::scene::SceneNode;
+#[cfg(not(feature = "assimp"))]
 use std::{cell::RefCell, io, rc::Rc};
 use tracing::*;
 
+#[cfg(not(feature = "assimp"))]
 type RefCellMesh = Rc<RefCell<Mesh>>;
 
 #[cfg(feature = "assimp")]
@@ -213,7 +219,8 @@ fn add_obj(group: &mut SceneNode, data: &crate::utils::Mesh, scale: na::Vector3<
     }
 }
 
-pub fn read_stl(mut reader: impl io::Read + io::Seek) -> Result<RefCellMesh> {
+#[cfg(not(feature = "assimp"))]
+fn read_stl(mut reader: impl io::Read + io::Seek) -> Result<RefCellMesh> {
     // TODO: Once https://github.com/hmeyer/stl_io/pull/14 is merged and released, compare with stl_io.
     let mesh: nom_stl::IndexMesh = nom_stl::parse_stl(&mut reader)
         .map_err(|e| match e {
