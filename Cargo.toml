@@ -17,15 +17,15 @@ members = ["examples/wasm"]
 default = ["assimp"]
 assimp = ["assimp-crate", "assimp-sys"]
 
-# Note: clap, k, kiss3d, serde, urdf-rs, and wasm-bindgen are public dependencies.
+# Note: k, kiss3d, serde, structopt, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
-clap = { version = "3", features = ["derive"] }
 k = "0.27"
 kiss3d = "0.33"
 nom_stl = "0.2"
 parking_lot = "0.12"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
+structopt = "0.3"
 thiserror = "1.0"
 tracing = { version = "0.1", features = ["log"] }
 urdf-rs = "0.6"

@@ -14,7 +14,6 @@
   limitations under the License.
 */
 
-use clap::Parser;
 use k::nalgebra as na;
 use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
@@ -23,6 +22,7 @@ use serde::Deserialize;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::Arc;
+use structopt::StructOpt;
 use tracing::*;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -696,8 +696,8 @@ impl window::State for AppState {
     }
 }
 
-/// URDF visualizer
-#[derive(Parser, Debug, Deserialize)]
+/// Option for visualizing urdf
+#[derive(StructOpt, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub struct Opt {
@@ -705,73 +705,73 @@ pub struct Opt {
     #[serde(default, rename = "urdf")]
     pub input_urdf_or_xacro: String,
     /// end link names
-    #[clap(short, long = "end-link-name")]
+    #[structopt(short = "e", long = "end-link-name")]
     #[serde(default)]
     pub end_link_names: Vec<String>,
     /// Show collision element instead of visual
-    #[clap(short = 'c', long = "collision")]
+    #[structopt(short = "c", long = "collision")]
     #[serde(default)]
     pub is_collision: bool,
     /// Disable texture rendering
-    #[clap(short, long)]
+    #[structopt(short = "d", long = "disable-texture")]
     #[serde(default)]
     pub disable_texture: bool,
     /// Port number for web server interface
-    #[clap(short = 'p', long, default_value = "7777")]
+    #[structopt(short = "p", long = "web-server-port", default_value = "7777")]
     #[serde(default = "default_web_server_port")]
     pub web_server_port: u16,
 
-    #[clap(long)]
+    #[structopt(long = "ignore-ik-position-x")]
     #[serde(default)]
     pub ignore_ik_position_x: bool,
-    #[clap(long)]
+    #[structopt(long = "ignore-ik-position-y")]
     #[serde(default)]
     pub ignore_ik_position_y: bool,
-    #[clap(long)]
+    #[structopt(long = "ignore-ik-position-z")]
     #[serde(default)]
     pub ignore_ik_position_z: bool,
 
-    #[clap(long)]
+    #[structopt(long = "ignore-ik-rotation-x")]
     #[serde(default)]
     pub ignore_ik_rotation_x: bool,
-    #[clap(long)]
+    #[structopt(long = "ignore-ik-rotation-y")]
     #[serde(default)]
     pub ignore_ik_rotation_y: bool,
-    #[clap(long)]
+    #[structopt(long = "ignore-ik-rotation-z")]
     #[serde(default)]
     pub ignore_ik_rotation_z: bool,
 
-    #[clap(long = "bg-color-r", default_value = "0.0")]
+    #[structopt(long = "bg-color-r", default_value = "0.0")]
     #[serde(default)]
     pub back_ground_color_r: f32,
-    #[clap(long = "bg-color-g", default_value = "0.0")]
+    #[structopt(long = "bg-color-g", default_value = "0.0")]
     #[serde(default)]
     pub back_ground_color_g: f32,
-    #[clap(long = "bg-color-b", default_value = "0.3")]
+    #[structopt(long = "bg-color-b", default_value = "0.3")]
     #[serde(default = "default_back_ground_color_b")]
     pub back_ground_color_b: f32,
 
-    #[clap(long, default_value = "0.1")]
+    #[structopt(long = "tile-color1-r", default_value = "0.1")]
     #[serde(default = "default_tile_color1")]
     pub tile_color1_r: f32,
-    #[clap(long, default_value = "0.1")]
+    #[structopt(long = "tile-color1-g", default_value = "0.1")]
     #[serde(default = "default_tile_color1")]
     pub tile_color1_g: f32,
-    #[clap(long, default_value = "0.1")]
+    #[structopt(long = "tile-color1-b", default_value = "0.1")]
     #[serde(default = "default_tile_color1")]
     pub tile_color1_b: f32,
 
-    #[clap(long, default_value = "0.8")]
+    #[structopt(long = "tile-color2-r", default_value = "0.8")]
     #[serde(default = "default_tile_color2")]
     pub tile_color2_r: f32,
-    #[clap(long, default_value = "0.8")]
+    #[structopt(long = "tile-color2-g", default_value = "0.8")]
     #[serde(default = "default_tile_color2")]
     pub tile_color2_g: f32,
-    #[clap(long, default_value = "0.8")]
+    #[structopt(long = "tile-color2-b", default_value = "0.8")]
     #[serde(default = "default_tile_color2")]
     pub tile_color2_b: f32,
 
-    #[clap(long)]
+    #[structopt(long = "ground-height")]
     pub ground_height: Option<f32>,
 }
 
@@ -807,17 +807,5 @@ impl Opt {
         debug!("href={href}");
         let url = url::Url::parse(&href).map_err(|e| e.to_string())?;
         Ok(serde_qs::from_str(url.query().unwrap_or_default()).map_err(|e| e.to_string())?)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use clap::IntoApp;
-
-    use super::*;
-
-    #[test]
-    fn assert_app() {
-        Opt::into_app().debug_assert();
     }
 }
