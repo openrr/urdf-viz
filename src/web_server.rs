@@ -1,11 +1,11 @@
-use std::{io, sync::Arc};
+use std::sync::Arc;
 
-use actix_web::*;
 use serde::{Deserialize, Serialize};
+use warp::{Filter, Rejection};
 
 use crate::handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle};
 
-type Handle = web::Data<Arc<RobotStateHandle>>;
+type Handle = Arc<RobotStateHandle>;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct ResultResponse {
@@ -28,134 +28,106 @@ impl WebServer {
         self.handle.clone()
     }
 
-    #[actix_web::main]
-    pub async fn start(self) -> io::Result<()> {
+    #[tokio::main]
+    pub async fn start(self) {
         let handle = self.handle();
 
-        HttpServer::new(move || {
-            App::new()
-                .data(handle.clone())
-                .service(set_joint_positions)
-                .service(set_robot_origin)
-                .service(options_set_joint_positions)
-                .service(options_set_robot_origin)
-                .service(get_joint_positions)
-                .service(get_robot_origin)
-                .service(get_urdf_text)
-                .service(options_get_joint_positions)
-                .service(options_get_robot_origin)
-                .service(options_get_urdf_text)
-        })
-        .bind(("0.0.0.0", self.port))?
-        .run()
-        .await
+        let routes = set_joint_positions(handle.clone())
+            .or(set_robot_origin(handle.clone()))
+            .or(get_joint_positions(handle.clone()))
+            .or(get_robot_origin(handle.clone()))
+            .or(get_urdf_text(handle.clone()));
+        warp::serve(routes).run(([0, 0, 0, 0], self.port)).await;
     }
 }
 
-#[post("set_joint_positions")]
-async fn set_joint_positions(
-    json: web::Json<JointNamesAndPositions>,
+fn set_joint_positions(
     handle: Handle,
-) -> HttpResponse {
-    let jp: JointNamesAndPositions = json.into_inner();
-    if jp.names.len() != jp.positions.len() {
-        HttpResponse::Ok().json(&ResultResponse {
-            is_ok: false,
-            reason: format!(
-                "names and positions size mismatch ({} != {})",
-                jp.names.len(),
-                jp.positions.len()
-            ),
+) -> impl Filter<Extract = (warp::reply::Json,), Error = Rejection> + Clone {
+    warp::post()
+        .and(warp::path("set_joint_positions"))
+        .and(warp::body::json())
+        .and_then(move |jp: JointNamesAndPositions| {
+            let handle = handle.clone();
+            async move {
+                if jp.names.len() != jp.positions.len() {
+                    Ok::<_, Rejection>(warp::reply::json(&ResultResponse {
+                        is_ok: false,
+                        reason: format!(
+                            "names and positions size mismatch ({} != {})",
+                            jp.names.len(),
+                            jp.positions.len()
+                        ),
+                    }))
+                } else {
+                    handle.set_target_joint_positions(jp);
+                    Ok(warp::reply::json(&ResultResponse {
+                        is_ok: true,
+                        reason: "".to_string(),
+                    }))
+                }
+            }
         })
-    } else {
-        handle.set_target_joint_positions(jp);
-        HttpResponse::Ok().json(&ResultResponse {
-            is_ok: true,
-            reason: "".to_string(),
+}
+
+fn set_robot_origin(
+    handle: Handle,
+) -> impl Filter<Extract = (warp::reply::Json,), Error = Rejection> + Clone {
+    warp::post()
+        .and(warp::path("set_robot_origin"))
+        .and(warp::body::json())
+        .and_then(move |robot_origin: RobotOrigin| {
+            let handle = handle.clone();
+            async move {
+                handle.set_target_robot_origin(robot_origin);
+                Ok::<_, Rejection>(warp::reply::json(&ResultResponse {
+                    is_ok: true,
+                    reason: "".to_string(),
+                }))
+            }
         })
-    }
 }
 
-#[post("set_robot_origin")]
-async fn set_robot_origin(json: web::Json<RobotOrigin>, handle: Handle) -> HttpResponse {
-    handle.set_target_robot_origin(json.into_inner());
-    HttpResponse::Ok().json(&ResultResponse {
-        is_ok: true,
-        reason: "".to_string(),
-    })
+fn get_joint_positions(
+    handle: Handle,
+) -> impl Filter<Extract = (warp::reply::Json,), Error = Rejection> + Clone {
+    warp::get()
+        .and(warp::path("get_joint_positions"))
+        .and_then(move || {
+            let handle = handle.clone();
+            async move {
+                let json = handle.current_joint_positions();
+                Ok::<_, Rejection>(warp::reply::json(&*json))
+            }
+        })
 }
 
-#[options("set_joint_positions")]
-async fn options_set_joint_positions() -> HttpResponse {
-    HttpResponse::NoContent()
-        .header("Allow", "OPTIONS, POST")
-        .header("Access-Control-Allow-Methods", "POST")
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Headers", "authorization,content-type")
-        .header("Access-Control-Max-Age", "86400")
-        .finish()
+fn get_robot_origin(
+    handle: Handle,
+) -> impl Filter<Extract = (warp::reply::Json,), Error = Rejection> + Clone {
+    warp::get()
+        .and(warp::path("get_robot_origin"))
+        .and_then(move || {
+            let handle = handle.clone();
+            async move {
+                let robot_origin = handle.current_robot_origin();
+                Ok::<_, Rejection>(warp::reply::json(&*robot_origin))
+            }
+        })
 }
 
-#[options("set_robot_origin")]
-async fn options_set_robot_origin() -> HttpResponse {
-    HttpResponse::NoContent()
-        .header("Allow", "OPTIONS, POST")
-        .header("Access-Control-Allow-Methods", "POST")
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Headers", "authorization,content-type")
-        .header("Access-Control-Max-Age", "86400")
-        .finish()
-}
-
-#[get("get_joint_positions")]
-async fn get_joint_positions(handle: Handle) -> HttpResponse {
-    let json = handle.current_joint_positions();
-    HttpResponse::Ok().json(&*json)
-}
-
-#[get("get_robot_origin")]
-async fn get_robot_origin(handle: Handle) -> HttpResponse {
-    let origin = handle.current_robot_origin();
-    HttpResponse::Ok().json(&*origin)
-}
-
-#[get("get_urdf_text")]
-async fn get_urdf_text(handle: Handle) -> HttpResponse {
-    match handle.urdf_text() {
-        Some(text) => HttpResponse::from(&*text),
-        None => HttpResponse::InternalServerError().finish(),
-    }
-}
-
-#[options("get_joint_positions")]
-async fn options_get_joint_positions() -> HttpResponse {
-    HttpResponse::NoContent()
-        .header("Allow", "OPTIONS, GET")
-        .header("Access-Control-Allow-Methods", "GET")
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Headers", "authorization")
-        .header("Access-Control-Max-Age", "86400")
-        .finish()
-}
-
-#[options("get_robot_origin")]
-async fn options_get_robot_origin() -> HttpResponse {
-    HttpResponse::NoContent()
-        .header("Allow", "OPTIONS, GET")
-        .header("Access-Control-Allow-Methods", "GET")
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Headers", "authorization")
-        .header("Access-Control-Max-Age", "86400")
-        .finish()
-}
-
-#[options("get_urdf_text")]
-async fn options_get_urdf_text() -> HttpResponse {
-    HttpResponse::NoContent()
-        .header("Allow", "OPTIONS, GET")
-        .header("Access-Control-Allow-Methods", "GET")
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Headers", "authorization")
-        .header("Access-Control-Max-Age", "86400")
-        .finish()
+fn get_urdf_text(
+    handle: Handle,
+) -> impl Filter<Extract = (warp::reply::Json,), Error = Rejection> + Clone {
+    warp::get()
+        .and(warp::path("get_urdf_text"))
+        .and_then(move || {
+            let handle = handle.clone();
+            async move {
+                match handle.urdf_text() {
+                    Some(text) => Ok(warp::reply::json(&*text)),
+                    None => Err(warp::reject::not_found()),
+                }
+            }
+        })
 }
