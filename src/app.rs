@@ -698,7 +698,6 @@ impl window::State for AppState {
 
 /// URDF visualizer
 #[derive(Parser, Debug, Deserialize)]
-#[clap(version)]
 #[serde(rename_all = "kebab-case")]
 #[non_exhaustive]
 pub struct Opt {
