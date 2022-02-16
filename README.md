@@ -233,4 +233,4 @@ curl http://127.0.0.1:7777/get_urdf_text
 * [k](https://github.com/openrr/k): kinematics library which is based on [nalgabra](https://github.com/sebcrozet/nalgebra). It can load URDF files using `urdf-rs`.
 * [assimp-rs](https://github.com/Eljay/assimp-rs): assimp rust interface. `kiss3d` supports `.obj` files natively, but urdf contains `dae` or `stl` files. These files are converted to kiss3d mesh model by `assimp-rs`
 * [urdf-rs](https://github.com/openrr/urdf-rs): URDF file loader.
-* [clap](https://github.com/clap-rs/clap): super easy command line arguments parser.
+* [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
