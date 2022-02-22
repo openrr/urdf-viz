@@ -111,7 +111,12 @@ l:    Reload the file
 r:    set random angles
 z:    reset joint positions and origin
 c:    toggle visual/collision
+f:    toggle show link frames
 "#;
+
+fn node_to_frame_name(node: &k::Node<f32>) -> String {
+    format!("{}_frame", node.joint().name)
+}
 
 pub struct UrdfViewerApp {
     input_path: PathBuf,
@@ -126,6 +131,7 @@ pub struct UrdfViewerApp {
     index_of_move_joint: LoopIndex,
     handle: Arc<RobotStateHandle>,
     is_collision: bool,
+    show_frames: bool,
     ik_constraints: k::Constraints,
     point_size: f32,
 }
@@ -196,6 +202,7 @@ impl UrdfViewerApp {
             index_of_move_joint: LoopIndex::new(num_joints),
             handle: Arc::new(handle),
             is_collision,
+            show_frames: false,
             ik_constraints: k::Constraints::default(),
             point_size: 10.0,
         })
@@ -222,6 +229,18 @@ impl UrdfViewerApp {
             self.viewer.add_axis_cylinders(window, "ik_target", 0.2);
             self.update_ik_target_marker();
         }
+        self.add_frame_markers();
+        self.update_frame_markers();
+    }
+    fn add_frame_markers(&mut self) {
+        const ARROW_SIZE: f32 = 0.2;
+        self.robot.iter().for_each(|n| {
+            self.viewer.add_axis_cylinders(
+                self.window.as_mut().unwrap(),
+                &node_to_frame_name(n),
+                ARROW_SIZE,
+            );
+        });
     }
     fn get_arm(&self) -> &k::SerialChain<f32> {
         &self.arms[self.index_of_arm.get()]
@@ -238,6 +257,17 @@ impl UrdfViewerApp {
             };
         }
     }
+    fn update_frame_markers(&mut self) {
+        for n in self.robot.iter() {
+            let name = node_to_frame_name(n);
+            if let Some(obj) = self.viewer.scene_node_mut(&name) {
+                if self.show_frames {
+                    obj.set_local_transformation(n.world_transform().unwrap());
+                }
+                obj.set_visible(self.show_frames);
+            }
+        }
+    }
     fn update_robot(&mut self) {
         // this is hack to handle invalid mimic joints, like hsr
         let joint_positions = self.robot.joint_positions();
@@ -246,6 +276,7 @@ impl UrdfViewerApp {
             .unwrap_or_else(|err| error!("failed to update robot joints {err}"));
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
+        self.update_frame_markers();
     }
     fn reload(&mut self, window: &mut Window, reload_fn: impl FnOnce(&mut RobotModel)) {
         // remove previous robot
@@ -286,6 +317,7 @@ impl UrdfViewerApp {
             self.input_path.parent(),
             self.is_collision,
         );
+        self.add_frame_markers();
         self.update_robot();
     }
 
@@ -388,6 +420,10 @@ impl UrdfViewerApp {
                     self.is_collision,
                 );
                 self.update_robot();
+            }
+            Key::F => {
+                self.show_frames = !self.show_frames;
+                self.update_frame_markers();
             }
             #[cfg(not(target_arch = "wasm32"))]
             Key::L => {
