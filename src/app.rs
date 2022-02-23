@@ -114,6 +114,8 @@ c:    toggle visual/collision
 f:    toggle show link frames
 "#;
 
+const FRAME_ARROW_SIZE: f32 = 0.2;
+
 fn node_to_frame_name(node: &k::Node<f32>) -> String {
     format!("{}_frame", node.joint().name)
 }
@@ -229,18 +231,12 @@ impl UrdfViewerApp {
             self.viewer.add_axis_cylinders(window, "ik_target", 0.2);
             self.update_ik_target_marker();
         }
-        self.add_frame_markers();
-        self.update_frame_markers();
-    }
-    fn add_frame_markers(&mut self) {
-        const ARROW_SIZE: f32 = 0.2;
+        let window = self.window.as_mut().unwrap();
         self.robot.iter().for_each(|n| {
-            self.viewer.add_axis_cylinders(
-                self.window.as_mut().unwrap(),
-                &node_to_frame_name(n),
-                ARROW_SIZE,
-            );
+            self.viewer
+                .add_axis_cylinders(window, &node_to_frame_name(n), FRAME_ARROW_SIZE);
         });
+        self.update_frame_markers();
     }
     fn get_arm(&self) -> &k::SerialChain<f32> {
         &self.arms[self.index_of_arm.get()]
@@ -268,6 +264,15 @@ impl UrdfViewerApp {
             }
         }
     }
+    fn remove_frame_markers(&mut self, window: &mut Window) {
+        for n in self.robot.iter() {
+            let name = node_to_frame_name(n);
+            if let Some(obj) = self.viewer.scene_node_mut(&name) {
+                window.remove_node(obj);
+            }
+        }
+    }
+
     fn update_robot(&mut self) {
         // this is hack to handle invalid mimic joints, like hsr
         let joint_positions = self.robot.joint_positions();
@@ -281,7 +286,7 @@ impl UrdfViewerApp {
     fn reload(&mut self, window: &mut Window, reload_fn: impl FnOnce(&mut RobotModel)) {
         // remove previous robot
         self.viewer.remove_robot(window, self.urdf_robot.get());
-
+        self.remove_frame_markers(window);
         // update urdf_robot
         reload_fn(&mut self.urdf_robot);
 
@@ -317,7 +322,11 @@ impl UrdfViewerApp {
             self.input_path.parent(),
             self.is_collision,
         );
-        self.add_frame_markers();
+        const FRAME_ARROW_SIZE: f32 = 0.2;
+        self.robot.iter().for_each(|n| {
+            self.viewer
+                .add_axis_cylinders(window, &node_to_frame_name(n), FRAME_ARROW_SIZE);
+        });
         self.update_robot();
     }
 
