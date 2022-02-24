@@ -21,18 +21,19 @@ use kiss3d::window::{self, Window};
 use serde::Deserialize;
 use std::fmt;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use std::sync::Arc;
 use structopt::StructOpt;
 use tracing::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use std::sync::atomic::AtomicBool;
 
 use crate::{
     handle::{JointNamesAndPositions, RobotOrigin, RobotStateHandle},
     point_cloud::PointCloudRenderer,
     utils::RobotModel,
-    Error, Viewer,
+    Error, Viewer, ROBOT_OBJECT_ID,
 };
 
 #[cfg(target_os = "macos")]
@@ -536,12 +537,44 @@ impl AppState {
                 self.point_cloud_renderer
                     .insert(points.id, &points.points, &points.colors);
             } else {
-                warn!(
-                    "points={},colors={}",
+                error!(
+                    "point cloud length mismatch points={}, colors={}",
                     points.points.len(),
                     points.colors.len()
                 );
             }
+        }
+
+        #[allow(clippy::never_loop)]
+        while let Some(cube) = handle.take_cube() {
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let id = &if let Some(extent) = cube.extent {
+                let id = cube
+                    .id
+                    .unwrap_or_else(|| format!("__cube{}", COUNTER.fetch_add(1, Relaxed)));
+                self.app
+                    .viewer
+                    .add_cube(window, &id, extent[0], extent[1], extent[2]);
+                id
+            } else if let Some(id) = cube.id {
+                id
+            } else {
+                error!("must be at least one of cube.extent or cube.id specified");
+                break; // jump
+            };
+            let scene = self.app.viewer.scene_node_mut(id).unwrap();
+            if let Some(color) = cube.color {
+                scene.set_color(color[0], color[1], color[2]);
+            }
+            if let Some(p) = cube.position {
+                scene.set_local_translation(na::Translation3::new(p[0], p[1], p[2]));
+            }
+            if let Some(q) = cube.quaternion {
+                scene.set_local_rotation(na::UnitQuaternion::new_normalize(na::Quaternion::new(
+                    q[0], q[1], q[2], q[3],
+                )));
+            }
+            break;
         }
 
         if self.app.has_joints() {
@@ -557,22 +590,36 @@ impl AppState {
                 }
             }
             handle.current_joint_positions.lock().positions = self.app.robot.joint_positions();
-
-            // Robot orientation for server
-            if let Some(ro) = handle.take_target_robot_origin() {
-                self.app.set_robot_origin_from_request(&ro);
-                self.app.update_robot();
-            }
-            let mut cur_ro = handle.current_robot_origin.lock();
-            let o = self.app.robot.origin();
-            for i in 0..3 {
-                cur_ro.position[i] = o.translation.vector[i];
-            }
-            cur_ro.quaternion[0] = o.rotation.quaternion().w;
-            cur_ro.quaternion[1] = o.rotation.quaternion().i;
-            cur_ro.quaternion[2] = o.rotation.quaternion().j;
-            cur_ro.quaternion[3] = o.rotation.quaternion().k;
         }
+
+        // Robot orientation for server
+        if let Some(origin) = handle.take_target_object_origin() {
+            if origin.id == ROBOT_OBJECT_ID {
+                self.app.set_robot_origin_from_request(&RobotOrigin {
+                    position: origin.position,
+                    quaternion: origin.quaternion,
+                });
+                self.app.update_robot();
+            } else if let Some(scene) = self.app.viewer.scene_node_mut(&origin.id) {
+                let p = origin.position;
+                scene.set_local_translation(na::Translation3::new(p[0], p[1], p[2]));
+                let q = origin.quaternion;
+                scene.set_local_rotation(na::UnitQuaternion::new_normalize(na::Quaternion::new(
+                    q[0], q[1], q[2], q[3],
+                )));
+            } else {
+                error!("object '{}' not found", origin.id);
+            }
+        }
+        let mut cur_origin = handle.current_robot_origin.lock();
+        let origin = self.app.robot.origin();
+        for i in 0..3 {
+            cur_origin.position[i] = origin.translation.vector[i];
+        }
+        cur_origin.quaternion[0] = origin.rotation.quaternion().w;
+        cur_origin.quaternion[1] = origin.rotation.quaternion().i;
+        cur_origin.quaternion[2] = origin.rotation.quaternion().j;
+        cur_origin.quaternion[3] = origin.rotation.quaternion().k;
     }
 }
 
