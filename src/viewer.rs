@@ -151,7 +151,7 @@ impl Viewer {
         z.set_local_rotation(rot_z);
         self.scenes.insert(name.to_owned(), axis_group);
     }
-    pub fn scene_node(&mut self, name: &str) -> Option<&SceneNode> {
+    pub fn scene_node(&self, name: &str) -> Option<&SceneNode> {
         self.scenes.get(name)
     }
     pub fn scene_node_mut(&mut self, name: &str) -> Option<&mut SceneNode> {
@@ -237,6 +237,12 @@ impl Viewer {
             }
         }
         panels
+    }
+
+    //https://docs.rs/kiss3d/latest/kiss3d/scene/struct.SceneNode.html#method.add_cube
+    pub(crate) fn add_cube(&mut self, window: &mut Window, name: &str, wx: f32, wy: f32, wz: f32) {
+        let cube = window.add_cube(wx, wy, wz);
+        self.scenes.insert(name.to_owned(), cube);
     }
 }
 
