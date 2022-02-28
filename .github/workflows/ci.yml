@@ -42,10 +42,9 @@ jobs:
         if: startsWith(matrix.os, 'windows')
 
       - run: cargo fmt -- --check
-      # NOTE: clippy::disallowed_method/clippy::disallowed_type has been renamed
-      # to clippy::disallowed_methods/clippy::disallowed_types in Rust 1.59.
-      # And warned-by-default in Rust 1.60.
-      - run: cargo clippy --all-targets -- -D clippy::disallowed_type
+      # NOTE: clippy::disallowed_methods/clippy::disallowed_types has been changed
+      # to warned-by-default in Rust 1.60.
+      - run: cargo clippy --all-targets -- -D clippy::disallowed_types
       - run: cargo hack build --feature-powerset
       - run: cargo test
 
