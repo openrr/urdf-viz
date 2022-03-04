@@ -577,6 +577,30 @@ impl AppState {
             break;
         }
 
+        #[allow(clippy::never_loop)]
+        while let Some(capsule) = handle.take_capsule() {
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let id = &capsule
+                .id
+                .unwrap_or_else(|| format!("__cube{}", COUNTER.fetch_add(1, Relaxed)));
+            self.app
+                .viewer
+                .add_capsule(window, id, capsule.radius, capsule.height);
+            let scene = self.app.viewer.scene_node_mut(id).unwrap();
+            if let Some(color) = capsule.color {
+                scene.set_color(color[0], color[1], color[2]);
+            }
+            if let Some(p) = capsule.position {
+                scene.set_local_translation(na::Translation3::new(p[0], p[1], p[2]));
+            }
+            if let Some(q) = capsule.quaternion {
+                scene.set_local_rotation(na::UnitQuaternion::new_normalize(na::Quaternion::new(
+                    q[0], q[1], q[2], q[3],
+                )));
+            }
+            break;
+        }
+
         if self.app.has_joints() {
             // Joint positions for server
             if let Some(ja) = handle.take_target_joint_positions() {
