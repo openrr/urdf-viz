@@ -244,6 +244,17 @@ impl Viewer {
         let cube = window.add_cube(wx, wy, wz);
         self.scenes.insert(name.to_owned(), cube);
     }
+
+    pub(crate) fn add_capsule(
+        &mut self,
+        window: &mut Window,
+        name: &str,
+        radius: f32,
+        height: f32,
+    ) {
+        let cube = window.add_capsule(radius, height);
+        self.scenes.insert(name.to_owned(), cube);
+    }
 }
 
 impl fmt::Debug for Viewer {
