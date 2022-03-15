@@ -58,6 +58,14 @@ pub struct Capsule {
     pub quaternion: Option<[f32; 4]>,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct AxisMarker {
+    pub id: Option<String>,
+    pub size: f32,
+    pub position: Option<[f32; 3]>,
+    pub quaternion: Option<[f32; 4]>,
+}
+
 /// Handle to get and modify the state of the robot.
 #[derive(Debug, Default)]
 pub struct RobotStateHandle {
@@ -68,6 +76,7 @@ pub struct RobotStateHandle {
     point_cloud: Mutex<Option<PointsAndColors>>,
     cube: Mutex<Option<Cube>>,
     capsule: Mutex<Option<Capsule>>,
+    axis_marker: Mutex<Option<AxisMarker>>,
     pub(crate) urdf_text: Option<Arc<Mutex<String>>>,
     robot: Mutex<Option<RobotModel>>,
 }
@@ -137,6 +146,10 @@ impl RobotStateHandle {
         *self.capsule.lock() = Some(capsule);
     }
 
+    pub fn set_axis_marker(&self, axis_marker: AxisMarker) {
+        *self.axis_marker.lock() = Some(axis_marker);
+    }
+
     pub fn set_robot(&self, robot: RobotModel) {
         // set_robot may change name or number of joints, so reset target_joint_positions.
         *self.target_joint_positions.lock() = None;
@@ -161,6 +174,10 @@ impl RobotStateHandle {
 
     pub(crate) fn take_capsule(&self) -> Option<Capsule> {
         self.capsule.lock().take()
+    }
+
+    pub(crate) fn take_axis_marker(&self) -> Option<AxisMarker> {
+        self.axis_marker.lock().take()
     }
 
     pub(crate) fn take_robot(&self) -> Option<RobotModel> {

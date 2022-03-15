@@ -601,6 +601,27 @@ impl AppState {
             break;
         }
 
+        #[allow(clippy::never_loop)]
+        while let Some(axis_marker) = handle.take_axis_marker() {
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let id = &axis_marker
+                .id
+                .unwrap_or_else(|| format!("__axis_marker{}", COUNTER.fetch_add(1, Relaxed)));
+            self.app
+                .viewer
+                .add_axis_cylinders(window, id, axis_marker.size);
+            let scene = self.app.viewer.scene_node_mut(id).unwrap();
+            if let Some(p) = axis_marker.position {
+                scene.set_local_translation(na::Translation3::new(p[0], p[1], p[2]));
+            }
+            if let Some(q) = axis_marker.quaternion {
+                scene.set_local_rotation(na::UnitQuaternion::new_normalize(na::Quaternion::new(
+                    q[0], q[1], q[2], q[3],
+                )));
+            }
+            break;
+        }
+
         if self.app.has_joints() {
             // Joint positions for server
             if let Some(ja) = handle.take_target_joint_positions() {
