@@ -532,7 +532,7 @@ impl AppState {
             self.app.reload(window, |urdf_robot| *urdf_robot = robot);
         }
 
-        if let Some(points) = handle.take_point_cloud() {
+        while let Some(points) = handle.point_cloud.pop() {
             if points.points.len() == points.colors.len() {
                 self.point_cloud_renderer
                     .insert(points.id, &points.points, &points.colors);
@@ -545,13 +545,16 @@ impl AppState {
             }
         }
 
-        #[allow(clippy::never_loop)]
-        while let Some(cube) = handle.take_cube() {
+        while let Some(cube) = handle.cube.pop() {
             static COUNTER: AtomicUsize = AtomicUsize::new(0);
             let id = &if let Some(extent) = cube.extent {
                 let id = cube
                     .id
                     .unwrap_or_else(|| format!("__cube{}", COUNTER.fetch_add(1, Relaxed)));
+                if let Some(scene) = self.app.viewer.scene_node_mut(&id) {
+                    // remove pre-existent node
+                    scene.unlink();
+                }
                 self.app
                     .viewer
                     .add_cube(window, &id, extent[0], extent[1], extent[2]);
@@ -574,15 +577,17 @@ impl AppState {
                     q[0], q[1], q[2], q[3],
                 )));
             }
-            break;
         }
 
-        #[allow(clippy::never_loop)]
-        while let Some(capsule) = handle.take_capsule() {
+        while let Some(capsule) = handle.capsule.pop() {
             static COUNTER: AtomicUsize = AtomicUsize::new(0);
             let id = &capsule
                 .id
                 .unwrap_or_else(|| format!("__cube{}", COUNTER.fetch_add(1, Relaxed)));
+            if let Some(scene) = self.app.viewer.scene_node_mut(id) {
+                // remove pre-existent node
+                scene.unlink();
+            }
             self.app
                 .viewer
                 .add_capsule(window, id, capsule.radius, capsule.height);
@@ -598,15 +603,17 @@ impl AppState {
                     q[0], q[1], q[2], q[3],
                 )));
             }
-            break;
         }
 
-        #[allow(clippy::never_loop)]
-        while let Some(axis_marker) = handle.take_axis_marker() {
+        while let Some(axis_marker) = handle.axis_marker.pop() {
             static COUNTER: AtomicUsize = AtomicUsize::new(0);
             let id = &axis_marker
                 .id
                 .unwrap_or_else(|| format!("__axis_marker{}", COUNTER.fetch_add(1, Relaxed)));
+            if let Some(scene) = self.app.viewer.scene_node_mut(id) {
+                // remove pre-existent node
+                scene.unlink();
+            }
             self.app
                 .viewer
                 .add_axis_cylinders(window, id, axis_marker.size);
@@ -619,7 +626,6 @@ impl AppState {
                     q[0], q[1], q[2], q[3],
                 )));
             }
-            break;
         }
 
         if self.app.has_joints() {
@@ -638,7 +644,7 @@ impl AppState {
         }
 
         // Robot orientation for server
-        if let Some(origin) = handle.take_target_object_origin() {
+        while let Some(origin) = handle.pop_target_object_origin() {
             if origin.id == ROBOT_OBJECT_ID {
                 self.app.set_robot_origin_from_request(&RobotOrigin {
                     position: origin.position,
