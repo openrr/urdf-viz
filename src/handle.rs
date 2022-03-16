@@ -1,3 +1,4 @@
+use crossbeam_queue::ArrayQueue;
 use parking_lot::{Mutex, MutexGuard};
 use serde::{Deserialize, Serialize};
 use std::{ops, sync::Arc};
@@ -67,18 +68,36 @@ pub struct AxisMarker {
 }
 
 /// Handle to get and modify the state of the robot.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RobotStateHandle {
-    target_joint_positions: Mutex<Option<JointNamesAndPositions>>,
+    pub(crate) target_joint_positions: Mutex<Option<JointNamesAndPositions>>,
     pub(crate) current_joint_positions: Mutex<JointNamesAndPositions>,
-    target_object_origin: Mutex<Option<ObjectOrigin>>,
+    pub(crate) target_object_origin: ArrayQueue<ObjectOrigin>,
     pub(crate) current_robot_origin: Mutex<RobotOrigin>,
-    point_cloud: Mutex<Option<PointsAndColors>>,
-    cube: Mutex<Option<Cube>>,
-    capsule: Mutex<Option<Capsule>>,
-    axis_marker: Mutex<Option<AxisMarker>>,
+    pub(crate) point_cloud: ArrayQueue<PointsAndColors>,
+    pub(crate) cube: ArrayQueue<Cube>,
+    pub(crate) capsule: ArrayQueue<Capsule>,
+    pub(crate) axis_marker: ArrayQueue<AxisMarker>,
     pub(crate) urdf_text: Option<Arc<Mutex<String>>>,
-    robot: Mutex<Option<RobotModel>>,
+    pub(crate) robot: Mutex<Option<RobotModel>>,
+}
+
+impl Default for RobotStateHandle {
+    fn default() -> Self {
+        const QUEUE_CAP: usize = 8;
+        Self {
+            target_joint_positions: Mutex::default(),
+            current_joint_positions: Mutex::default(),
+            target_object_origin: ArrayQueue::new(QUEUE_CAP),
+            current_robot_origin: Mutex::default(),
+            point_cloud: ArrayQueue::new(QUEUE_CAP),
+            cube: ArrayQueue::new(QUEUE_CAP),
+            capsule: ArrayQueue::new(QUEUE_CAP),
+            axis_marker: ArrayQueue::new(QUEUE_CAP),
+            urdf_text: None,
+            robot: Mutex::default(),
+        }
+    }
 }
 
 // Wrapper type to prevent parking_lot updates from becoming a breaking change.
@@ -123,7 +142,7 @@ impl RobotStateHandle {
     }
 
     pub fn set_target_robot_origin(&self, robot_origin: RobotOrigin) {
-        *self.target_object_origin.lock() = Some(ObjectOrigin {
+        self.target_object_origin.force_push(ObjectOrigin {
             id: ROBOT_OBJECT_ID.to_owned(),
             position: robot_origin.position,
             quaternion: robot_origin.quaternion,
@@ -131,23 +150,23 @@ impl RobotStateHandle {
     }
 
     pub fn set_target_object_origin(&self, object_origin: ObjectOrigin) {
-        *self.target_object_origin.lock() = Some(object_origin);
+        self.target_object_origin.force_push(object_origin);
     }
 
     pub fn set_point_cloud(&self, points_and_colors: PointsAndColors) {
-        *self.point_cloud.lock() = Some(points_and_colors);
+        self.point_cloud.force_push(points_and_colors);
     }
 
     pub fn set_cube(&self, cube: Cube) {
-        *self.cube.lock() = Some(cube);
+        self.cube.force_push(cube);
     }
 
     pub fn set_capsule(&self, capsule: Capsule) {
-        *self.capsule.lock() = Some(capsule);
+        self.capsule.force_push(capsule);
     }
 
     pub fn set_axis_marker(&self, axis_marker: AxisMarker) {
-        *self.axis_marker.lock() = Some(axis_marker);
+        self.axis_marker.force_push(axis_marker);
     }
 
     pub fn set_robot(&self, robot: RobotModel) {
@@ -160,24 +179,8 @@ impl RobotStateHandle {
         self.target_joint_positions.lock().take()
     }
 
-    pub fn take_target_object_origin(&self) -> Option<ObjectOrigin> {
-        self.target_object_origin.lock().take()
-    }
-
-    pub(crate) fn take_point_cloud(&self) -> Option<PointsAndColors> {
-        self.point_cloud.lock().take()
-    }
-
-    pub(crate) fn take_cube(&self) -> Option<Cube> {
-        self.cube.lock().take()
-    }
-
-    pub(crate) fn take_capsule(&self) -> Option<Capsule> {
-        self.capsule.lock().take()
-    }
-
-    pub(crate) fn take_axis_marker(&self) -> Option<AxisMarker> {
-        self.axis_marker.lock().take()
+    pub fn pop_target_object_origin(&self) -> Option<ObjectOrigin> {
+        self.target_object_origin.pop()
     }
 
     pub(crate) fn take_robot(&self) -> Option<RobotModel> {
