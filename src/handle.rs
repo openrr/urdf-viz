@@ -67,6 +67,16 @@ pub struct AxisMarker {
     pub quaternion: Option<[f32; 4]>,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Relationship {
+    pub parent: String,
+    pub child: String,
+    /// Relative position
+    pub position: [f32; 3],
+    /// Relative rotation
+    pub quaternion: [f32; 4],
+}
+
 /// Handle to get and modify the state of the robot.
 #[derive(Debug)]
 pub struct RobotStateHandle {
@@ -78,6 +88,7 @@ pub struct RobotStateHandle {
     pub(crate) cube: ArrayQueue<Cube>,
     pub(crate) capsule: ArrayQueue<Capsule>,
     pub(crate) axis_marker: ArrayQueue<AxisMarker>,
+    pub(crate) relationship: ArrayQueue<Relationship>,
     pub(crate) urdf_text: Option<Arc<Mutex<String>>>,
     pub(crate) robot: Mutex<Option<RobotModel>>,
 }
@@ -94,6 +105,7 @@ impl Default for RobotStateHandle {
             cube: ArrayQueue::new(QUEUE_CAP),
             capsule: ArrayQueue::new(QUEUE_CAP),
             axis_marker: ArrayQueue::new(QUEUE_CAP),
+            relationship: ArrayQueue::new(QUEUE_CAP),
             urdf_text: None,
             robot: Mutex::default(),
         }
@@ -173,6 +185,10 @@ impl RobotStateHandle {
         // set_robot may change name or number of joints, so reset target_joint_positions.
         *self.target_joint_positions.lock() = None;
         *self.robot.lock() = Some(robot);
+    }
+
+    pub fn set_relationship(&self, relationship: Relationship) {
+        self.relationship.force_push(relationship);
     }
 
     pub fn take_target_joint_positions(&self) -> Option<JointNamesAndPositions> {
