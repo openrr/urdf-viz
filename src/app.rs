@@ -628,6 +628,30 @@ impl AppState {
             }
         }
 
+        while let Some(relationship) = handle.relationship.pop() {
+            if relationship.parent != relationship.child {
+                if let (Some(mut parent), Some(mut child)) = (
+                    self.app.viewer.scene_node(&relationship.parent).cloned(),
+                    self.app.viewer.scene_node(&relationship.child).cloned(),
+                ) {
+                    let p = relationship.position;
+                    let t = parent.data().local_translation();
+                    child.set_local_translation(na::Translation3::new(
+                        t.vector[0] + p[0],
+                        t.vector[1] + p[1],
+                        t.vector[2] + p[2],
+                    ));
+                    let q = relationship.quaternion;
+                    let r = parent.data().local_rotation();
+                    child.set_local_rotation(na::UnitQuaternion::new_normalize(
+                        na::Quaternion::new(r.w + q[0], r.i + q[1], r.j + q[2], r.k + q[3]),
+                    ));
+                    child.unlink();
+                    parent.add_child(child);
+                }
+            }
+        }
+
         if self.app.has_joints() {
             // Joint positions for server
             if let Some(ja) = handle.take_target_joint_positions() {
