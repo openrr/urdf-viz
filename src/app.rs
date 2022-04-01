@@ -583,7 +583,7 @@ impl AppState {
             static COUNTER: AtomicUsize = AtomicUsize::new(0);
             let id = &capsule
                 .id
-                .unwrap_or_else(|| format!("__cube{}", COUNTER.fetch_add(1, Relaxed)));
+                .unwrap_or_else(|| format!("__capsule{}", COUNTER.fetch_add(1, Relaxed)));
             if let Some(scene) = self.app.viewer.scene_node_mut(id) {
                 // remove pre-existent node
                 scene.unlink();
