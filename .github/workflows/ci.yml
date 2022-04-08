@@ -41,10 +41,8 @@ jobs:
           mv binaries/x86_64/freetype.lib $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
         if: startsWith(matrix.os, 'windows')
 
-      - run: cargo fmt -- --check
-      # NOTE: clippy::disallowed_methods/clippy::disallowed_types has been changed
-      # to warned-by-default in Rust 1.60.
-      - run: cargo clippy --all-targets -- -D clippy::disallowed_types
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets
       - run: cargo hack build --feature-powerset
       - run: cargo test
 
