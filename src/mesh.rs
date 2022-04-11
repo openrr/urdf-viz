@@ -1,16 +1,9 @@
-#[cfg(not(feature = "assimp"))]
-use crate::errors::Error;
 use crate::errors::Result;
 use k::nalgebra as na;
-#[cfg(not(feature = "assimp"))]
-use kiss3d::resource::Mesh;
 use kiss3d::scene::SceneNode;
 #[cfg(not(feature = "assimp"))]
-use std::{cell::RefCell, io, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 use tracing::*;
-
-#[cfg(not(feature = "assimp"))]
-type RefCellMesh = Rc<RefCell<Mesh>>;
 
 #[cfg(feature = "assimp")]
 pub fn load_mesh(
@@ -105,7 +98,7 @@ pub fn load_mesh(
     group: &mut SceneNode,
     _use_texture: bool,
 ) -> Result<SceneNode> {
-    use std::{ffi::OsStr, fs::File, path::Path};
+    use std::{ffi::OsStr, path::Path};
 
     let filename = Path::new(filename.as_ref());
 
@@ -125,12 +118,11 @@ pub fn load_mesh(
         }
         Some("stl" | "STL") => {
             debug!("load stl: path = {}", filename.display());
-            let mesh = read_stl(File::open(filename)?)?;
-            let mut base = group.add_mesh(mesh, scale);
-            if let Some(color) = *opt_color {
-                base.set_color(color[0], color[1], color[2]);
-            }
-            Ok(base)
+            load_stl(&std::fs::read(filename)?, scale, opt_color, group)
+        }
+        Some("dae" | "DAE") => {
+            debug!("load dae: path = {}", filename.display());
+            load_collada(&std::fs::read_to_string(filename)?, scale, opt_color, group)
         }
         _ => Err(crate::errors::Error::from(format!(
             "{} is not supported, because assimp feature is disabled",
@@ -165,12 +157,11 @@ pub fn load_mesh(
         }
         MeshKind::Stl => {
             debug!("load stl: path = {}", data.path);
-            let mesh = read_stl(data.reader().unwrap())?;
-            let mut base = group.add_mesh(mesh, scale);
-            if let Some(color) = *opt_color {
-                base.set_color(color[0], color[1], color[2]);
-            }
-            Ok(base)
+            load_stl(data.bytes().unwrap(), scale, opt_color, group)
+        }
+        MeshKind::Dae => {
+            debug!("load dae: path = {}", data.path);
+            load_collada(data.string().unwrap(), scale, opt_color, group)
         }
         MeshKind::Other => Err(crate::errors::Error::from(format!(
             "{} is not supported, because assimp feature is disabled",
@@ -220,34 +211,73 @@ fn add_obj(group: &mut SceneNode, data: &crate::utils::Mesh, scale: na::Vector3<
 }
 
 #[cfg(not(feature = "assimp"))]
-fn read_stl(mut reader: impl io::Read + io::Seek) -> Result<RefCellMesh> {
-    // TODO: Once https://github.com/hmeyer/stl_io/pull/14 is merged and released, compare with stl_io.
-    let mesh: nom_stl::IndexMesh = nom_stl::parse_stl(&mut reader)
-        .map_err(|e| match e {
-            nom_stl::Error::IOError(e) => Error::IoError(e),
-            nom_stl::Error::ParseError(e) => Error::Other(e),
-        })?
-        .into();
+fn load_stl(
+    bytes: &[u8],
+    scale: na::Vector3<f32>,
+    opt_color: &Option<na::Point3<f32>>,
+    group: &mut SceneNode,
+) -> Result<SceneNode> {
+    let stl = mesh_loader::stl::from_slice(bytes)?;
+    let mesh = Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+        stl.vertices.into_iter().map(Into::into).collect(),
+        stl.faces
+            .into_iter()
+            .map(|f| {
+                na::Point3::new(
+                    f[0].try_into().unwrap(),
+                    f[1].try_into().unwrap(),
+                    f[2].try_into().unwrap(),
+                )
+            })
+            .collect(),
+        None,
+        None,
+        false,
+    )));
+    let mut base = group.add_mesh(mesh, scale);
+    if let Some(color) = *opt_color {
+        base.set_color(color[0], color[1], color[2]);
+    }
+    Ok(base)
+}
 
-    let vertices = mesh
-        .vertices()
-        .iter()
-        .map(|v| na::Point3::new(v[0], v[1], v[2]))
-        .collect();
+#[cfg(not(feature = "assimp"))]
+fn load_collada(
+    s: &str,
+    scale: na::Vector3<f32>,
+    opt_color: &Option<na::Point3<f32>>,
+    group: &mut SceneNode,
+) -> Result<SceneNode> {
+    let mut base = group.add_group();
+    let collada =
+        mesh_loader::collada::from_str(s).map_err(|e| crate::Error::Other(e.to_string()))?;
+    for mesh in collada.meshes {
+        debug!(
+            "name={},vertices={},normals={},texcoords0={},texcoords1={},faces={}",
+            mesh.name,
+            mesh.vertices.len(),
+            mesh.normals.len(),
+            mesh.texcoords[0].len(),
+            mesh.texcoords[1].len(),
+            mesh.faces.len()
+        );
+        let positions = mesh.vertices.iter().map(|&v| na::Point3::from(v)).collect();
+        let faces = mesh
+            .faces
+            .iter()
+            .map(|v| na::Point3::new(v[0] as u16, v[1] as u16, v[2] as u16))
+            .collect();
+        let mut scene = base.add_mesh(
+            Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+                positions, faces, None, None, false,
+            ))),
+            scale,
+        );
+        if let Some(color) = *opt_color {
+            scene.set_color(color[0], color[1], color[2]);
+        }
 
-    let indices = mesh
-        .triangles()
-        .iter()
-        .map(|face| {
-            na::Point3::new(
-                face.vertices_indices()[0] as u16,
-                face.vertices_indices()[1] as u16,
-                face.vertices_indices()[2] as u16,
-            )
-        })
-        .collect();
-
-    Ok(Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
-        vertices, indices, None, None, false,
-    ))))
+        // TODO: material
+    }
+    Ok(base)
 }
