@@ -74,7 +74,7 @@ mod native {
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {
-    use std::{io::Cursor, path::Path, str, sync::Arc};
+    use std::{path::Path, str, sync::Arc};
 
     use js_sys::Uint8Array;
     use parking_lot::Mutex;
@@ -106,10 +106,10 @@ mod wasm {
             Ok(mesh)
         }
 
-        pub(crate) fn reader(&self) -> Option<Cursor<&[u8]>> {
+        pub(crate) fn bytes(&self) -> Option<&[u8]> {
             match &self.data {
                 MeshData::None => None,
-                MeshData::Bytes(bytes) => Some(Cursor::new(bytes)),
+                MeshData::Bytes(bytes) => Some(bytes),
                 MeshData::Base64(_) => unreachable!(),
             }
         }
@@ -134,6 +134,7 @@ mod wasm {
     pub(crate) enum MeshKind {
         Obj,
         Stl,
+        Dae,
         Other,
     }
 
@@ -207,6 +208,8 @@ mod wasm {
                     MeshKind::Obj
                 } else if input_file.ends_with(".stl") || input_file.ends_with(".STL") {
                     MeshKind::Stl
+                } else if input_file.ends_with(".dae") || input_file.ends_with(".DAE") {
+                    MeshKind::Dae
                 } else {
                     MeshKind::Other
                 };
