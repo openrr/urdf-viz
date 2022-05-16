@@ -35,10 +35,11 @@ assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+axum = "0.5"
 ctrlc = { version = "3", features = ["termination"] }
 tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.3", features = ["trace"] }
 tracing-subscriber = "0.3"
-warp = { version = "0.3", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 base64 = "0.13"
