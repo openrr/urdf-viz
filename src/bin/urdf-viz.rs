@@ -20,7 +20,8 @@ use structopt::StructOpt;
 use tracing::debug;
 use urdf_viz::{app::*, WebServer};
 
-fn main() -> urdf_viz::Result<()> {
+#[tokio::main]
+async fn main() -> urdf_viz::Result<()> {
     tracing_subscriber::fmt::init();
     let opt = Opt::from_args();
     debug!(?opt);
@@ -42,8 +43,9 @@ fn main() -> urdf_viz::Result<()> {
     )?;
     app.set_ik_constraints(ik_constraints);
     app.init();
-    let web_server = WebServer::new(opt.web_server_port, app.handle());
-    std::thread::spawn(move || web_server.start());
+    WebServer::new(opt.web_server_port, app.handle())
+        .start_background()
+        .await;
     app.run();
     Ok(())
 }
