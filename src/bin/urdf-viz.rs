@@ -43,9 +43,8 @@ async fn main() -> urdf_viz::Result<()> {
     )?;
     app.set_ik_constraints(ik_constraints);
     app.init();
-    WebServer::new(opt.web_server_port, app.handle())
-        .start_background()
-        .await;
+    let server = WebServer::new(opt.web_server_port, app.handle()).bind();
+    tokio::spawn(async move { server.await.unwrap() });
     app.run();
     Ok(())
 }

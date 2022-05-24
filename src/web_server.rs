@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{future::Future, sync::Arc};
 
 use axum::{
     extract::Extension,
@@ -40,12 +40,10 @@ impl WebServer {
         self.handle.clone()
     }
 
-    pub async fn start_background(self) {
+    pub fn bind(self) -> impl Future<Output = hyper::Result<()>> + Send {
         let app = app(self.handle());
 
-        let server =
-            axum::Server::bind(&([0, 0, 0, 0], self.port).into()).serve(app.into_make_service());
-        tokio::spawn(async move { server.await.unwrap() });
+        axum::Server::bind(&([0, 0, 0, 0], self.port).into()).serve(app.into_make_service())
     }
 }
 
