@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install Rust
         # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
-        run: rustup update stable --no-self-update
+        run: rustup toolchain install stable --no-self-update --target ${{ matrix.target }}
 
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
