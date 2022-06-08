@@ -69,6 +69,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
       - name: Install dependencies (aarch64 linux)
         run: |
+          sudo sed -i 's/azure\.//' /etc/apt/sources.list
           sudo apt-get update -yqq
           sudo dpkg --add-architecture arm64
           sudo apt-get update -yqq
