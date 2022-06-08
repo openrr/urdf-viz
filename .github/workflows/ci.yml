@@ -85,7 +85,8 @@ jobs:
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-security universe" | sudo tee /etc/apt/sources.list
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-security multiverse" | sudo tee /etc/apt/sources.list
           sudo apt-get update -yqq
-          sudo apt-get install xorg-dev:arm64 libglu1-mesa-dev:arm64
+          sudo apt-get build-dep -a arm64 xorg-dev
+          sudo apt-get install libglu1-mesa-dev:arm64
         if: matrix.target == 'aarch64-unknown-linux-gnu'
 
       - run: cargo build --target ${{ matrix.target }}
