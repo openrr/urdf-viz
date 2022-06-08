@@ -46,6 +46,38 @@ jobs:
       - run: cargo hack build --feature-powerset
       - run: cargo test
 
+  cross:
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-18.04
+          - target: aarch64-apple-darwin
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
+        run: rustup update stable --no-self-update
+
+      - name: Install cross-compilation tools
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+        if: startsWith(matrix.os, 'ubuntu')
+      - name: Install dependencies (aarch64 linux)
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install xorg-dev:arm64 libglu1-mesa-dev:arm64
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+
+      - run: cargo build
+      - run: cargo test --no-run
+      - run: cargo test
+        if: startsWith(matrix.os, 'ubuntu')
+
   wasm:
     runs-on: ubuntu-18.04
     steps:
