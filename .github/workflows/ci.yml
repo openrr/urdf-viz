@@ -53,8 +53,8 @@ jobs:
         include:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-20.04
-          - target: aarch64-apple-darwin
-            os: macos-latest
+          # - target: aarch64-apple-darwin
+          #   os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -68,10 +68,22 @@ jobs:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu')
       - name: Install dependencies (aarch64 linux)
+        # https://askubuntu.com/a/1307721
         run: |
-          sudo sed -i 's/azure\.//' /etc/apt/sources.list
+          set -ex
           sudo apt-get update -yqq
           sudo dpkg --add-architecture arm64
+          sudo sed -i "s/deb h/deb [arch=amd64] h/g" /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal main restricted" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-updates main restricted" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal universe" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-updates universe" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal multiverse" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-updates multiverse" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-backports main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-security main restricted" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-security universe" | sudo tee /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-security multiverse" | sudo tee /etc/apt/sources.list
           sudo apt-get update -yqq
           sudo apt-get install xorg-dev:arm64 libglu1-mesa-dev:arm64
         if: matrix.target == 'aarch64-unknown-linux-gnu'
