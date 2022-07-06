@@ -5,9 +5,12 @@ on:
     tags: ['v[0-9]+.*']
 
 env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: -D warnings
   RUST_BACKTRACE: 1
+  RUSTFLAGS: -D warnings
+  RUSTUP_MAX_RETRIES: 10
 
 defaults:
   run:
@@ -38,11 +41,15 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   upload-assets:
+    name: upload-assets (${{ matrix.os }})
     if: github.repository_owner == 'openrr'
     needs: [create-release]
     strategy:
       matrix:
         os: [ubuntu-18.04, macos-latest]
+        include:
+          - os: windows-latest
+            include-files: binaries/x86_64/freetype.dll,binaries/FTL.TXT,binaries/GPLv2.TXT
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -55,10 +62,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install xorg-dev libglu1-mesa-dev
         if: startsWith(matrix.os, 'ubuntu')
+      - name: Install dependencies (windows)
+        run: |
+          git clone https://github.com/PistonDevelopers/binaries
+          cp binaries/x86_64/freetype.dll $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
+          cp binaries/x86_64/freetype.lib $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
+        if: startsWith(matrix.os, 'windows')
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: urdf-viz
+          include: ${{ matrix.include-files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_PROFILE_RELEASE_LTO: true

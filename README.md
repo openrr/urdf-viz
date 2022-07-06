@@ -57,9 +57,7 @@ brew install freetype
 ### Download binary
 
 You can download prebuilt binaries from the [release page](https://github.com/openrr/urdf-viz/releases).
-Prebuilt binaries are available for macOS and Linux.
-
-<!-- TODO: distribute binary for Windows -->
+Prebuilt binaries are available for macOS, Linux, and Windows.
 
 ### Install via Homebrew
 
