@@ -5,12 +5,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 15 * * *'
 
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  RUSTDOCFLAGS: -D warnings
   RUSTFLAGS: -D warnings
   RUSTUP_MAX_RETRIES: 10
 
@@ -30,7 +33,8 @@ jobs:
       - name: Install Rust
         # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
         run: rustup update stable --no-self-update
-      - run: cargo install cargo-hack
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@cargo-hack
 
       - name: Install dependencies (linux)
         run: |
@@ -44,7 +48,7 @@ jobs:
           mv binaries/x86_64/freetype.lib $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
         if: startsWith(matrix.os, 'windows')
 
-      - run: cargo fmt --check
+      - run: cargo fmt --all --check
       - run: cargo clippy --all-targets
       - run: cargo hack build --feature-powerset
       - run: cargo test
@@ -57,7 +61,7 @@ jobs:
         run: rustup update stable
       - run: rustup target add wasm32-unknown-unknown
       - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        uses: taiki-e/install-action@wasm-pack
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --lib
       - name: Build wasm example
         run: cd examples/wasm && npm install && npm run build
