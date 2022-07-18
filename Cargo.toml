@@ -21,7 +21,7 @@ assimp = ["assimp-crate", "assimp-sys"]
 [dependencies]
 crossbeam-queue = "0.3.5"
 k = "0.28"
-kiss3d = "0.34"
+kiss3d = "0.35"
 mesh-loader = "0.0.1"
 parking_lot = "0.12"
 rand = "0.8"
