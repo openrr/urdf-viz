@@ -192,6 +192,10 @@ mod wasm {
                         return Err(Error::from(format!(
                             "ros package ({filename}) is not supported in wasm",
                         )));
+                    } else if filename.starts_with("file://") {
+                        return Err(Error::from(format!(
+                            "local file ({filename}) is not supported in wasm",
+                        )));
                     } else {
                         // We don't use url::Url::path/set_path here, because
                         // urdf_path may be a relative path to a file bundled
