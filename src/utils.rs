@@ -185,24 +185,26 @@ mod wasm {
                 .chain(link.collision.iter_mut().map(|c| &mut c.geometry))
         }) {
             if let urdf_rs::Geometry::Mesh { filename, .. } = geometry {
-                let input_file =
-                    if filename.starts_with("https://") || filename.starts_with("http://") {
-                        filename.clone()
-                    } else if filename.starts_with("package://") {
-                        return Err(Error::from(format!(
-                            "ros package ({filename}) is not supported in wasm",
-                        )));
-                    } else {
-                        // We don't use url::Url::path/set_path here, because
-                        // urdf_path may be a relative path to a file bundled
-                        // with the server. Path::with_file_name works for wasm
-                        // where the separator is /, so we use it.
-                        urdf_path
-                            .with_file_name(&filename)
-                            .to_str()
-                            .unwrap()
-                            .to_string()
-                    };
+                let input_file = if filename.starts_with("https://")
+                    || filename.starts_with("http://")
+                    || filename.starts_with("file://")
+                {
+                    filename.clone()
+                } else if filename.starts_with("package://") {
+                    return Err(Error::from(format!(
+                        "ros package ({filename}) is not supported in wasm",
+                    )));
+                } else {
+                    // We don't use url::Url::path/set_path here, because
+                    // urdf_path may be a relative path to a file bundled
+                    // with the server. Path::with_file_name works for wasm
+                    // where the separator is /, so we use it.
+                    urdf_path
+                        .with_file_name(&filename)
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
 
                 let kind = if input_file.ends_with(".obj") || input_file.ends_with(".OBJ") {
                     MeshKind::Obj
