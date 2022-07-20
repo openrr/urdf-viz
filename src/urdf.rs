@@ -51,7 +51,10 @@ pub fn add_geometry(
                 filename.to_string()
             } else {
                 let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);
-                if !Path::new(&replaced_filename).exists() {
+                if !replaced_filename.starts_with("https://")
+                    && !replaced_filename.starts_with("http://")
+                    && !Path::new(&replaced_filename).exists()
+                {
                     return Err(Error::from(format!("{replaced_filename} not found")));
                 }
                 replaced_filename

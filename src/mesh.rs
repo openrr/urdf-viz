@@ -1,13 +1,13 @@
 use crate::errors::Result;
 use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
-#[cfg(not(feature = "assimp"))]
 use std::{cell::RefCell, rc::Rc};
 use tracing::*;
 
 #[cfg(feature = "assimp")]
-pub fn load_mesh(
-    filename: impl AsRef<str>,
+#[cfg(not(target_arch = "wasm32"))]
+fn load_mesh_assimp(
+    file_string: &str,
     scale: na::Vector3<f32>,
     opt_urdf_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
@@ -16,7 +16,6 @@ pub fn load_mesh(
     use crate::assimp_utils::*;
     use std::{ffi::OsStr, path::Path};
 
-    let file_string = filename.as_ref();
     let filename = Path::new(file_string);
 
     let mut base = group.add_group();
@@ -89,51 +88,94 @@ pub fn load_mesh(
     Ok(base)
 }
 
-#[cfg(not(feature = "assimp"))]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_mesh(
     filename: impl AsRef<str>,
     scale: na::Vector3<f32>,
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
-    _use_texture: bool,
+    #[allow(unused_variables)] use_texture: bool,
 ) -> Result<SceneNode> {
     use std::{ffi::OsStr, path::Path};
 
-    let filename = Path::new(filename.as_ref());
+    let file_string = filename.as_ref();
+
+    #[cfg(feature = "assimp")]
+    if !file_string.starts_with("https://") && !file_string.starts_with("http://") {
+        return load_mesh_assimp(file_string, scale, opt_color, group, use_texture);
+    }
+
+    let filename = Path::new(file_string);
 
     match filename.extension().and_then(OsStr::to_str) {
         Some("obj" | "OBJ") => {
-            let mtl_path = filename.parent().unwrap_or_else(|| Path::new("."));
-            debug!(
-                "load obj: path = {}, mtl_path = {}",
-                filename.display(),
-                mtl_path.display()
-            );
-            let mut base = group.add_obj(filename, mtl_path, scale);
-            if let Some(color) = *opt_color {
-                base.set_color(color[0], color[1], color[2]);
+            if !file_string.starts_with("https://") && !file_string.starts_with("http://") {
+                let mtl_path = filename.parent().unwrap_or_else(|| Path::new("."));
+                debug!(
+                    "load obj: path = {file_string}, mtl_path = {}",
+                    mtl_path.display()
+                );
+                let mut base = group.add_obj(filename, mtl_path, scale);
+                if let Some(color) = *opt_color {
+                    base.set_color(color[0], color[1], color[2]);
+                }
+                Ok(base)
+            } else {
+                Ok(load_obj(
+                    &String::from_utf8(fetch_or_read(file_string)?)?,
+                    file_string,
+                    scale,
+                    opt_color,
+                    group,
+                ))
             }
-            Ok(base)
         }
         Some("stl" | "STL") => {
-            debug!("load stl: path = {}", filename.display());
-            load_stl(&std::fs::read(filename)?, scale, opt_color, group)
+            debug!("load stl: path = {file_string}");
+            load_stl(&fetch_or_read(file_string)?, scale, opt_color, group)
         }
         Some("dae" | "DAE") => {
-            debug!("load dae: path = {}", filename.display());
-            load_collada(&std::fs::read_to_string(filename)?, scale, opt_color, group)
+            debug!("load dae: path = {file_string}");
+            load_collada(
+                &String::from_utf8(fetch_or_read(file_string)?)?,
+                scale,
+                opt_color,
+                group,
+            )
         }
         _ => Err(crate::errors::Error::from(format!(
-            "{} is not supported, because assimp feature is disabled",
-            filename.display()
+            "{file_string} is not supported, because assimp feature is disabled"
         ))),
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn fetch_or_read(filename: &str) -> Result<Vec<u8>> {
+    use std::io::Read;
+
+    const RESPONSE_SIZE_LIMIT: usize = 10 * 1_024 * 1_024;
+
+    if filename.starts_with("https://") || filename.starts_with("http://") {
+        let mut buf: Vec<u8> = vec![];
+        ureq::get(filename)
+            .call()
+            .map_err(|e| crate::Error::Other(e.to_string()))?
+            .into_reader()
+            .take((RESPONSE_SIZE_LIMIT + 1) as u64)
+            .read_to_end(&mut buf)?;
+        if buf.len() > RESPONSE_SIZE_LIMIT {
+            return Err(crate::errors::Error::Other(format!(
+                "{filename} is too big"
+            )));
+        }
+        Ok(buf)
+    } else {
+        Ok(std::fs::read(filename)?)
     }
 }
 
 /// NOTE: Unlike other platforms, the first argument should be the data loaded
 /// by [`utils::load_mesh`](crate::utils::load_mesh), not the path.
-#[cfg(not(feature = "assimp"))]
 #[cfg(target_arch = "wasm32")]
 pub fn load_mesh(
     data: impl AsRef<str>,
@@ -149,11 +191,13 @@ pub fn load_mesh(
     match data.kind {
         MeshKind::Obj => {
             debug!("load obj: path = {}", data.path);
-            let mut base = add_obj(group, &data, scale);
-            if let Some(color) = *opt_color {
-                base.set_color(color[0], color[1], color[2]);
-            }
-            Ok(base)
+            Ok(load_obj(
+                data.string().unwrap(),
+                &data.path,
+                scale,
+                opt_color,
+                group,
+            ))
         }
         MeshKind::Stl => {
             debug!("load stl: path = {}", data.path);
@@ -171,14 +215,18 @@ pub fn load_mesh(
 }
 
 // Refs: https://github.com/sebcrozet/kiss3d/blob/73ff15dc40aaf994f3e8e240c23bb660be71a6cd/src/scene/scene_node.rs#L807-L866
-#[cfg(not(feature = "assimp"))]
-#[cfg(target_arch = "wasm32")]
-fn add_obj(group: &mut SceneNode, data: &crate::utils::Mesh, scale: na::Vector3<f32>) -> SceneNode {
+fn load_obj(
+    s: &str,
+    filename: &str,
+    scale: na::Vector3<f32>,
+    opt_color: &Option<na::Point3<f32>>,
+    group: &mut SceneNode,
+) -> SceneNode {
     let tex = kiss3d::resource::TextureManager::get_global_manager(|tm| tm.get_default());
     let mat = kiss3d::resource::MaterialManager::get_global_manager(|mm| mm.get_default());
 
     // TODO: mtl
-    let objs = kiss3d::loader::obj::parse(data.string().unwrap(), ".".as_ref(), &data.path);
+    let objs = kiss3d::loader::obj::parse(s, ".".as_ref(), filename);
     let mut root;
 
     let self_root = objs.len() == 1;
@@ -203,14 +251,17 @@ fn add_obj(group: &mut SceneNode, data: &crate::utils::Mesh, scale: na::Vector3<
         last = Some(root.add_object(child_scale, na::one(), object));
     }
 
-    if self_root {
+    let mut base = if self_root {
         last.expect("there was nothing on this obj file")
     } else {
         root
+    };
+    if let Some(color) = *opt_color {
+        base.set_color(color[0], color[1], color[2]);
     }
+    base
 }
 
-#[cfg(not(feature = "assimp"))]
 fn load_stl(
     bytes: &[u8],
     scale: na::Vector3<f32>,
@@ -241,7 +292,6 @@ fn load_stl(
     Ok(base)
 }
 
-#[cfg(not(feature = "assimp"))]
 fn load_collada(
     s: &str,
     scale: na::Vector3<f32>,

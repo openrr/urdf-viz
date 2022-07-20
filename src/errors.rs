@@ -24,6 +24,8 @@ pub enum Error {
     Other(String),
     #[error("IOError: {:?}", .0)]
     IoError(#[from] io::Error),
+    #[error("FromUtf8Error: {:?}", .0)]
+    FromUtf8Error(#[from] std::string::FromUtf8Error),
     #[error("UrdfError: {:?}", .0)]
     Urdf(#[from] urdf_rs::UrdfError),
 }
