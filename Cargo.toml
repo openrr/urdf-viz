@@ -29,7 +29,7 @@ serde = { version = "1.0", features = ["derive"] }
 structopt = "0.3"
 thiserror = "1.0"
 tracing = { version = "0.1", features = ["log"] }
-urdf-rs = "0.6"
+urdf-rs = "0.6.4"
 
 assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }
