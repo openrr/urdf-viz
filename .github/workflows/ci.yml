@@ -65,3 +65,11 @@ jobs:
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --lib
       - name: Build wasm example
         run: cd examples/wasm && npm install && npm run build
+      - name: Deploy to gh-pages
+        run: |
+          cd examples/wasm/dist
+          git init
+          git add .
+          git -c user.name='ci' -c user.email='ci' commit -m 'Deploy urdf-viz to gh-pages'
+          git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
+        if: github.event_name == 'push' && github.event.ref == 'refs/heads/main' && github.repository_owner == 'openrr'

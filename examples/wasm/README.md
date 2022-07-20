@@ -1,5 +1,7 @@
 # urdf-viz wasm example
 
+[You can try this example online.](https://openrr.github.io/urdf-viz/?urdf=https://raw.githubusercontent.com/openrr/urdf-viz/main/sample.urdf)
+
 ## How to run
 
 First, install [wasm-pack](https://rustwasm.github.io/wasm-pack).
