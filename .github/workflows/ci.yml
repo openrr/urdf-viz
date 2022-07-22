@@ -30,9 +30,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - name: Install Rust
-        # --no-self-update is necessary because the windows environment cannot self-update rustup.exe.
-        run: rustup update stable --no-self-update
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
       - name: Install cargo-hack
         uses: taiki-e/install-action@cargo-hack
 
@@ -57,9 +57,9 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v3
-      - name: Install Rust
-        run: rustup update stable
-      - run: rustup target add wasm32-unknown-unknown
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
       - name: Install wasm-pack
         uses: taiki-e/install-action@wasm-pack
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --lib
