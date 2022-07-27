@@ -1,9 +1,9 @@
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 pub use native::*;
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 pub use wasm::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 mod native {
     use std::{ffi::OsStr, fs, path::Path, sync::Arc};
 
@@ -72,7 +72,7 @@ mod native {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 mod wasm {
     use std::{path::Path, str, sync::Arc};
 

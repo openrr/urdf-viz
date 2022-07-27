@@ -44,14 +44,14 @@ impl From<String> for Error {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 impl From<wasm_bindgen::JsValue> for Error {
     fn from(error: wasm_bindgen::JsValue) -> Self {
         Error::Other(format!("{error:?}"))
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 impl From<Error> for wasm_bindgen::JsValue {
     fn from(error: Error) -> Self {
         Self::from_str(&error.to_string())

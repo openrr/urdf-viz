@@ -8,7 +8,7 @@ publish = false
 [lib]
 crate-type = ["cdylib"]
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+[target.'cfg(target_family = "wasm")'.dependencies]
 urdf-viz = { version = "*", path = "../..", default-features = false }
 console_error_panic_hook = "0.1"
 wasm-bindgen = "0.2"

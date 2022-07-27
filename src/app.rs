@@ -26,7 +26,7 @@ use std::sync::Arc;
 use structopt::StructOpt;
 use tracing::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 use std::sync::atomic::AtomicBool;
 
 use crate::{
@@ -435,7 +435,7 @@ impl UrdfViewerApp {
                 self.show_frames = !self.show_frames;
                 self.update_frame_markers();
             }
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_family = "wasm"))]
             Key::L => {
                 // reload
                 self.reload(window, |urdf_robot| urdf_robot.reload());
@@ -471,7 +471,7 @@ impl UrdfViewerApp {
         };
     }
     pub fn run(mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_family = "wasm"))]
         ctrlc::set_handler(|| {
             ABORTED.store(true, Relaxed);
         })
@@ -511,7 +511,7 @@ impl fmt::Debug for UrdfViewerApp {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 static ABORTED: AtomicBool = AtomicBool::new(false);
 
 struct AppState {
@@ -703,7 +703,7 @@ impl window::State for AppState {
         const FONT_SIZE_USAGE: f32 = 60.0;
         const FONT_SIZE_INFO: f32 = 80.0;
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_family = "wasm"))]
         if ABORTED.load(Relaxed) {
             window.close();
             return;
@@ -968,7 +968,7 @@ impl Opt {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(target_family = "wasm")]
     pub fn from_params() -> Result<Self, Error> {
         let href = crate::utils::window()?.location().href()?;
         debug!("href={href}");
