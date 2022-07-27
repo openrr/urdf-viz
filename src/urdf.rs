@@ -48,7 +48,7 @@ pub fn add_geometry(
             scale,
         } => {
             let scale = scale.unwrap_or(DEFAULT_MESH_SCALE);
-            let replaced_filename = if cfg!(target_arch = "wasm32") {
+            let replaced_filename = if cfg!(target_family = "wasm") {
                 Cow::Borrowed(filename)
             } else {
                 let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);

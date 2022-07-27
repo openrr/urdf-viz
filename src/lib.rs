@@ -30,9 +30,9 @@ mod errors;
 pub use errors::*;
 mod handle;
 pub use handle::*;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 mod web_server;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 pub use web_server::*;
 mod viewer;
 pub use viewer::*;

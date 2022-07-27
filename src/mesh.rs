@@ -5,7 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 use tracing::*;
 
 #[cfg(feature = "assimp")]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 fn load_mesh_assimp(
     file_string: &str,
     scale: na::Vector3<f32>,
@@ -88,7 +88,7 @@ fn load_mesh_assimp(
     Ok(base)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 pub fn load_mesh(
     filename: impl AsRef<str>,
     scale: na::Vector3<f32>,
@@ -149,7 +149,7 @@ pub fn load_mesh(
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 fn fetch_or_read(filename: &str) -> Result<Vec<u8>> {
     use std::io::Read;
 
@@ -176,7 +176,7 @@ fn fetch_or_read(filename: &str) -> Result<Vec<u8>> {
 
 /// NOTE: Unlike other platforms, the first argument should be the data loaded
 /// by [`utils::load_mesh`](crate::utils::load_mesh), not the path.
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 pub fn load_mesh(
     data: impl AsRef<str>,
     scale: na::Vector3<f32>,
