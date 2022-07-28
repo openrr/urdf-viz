@@ -65,6 +65,8 @@ jobs:
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --lib
       - name: Build wasm example
         run: cd examples/wasm && npm install && npm run build
+        env:
+          CARGO_PROFILE_DEV_OPT_LEVEL: 3
       - name: Deploy to gh-pages
         run: |
           cd examples/wasm/dist
