@@ -532,6 +532,10 @@ impl AppState {
             self.app.reload(window, |urdf_robot| *urdf_robot = robot);
         }
 
+        if handle.take_reload_request() {
+            self.app.reload(window, |urdf_robot| urdf_robot.reload());
+        }
+
         while let Some(points) = handle.point_cloud.pop() {
             if points.points.len() == points.colors.len() {
                 self.point_cloud_renderer

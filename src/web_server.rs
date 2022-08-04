@@ -51,11 +51,17 @@ fn app(handle: Handle) -> Router {
     Router::new()
         .route("/set_joint_positions", post(set_joint_positions))
         .route("/set_robot_origin", post(set_robot_origin))
+        .route("/set_reload_request", post(set_reload_request))
         .route("/get_joint_positions", get(get_joint_positions))
         .route("/get_robot_origin", get(get_robot_origin))
         .route("/get_urdf_text", get(get_urdf_text))
         .layer(Extension(handle))
         .layer(tower_http::trace::TraceLayer::new_for_http())
+}
+
+async fn set_reload_request(Extension(handle): Extension<Handle>) -> Json<ResultResponse> {
+    handle.set_reload_request();
+    Json(ResultResponse::SUCCESS)
 }
 
 async fn set_joint_positions(
