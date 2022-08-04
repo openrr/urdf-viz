@@ -1,6 +1,7 @@
 use crossbeam_queue::ArrayQueue;
 use parking_lot::{Mutex, MutexGuard};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{ops, sync::Arc};
 
 use crate::utils::RobotModel;
@@ -91,6 +92,7 @@ pub struct RobotStateHandle {
     pub(crate) relationship: ArrayQueue<Relationship>,
     pub(crate) urdf_text: Option<Arc<Mutex<String>>>,
     pub(crate) robot: Mutex<Option<RobotModel>>,
+    pub(crate) reload_request: AtomicBool,
 }
 
 impl Default for RobotStateHandle {
@@ -108,6 +110,7 @@ impl Default for RobotStateHandle {
             relationship: ArrayQueue::new(QUEUE_CAP),
             urdf_text: None,
             robot: Mutex::default(),
+            reload_request: AtomicBool::new(false),
         }
     }
 }
@@ -201,5 +204,13 @@ impl RobotStateHandle {
 
     pub(crate) fn take_robot(&self) -> Option<RobotModel> {
         self.robot.lock().take()
+    }
+
+    pub(crate) fn set_reload_request(&self) {
+        self.reload_request.swap(true, Ordering::SeqCst);
+    }
+
+    pub(crate) fn take_reload_request(&self) -> bool {
+        self.reload_request.swap(false, Ordering::SeqCst)
     }
 }
