@@ -32,7 +32,7 @@ impl Viewer {
         window.set_background_color(color.0, color.1, color.2);
         let mut arc_ball = ArcBall::new(eye, at);
         arc_ball.set_up_axis(na::Vector3::z());
-        arc_ball.set_dist_step(0.5);
+        arc_ball.set_dist_step(0.99);
         let font = kiss3d::text::Font::default();
         let viewer = Viewer {
             scenes: HashMap::new(),
