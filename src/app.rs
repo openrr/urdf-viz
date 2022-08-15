@@ -532,6 +532,7 @@ impl AppState {
             self.app.reload(window, |urdf_robot| *urdf_robot = robot);
         }
 
+        #[cfg(not(target_family = "wasm"))]
         if handle.take_reload_request() {
             self.app.reload(window, |urdf_robot| urdf_robot.reload());
         }
