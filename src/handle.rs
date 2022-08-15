@@ -1,6 +1,7 @@
 use crossbeam_queue::ArrayQueue;
 use parking_lot::{Mutex, MutexGuard};
 use serde::{Deserialize, Serialize};
+#[cfg(not(target_family = "wasm"))]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{ops, sync::Arc};
 
@@ -92,6 +93,7 @@ pub struct RobotStateHandle {
     pub(crate) relationship: ArrayQueue<Relationship>,
     pub(crate) urdf_text: Option<Arc<Mutex<String>>>,
     pub(crate) robot: Mutex<Option<RobotModel>>,
+    #[cfg(not(target_family = "wasm"))]
     pub(crate) reload_request: AtomicBool,
 }
 
@@ -110,6 +112,7 @@ impl Default for RobotStateHandle {
             relationship: ArrayQueue::new(QUEUE_CAP),
             urdf_text: None,
             robot: Mutex::default(),
+            #[cfg(not(target_family = "wasm"))]
             reload_request: AtomicBool::new(false),
         }
     }
@@ -206,10 +209,12 @@ impl RobotStateHandle {
         self.robot.lock().take()
     }
 
+    #[cfg(not(target_family = "wasm"))]
     pub(crate) fn set_reload_request(&self) {
         self.reload_request.swap(true, Ordering::SeqCst);
     }
 
+    #[cfg(not(target_family = "wasm"))]
     pub(crate) fn take_reload_request(&self) -> bool {
         self.reload_request.swap(false, Ordering::SeqCst)
     }
