@@ -19,7 +19,7 @@ defaults:
 jobs:
   create-release:
     if: github.repository_owner == 'openrr'
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -45,7 +45,7 @@ jobs:
     needs: [create-release]
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-latest]
+        os: [ubuntu-20.04, macos-latest]
         include:
           - os: windows-latest
             include-files: binaries/x86_64/freetype.dll,binaries/FTL.TXT,binaries/GPLv2.TXT
