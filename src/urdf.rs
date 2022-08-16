@@ -33,8 +33,25 @@ pub fn add_geometry(
             }
             Ok(base)
         }
-        urdf_rs::Geometry::Capsule { .. } => {
-            todo!()
+        urdf_rs::Geometry::Capsule { radius, length } => {
+            let mut base = group.add_group();
+            let mut cylinder = base.add_cylinder(radius as f32, length as f32);
+            cylinder.append_rotation(&na::UnitQuaternion::from_axis_angle(
+                &na::Vector3::x_axis(),
+                1.57,
+            ));
+            let mut sphere1 = base.add_sphere(radius as f32);
+            sphere1.append_translation(&na::Translation3::new(0.0, 0.0, length as f32 * 0.5));
+            let mut sphere2 = base.add_sphere(radius as f32);
+            sphere2.append_translation(&na::Translation3::new(0.0, 0.0, length as f32 * -0.5));
+
+            if let Some(color) = *opt_color {
+                cylinder.set_color(color[0], color[1], color[2]);
+                sphere1.set_color(color[0], color[1], color[2]);
+                sphere2.set_color(color[0], color[1], color[2]);
+            }
+            Ok(base)
+
         }
         urdf_rs::Geometry::Sphere { radius } => {
             let mut sphere = group.add_sphere(radius as f32);
