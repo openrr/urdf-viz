@@ -51,7 +51,6 @@ pub fn add_geometry(
                 sphere2.set_color(color[0], color[1], color[2]);
             }
             Ok(base)
-
         }
         urdf_rs::Geometry::Sphere { radius } => {
             let mut sphere = group.add_sphere(radius as f32);
