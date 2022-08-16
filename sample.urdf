@@ -25,6 +25,12 @@
       </material>
     </visual>
     <collision>
+      <origin xyz="0.0 0.0 -0.1" rpy="0.0 0.0 0.0" />
+      <geometry>
+        <capsule radius="0.2" length="0.2" />
+      </geometry>
+    </collision>
+    <collision>
       <origin xyz="0 0 0.4" rpy="0 0 0"/>
       <geometry>
         <sphere radius="0.2"/>
