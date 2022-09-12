@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(start)]
 pub async fn main() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
-    wasm_logger::init(wasm_logger::Config::default());
+    tracing_wasm::set_as_global_default();
 
     run().await
 }

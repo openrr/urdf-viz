@@ -11,6 +11,6 @@ crate-type = ["cdylib"]
 [target.'cfg(target_family = "wasm")'.dependencies]
 urdf-viz = { version = "*", path = "../..", default-features = false }
 console_error_panic_hook = "0.1"
+tracing-wasm = "0.2"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-wasm-logger = "0.2"
