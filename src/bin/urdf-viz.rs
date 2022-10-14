@@ -17,8 +17,10 @@
 #![warn(rust_2018_idioms)]
 
 use structopt::StructOpt;
-use tracing::debug;
+use tracing::{debug, warn};
 use urdf_viz::{app::*, WebServer};
+
+const DEFAULT_WEB_SERVER_PORT: u16 = 7777;
 
 #[tokio::main]
 async fn main() -> urdf_viz::Result<()> {
@@ -43,8 +45,27 @@ async fn main() -> urdf_viz::Result<()> {
     )?;
     app.set_ik_constraints(ik_constraints);
     app.init();
-    let server = WebServer::new(opt.web_server_port, app.handle()).bind();
-    tokio::spawn(async move { server.await.unwrap() });
+
+    match WebServer::new(
+        opt.web_server_port.unwrap_or(DEFAULT_WEB_SERVER_PORT),
+        app.handle(),
+    )
+    .bind()
+    {
+        Ok(server) => {
+            tokio::spawn(async move { server.await.unwrap() });
+        }
+        Err(e) => {
+            if opt.web_server_port.is_none() {
+                // If the user didn't specify a port, the user may not need web server, so treat as a warning.
+                warn!("failed to start web server with default port: {e}");
+            } else {
+                // If the user specified a port, the user intends to use web server, so treat as an error.
+                return Err(e);
+            }
+        }
+    }
+
     app.run();
     Ok(())
 }
