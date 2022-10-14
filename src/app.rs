@@ -888,10 +888,9 @@ pub struct Opt {
     #[structopt(short = "d", long = "disable-texture")]
     #[serde(default)]
     pub disable_texture: bool,
-    /// Port number for web server interface
-    #[structopt(short = "p", long = "web-server-port", default_value = "7777")]
-    #[serde(default = "default_web_server_port")]
-    pub web_server_port: u16,
+    /// Port number for web server interface (default to 7777)
+    #[structopt(short = "p", long = "web-server-port")]
+    pub web_server_port: Option<u16>,
 
     #[structopt(long = "ignore-ik-position-x")]
     #[serde(default)]
@@ -947,9 +946,6 @@ pub struct Opt {
     pub ground_height: Option<f32>,
 }
 
-fn default_web_server_port() -> u16 {
-    7777
-}
 fn default_back_ground_color_b() -> f32 {
     0.3
 }
