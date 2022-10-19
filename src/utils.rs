@@ -10,7 +10,7 @@ pub(crate) fn replace_package_with_path(
     package_path: &HashMap<String, String>,
 ) -> Option<String> {
     let path = filename.strip_prefix("package://")?;
-    let (package_name, path) = path.split_once('/').unwrap_or((path, ""));
+    let (package_name, path) = path.split_once('/')?;
     let package_path = package_path.get(package_name)?;
     Some(format!(
         "{}/{path}",
@@ -307,5 +307,29 @@ mod wasm {
         pub(crate) fn take_package_path_map(&mut self) -> HashMap<String, String> {
             mem::take(&mut self.package_path)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_replace_package_with_path() {
+        let mut package_path = HashMap::new();
+        package_path.insert("a".to_owned(), "path".to_owned());
+        assert_eq!(
+            replace_package_with_path("package://a/b/c", &package_path),
+            Some("path/b/c".to_owned())
+        );
+        assert_eq!(
+            replace_package_with_path("package://a", &package_path),
+            None
+        );
+        assert_eq!(
+            replace_package_with_path("package://b/b/c", &package_path),
+            None
+        );
+        assert_eq!(replace_package_with_path("a", &package_path), None);
     }
 }
