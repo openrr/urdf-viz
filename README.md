@@ -19,7 +19,7 @@ If you don't use mesh other than `.obj`, `.stl`, and `.dae` files, you can skip 
 of assimp by disabling the `assimp` feature like below.
 
 ```bash
-cargo build --no-default-features
+cargo install urdf-viz --no-default-features
 ```
 
 Note: When the `assimp` feature is disabled, materials are not fully supported yet.
