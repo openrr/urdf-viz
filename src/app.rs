@@ -983,9 +983,14 @@ impl Opt {
     pub fn create_package_path_map(&self) -> Result<HashMap<String, String>, Error> {
         let mut map = HashMap::with_capacity(self.package_path.len());
         for replace in &self.package_path {
-            let (package_name, path) = replace.split_once('=').ok_or_else(|| {
-                format!("--package-path may only accept PACKAGE=KEY format, but found '{replace}'")
-            })?;
+            let (package_name, path) = replace
+                .split_once('=')
+                .filter(|(k, _)| !k.is_empty())
+                .ok_or_else(|| {
+                    format!(
+                        "--package-path may only accept PACKAGE=PATH format, but found '{replace}'"
+                    )
+                })?;
             map.insert(package_name.to_owned(), path.to_owned());
         }
         Ok(map)
@@ -997,5 +1002,56 @@ impl Opt {
         debug!("href={href}");
         let url = url::Url::parse(&href).map_err(|e| e.to_string())?;
         Ok(serde_qs::from_str(url.query().unwrap_or_default()).map_err(|e| e.to_string())?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::*;
+
+    #[test]
+    fn test_create_package_path_map() {
+        let opt: Opt = StructOpt::from_iter(["urdf-viz", "a.urdf", "--package-path", "a=b"]);
+        assert_eq!(
+            opt.create_package_path_map()
+                .unwrap()
+                .into_iter()
+                .collect::<Vec<_>>(),
+            vec![("a".to_owned(), "b".to_owned())]
+        );
+        let opt: Opt = StructOpt::from_iter([
+            "urdf-viz",
+            "a.urdf",
+            "--package-path",
+            "a=b",
+            "--package-path",
+            "c=d=e",
+        ]);
+        assert_eq!(
+            opt.create_package_path_map()
+                .unwrap()
+                .into_iter()
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>(),
+            vec![
+                ("a".to_owned(), "b".to_owned()),
+                ("c".to_owned(), "d=e".to_owned())
+            ]
+        );
+        let opt: Opt = StructOpt::from_iter(["urdf-viz", "a.urdf", "--package-path", "a="]);
+        assert_eq!(
+            opt.create_package_path_map()
+                .unwrap()
+                .into_iter()
+                .collect::<Vec<_>>(),
+            vec![("a".to_owned(), "".to_owned())]
+        );
+        let opt: Opt = StructOpt::from_iter(["urdf-viz", "a.urdf", "--package-path", "=a"]);
+        assert!(opt.create_package_path_map().is_err());
+        let opt: Opt = StructOpt::from_iter(["urdf-viz", "a.urdf", "--package-path", "a"]);
+        assert!(opt.create_package_path_map().is_err());
     }
 }
