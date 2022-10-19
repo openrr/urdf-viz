@@ -19,6 +19,7 @@ use k::prelude::*;
 use kiss3d::event::{Action, Key, Modifiers, WindowEvent};
 use kiss3d::window::{self, Window};
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
@@ -137,6 +138,7 @@ pub struct UrdfViewerApp {
     show_frames: bool,
     ik_constraints: k::Constraints,
     point_size: f32,
+    package_path: HashMap<String, String>,
 }
 
 impl UrdfViewerApp {
@@ -152,6 +154,7 @@ impl UrdfViewerApp {
         ground_height: Option<f32>,
     ) -> Result<Self, Error> {
         let input_path = PathBuf::from(&urdf_robot.path);
+        let package_path = urdf_robot.take_package_path_map();
         let robot: k::Chain<f32> = urdf_robot.get().into();
         println!("{robot}");
         let (mut viewer, mut window) = Viewer::with_background_color("urdf-viz", background_color);
@@ -163,6 +166,7 @@ impl UrdfViewerApp {
             urdf_robot.get(),
             input_path.parent(),
             is_collision,
+            &package_path,
         );
         viewer.add_axis_cylinders(&mut window, "origin", 1.0);
         if let Some(h) = ground_height {
@@ -208,6 +212,7 @@ impl UrdfViewerApp {
             show_frames: false,
             ik_constraints: k::Constraints::default(),
             point_size: 10.0,
+            package_path,
         })
     }
     pub fn handle(&self) -> Arc<RobotStateHandle> {
@@ -322,6 +327,7 @@ impl UrdfViewerApp {
             self.urdf_robot.get(),
             self.input_path.parent(),
             self.is_collision,
+            &self.package_path,
         );
         const FRAME_ARROW_SIZE: f32 = 0.2;
         self.robot.iter().for_each(|n| {
@@ -428,6 +434,7 @@ impl UrdfViewerApp {
                     self.urdf_robot.get(),
                     self.input_path.parent(),
                     self.is_collision,
+                    &self.package_path,
                 );
                 self.update_robot();
             }
@@ -944,6 +951,10 @@ pub struct Opt {
 
     #[structopt(long = "ground-height")]
     pub ground_height: Option<f32>,
+
+    /// Replace `package://PACKAGE` in mesh tag with PATH.
+    #[structopt(long = "package-path", value_name = "PACKAGE=PATH")]
+    pub package_path: Vec<String>,
 }
 
 fn default_back_ground_color_b() -> f32 {
@@ -967,6 +978,17 @@ impl Opt {
             rotation_z: !self.ignore_ik_rotation_z,
             ..Default::default()
         }
+    }
+
+    pub fn create_package_path_map(&self) -> Result<HashMap<String, String>, Error> {
+        let mut map = HashMap::with_capacity(self.package_path.len());
+        for replace in &self.package_path {
+            let (package_name, path) = replace.split_once('=').ok_or_else(|| {
+                format!("--package-path may only accept PACKAGE=KEY format, but found '{replace}'")
+            })?;
+            map.insert(package_name.to_owned(), path.to_owned());
+        }
+        Ok(map)
     }
 
     #[cfg(target_family = "wasm")]

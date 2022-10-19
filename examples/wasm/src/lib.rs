@@ -18,7 +18,9 @@ async fn run() -> Result<(), JsValue> {
     if opt.input_urdf_or_xacro.is_empty() {
         opt.input_urdf_or_xacro = SAMPLE_URDF_PATH.to_string();
     }
-    let urdf_robot = urdf_viz::utils::RobotModel::new(&opt.input_urdf_or_xacro).await?;
+    let package_path = opt.create_package_path_map()?;
+    let urdf_robot =
+        urdf_viz::utils::RobotModel::new(&opt.input_urdf_or_xacro, package_path).await?;
     let ik_constraints = opt.create_ik_constraints();
     let mut app = UrdfViewerApp::new(
         urdf_robot,
