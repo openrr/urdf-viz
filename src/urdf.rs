@@ -3,6 +3,7 @@ use crate::mesh::load_mesh;
 use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::path::Path;
 use tracing::*;
 
@@ -12,6 +13,7 @@ pub fn add_geometry(
     base_dir: Option<&Path>,
     group: &mut SceneNode,
     use_texture: bool,
+    package_path: &HashMap<String, String>,
 ) -> Result<SceneNode> {
     match *geometry {
         urdf_rs::Geometry::Box { ref size } => {
@@ -64,10 +66,17 @@ pub fn add_geometry(
             scale,
         } => {
             let scale = scale.unwrap_or(DEFAULT_MESH_SCALE);
-            let replaced_filename = if cfg!(target_family = "wasm") {
-                Cow::Borrowed(filename)
-            } else {
-                let replaced_filename = urdf_rs::utils::expand_package_path(filename, base_dir);
+            let mut filename = Cow::Borrowed(&**filename);
+            if !cfg!(target_family = "wasm") {
+                // On WASM, this is handled in utils::load_mesh
+                if filename.starts_with("package://") {
+                    if let Some(replaced_filename) =
+                        crate::utils::replace_package_with_path(&filename, package_path)
+                    {
+                        filename = Cow::Owned(replaced_filename);
+                    }
+                };
+                let replaced_filename = urdf_rs::utils::expand_package_path(&filename, base_dir);
                 if !replaced_filename.starts_with("https://")
                     && !replaced_filename.starts_with("http://")
                     && !Path::new(&replaced_filename).exists()
@@ -76,26 +85,14 @@ pub fn add_geometry(
                 }
                 // TODO: remove Cow::Owned once https://github.com/openrr/urdf-rs/pull/41
                 // is released in the next breaking release of urdf-rs.
-                Cow::Owned(replaced_filename)
-            };
+                filename = Cow::Owned(replaced_filename);
+            }
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
-            debug!("filename = {replaced_filename}");
+            debug!("filename = {filename}");
             if cfg!(feature = "assimp") {
-                load_mesh(
-                    replaced_filename.as_str(),
-                    na_scale,
-                    opt_color,
-                    group,
-                    use_texture,
-                )
+                load_mesh(&filename, na_scale, opt_color, group, use_texture)
             } else {
-                match load_mesh(
-                    replaced_filename.as_str(),
-                    na_scale,
-                    opt_color,
-                    group,
-                    use_texture,
-                ) {
+                match load_mesh(&filename, na_scale, opt_color, group, use_texture) {
                     Ok(scene) => Ok(scene),
                     Err(e) => {
                         error!("{e}");

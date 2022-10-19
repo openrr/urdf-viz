@@ -51,16 +51,28 @@ impl Viewer {
         self.is_texture_enabled = true;
     }
 
-    pub fn add_robot(&mut self, window: &mut Window, urdf_robot: &urdf_rs::Robot) {
-        self.add_robot_with_base_dir(window, urdf_robot, None);
+    pub fn add_robot(
+        &mut self,
+        window: &mut Window,
+        urdf_robot: &urdf_rs::Robot,
+        package_path: &HashMap<String, String>,
+    ) {
+        self.add_robot_with_base_dir(window, urdf_robot, None, package_path);
     }
     pub fn add_robot_with_base_dir(
         &mut self,
         window: &mut Window,
         urdf_robot: &urdf_rs::Robot,
         base_dir: Option<&Path>,
+        package_path: &HashMap<String, String>,
     ) {
-        self.add_robot_with_base_dir_and_collision_flag(window, urdf_robot, base_dir, false);
+        self.add_robot_with_base_dir_and_collision_flag(
+            window,
+            urdf_robot,
+            base_dir,
+            false,
+            package_path,
+        );
     }
     pub fn add_robot_with_base_dir_and_collision_flag(
         &mut self,
@@ -68,6 +80,7 @@ impl Viewer {
         urdf_robot: &urdf_rs::Robot,
         base_dir: Option<&Path>,
         is_collision: bool,
+        package_path: &HashMap<String, String>,
     ) {
         self.link_joint_map = k::urdf::link_to_joint_map(urdf_robot);
 
@@ -103,6 +116,7 @@ impl Viewer {
                     base_dir,
                     &mut scene_group,
                     self.is_texture_enabled,
+                    package_path,
                 ) {
                     Ok(mut base_group) => {
                         // set initial origin offset

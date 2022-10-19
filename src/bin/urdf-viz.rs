@@ -27,7 +27,8 @@ async fn main() -> urdf_viz::Result<()> {
     tracing_subscriber::fmt::init();
     let opt = Opt::from_args();
     debug!(?opt);
-    let urdf_robot = urdf_viz::utils::RobotModel::new(&opt.input_urdf_or_xacro)?;
+    let package_path = opt.create_package_path_map()?;
+    let urdf_robot = urdf_viz::utils::RobotModel::new(&opt.input_urdf_or_xacro, package_path)?;
     let ik_constraints = opt.create_ik_constraints();
     let mut app = UrdfViewerApp::new(
         urdf_robot,

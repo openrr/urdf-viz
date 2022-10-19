@@ -1,20 +1,40 @@
+use std::collections::HashMap;
+
 #[cfg(not(target_family = "wasm"))]
 pub use native::*;
 #[cfg(target_family = "wasm")]
 pub use wasm::*;
 
+pub(crate) fn replace_package_with_path(
+    filename: &str,
+    package_path: &HashMap<String, String>,
+) -> Option<String> {
+    let path = filename.strip_prefix("package://")?;
+    let (package_name, path) = path.split_once('/').unwrap_or((path, ""));
+    let package_path = package_path.get(package_name)?;
+    Some(format!(
+        "{}/{path}",
+        package_path.strip_suffix('/').unwrap_or(package_path),
+    ))
+}
+
 #[cfg(not(target_family = "wasm"))]
 mod native {
-    use std::{ffi::OsStr, fs, path::Path, sync::Arc};
+    use std::{collections::HashMap, ffi::OsStr, fs, mem, path::Path, sync::Arc};
 
     use parking_lot::Mutex;
     use tracing::error;
 
     use crate::Result;
 
-    fn read_urdf(path: impl AsRef<Path>) -> Result<(urdf_rs::Robot, String)> {
-        let urdf_text = if path.as_ref().extension().and_then(OsStr::to_str) == Some("xacro") {
+    fn read_urdf(path: &str) -> Result<(urdf_rs::Robot, String)> {
+        let urdf_text = if Path::new(path).extension().and_then(OsStr::to_str) == Some("xacro") {
             urdf_rs::utils::convert_xacro_to_urdf(path)?
+        } else if path.starts_with("https://") || path.starts_with("http://") {
+            ureq::get(path)
+                .call()
+                .map_err(|e| crate::Error::Other(e.to_string()))?
+                .into_string()?
         } else {
             fs::read_to_string(path)?
         };
@@ -27,22 +47,25 @@ mod native {
         pub(crate) path: String,
         pub(crate) urdf_text: Arc<Mutex<String>>,
         robot: urdf_rs::Robot,
+        package_path: HashMap<String, String>,
     }
 
     impl RobotModel {
-        pub fn new(path: impl Into<String>) -> Result<Self> {
+        pub fn new(path: impl Into<String>, package_path: HashMap<String, String>) -> Result<Self> {
             let path = path.into();
             let (robot, urdf_text) = read_urdf(&path)?;
             Ok(Self {
                 path,
                 urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
+                package_path,
             })
         }
 
         pub async fn from_text(
             path: impl Into<String>,
             urdf_text: impl Into<String>,
+            package_path: HashMap<String, String>,
         ) -> Result<Self> {
             let path = path.into();
             let urdf_text = urdf_text.into();
@@ -51,6 +74,7 @@ mod native {
                 path,
                 urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
+                package_path,
             })
         }
 
@@ -69,12 +93,16 @@ mod native {
                 }
             }
         }
+
+        pub(crate) fn take_package_path_map(&mut self) -> HashMap<String, String> {
+            mem::take(&mut self.package_path)
+        }
     }
 }
 
 #[cfg(target_family = "wasm")]
 mod wasm {
-    use std::{path::Path, str, sync::Arc};
+    use std::{collections::HashMap, mem, path::Path, str, sync::Arc};
 
     use js_sys::Uint8Array;
     use parking_lot::Mutex;
@@ -170,13 +198,11 @@ mod wasm {
         Ok(Uint8Array::new(&bytes).to_vec())
     }
 
-    async fn read_urdf(input_file: impl AsRef<str>) -> Result<(urdf_rs::Robot, String)> {
-        let s = read_to_string(input_file).await?;
-        let robot = urdf_rs::read_from_string(&s)?;
-        Ok((robot, s))
-    }
-
-    pub async fn load_mesh(robot: &mut urdf_rs::Robot, urdf_path: impl AsRef<Path>) -> Result<()> {
+    pub async fn load_mesh(
+        robot: &mut urdf_rs::Robot,
+        urdf_path: impl AsRef<Path>,
+        package_path: &HashMap<String, String>,
+    ) -> Result<()> {
         let urdf_path = urdf_path.as_ref();
         for geometry in robot.links.iter_mut().flat_map(|link| {
             link.visual
@@ -185,28 +211,30 @@ mod wasm {
                 .chain(link.collision.iter_mut().map(|c| &mut c.geometry))
         }) {
             if let urdf_rs::Geometry::Mesh { filename, .. } = geometry {
-                let input_file =
-                    if filename.starts_with("https://") || filename.starts_with("http://") {
-                        filename.clone()
-                    } else if filename.starts_with("package://") {
-                        return Err(Error::from(format!(
-                            "ros package ({filename}) is not supported in wasm",
-                        )));
-                    } else if filename.starts_with("file://") {
-                        return Err(Error::from(format!(
-                            "local file ({filename}) is not supported in wasm",
-                        )));
-                    } else {
-                        // We don't use url::Url::path/set_path here, because
-                        // urdf_path may be a relative path to a file bundled
-                        // with the server. Path::with_file_name works for wasm
-                        // where the separator is /, so we use it.
-                        urdf_path
-                            .with_file_name(&filename)
-                            .to_str()
-                            .unwrap()
-                            .to_string()
-                    };
+                let input_file = if filename.starts_with("https://")
+                    || filename.starts_with("http://")
+                {
+                    filename.clone()
+                } else if filename.starts_with("package://") {
+                    crate::utils::replace_package_with_path(filename, package_path).ok_or_else(||
+                        format!(
+                            "ros package ({filename}) is not supported in wasm; consider using `package-path[]` URL parameter",
+                        ))?
+                } else if filename.starts_with("file://") {
+                    return Err(Error::from(format!(
+                        "local file ({filename}) is not supported in wasm",
+                    )));
+                } else {
+                    // We don't use url::Url::path/set_path here, because
+                    // urdf_path may be a relative path to a file bundled
+                    // with the server. Path::with_file_name works for wasm
+                    // where the separator is /, so we use it.
+                    urdf_path
+                        .with_file_name(&filename)
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                };
 
                 let kind = if input_file.ends_with(".obj") || input_file.ends_with(".OBJ") {
                     MeshKind::Obj
@@ -242,37 +270,42 @@ mod wasm {
         pub(crate) path: String,
         pub(crate) urdf_text: Arc<Mutex<String>>,
         robot: urdf_rs::Robot,
+        package_path: HashMap<String, String>,
     }
 
     impl RobotModel {
-        pub async fn new(path: impl Into<String>) -> Result<Self> {
+        pub async fn new(
+            path: impl Into<String>,
+            package_path: HashMap<String, String>,
+        ) -> Result<Self> {
             let path = path.into();
-            let (mut robot, urdf_text) = read_urdf(&path).await?;
-            load_mesh(&mut robot, &path).await?;
-            Ok(Self {
-                path,
-                urdf_text: Arc::new(Mutex::new(urdf_text)),
-                robot,
-            })
+            let urdf_text = read_to_string(&path).await?;
+            Self::from_text(path, urdf_text, package_path).await
         }
 
         pub async fn from_text(
             path: impl Into<String>,
             urdf_text: impl Into<String>,
+            package_path: HashMap<String, String>,
         ) -> Result<Self> {
             let path = path.into();
             let urdf_text = urdf_text.into();
             let mut robot = urdf_rs::read_from_string(&urdf_text)?;
-            load_mesh(&mut robot, &path).await?;
+            load_mesh(&mut robot, &path, &package_path).await?;
             Ok(Self {
                 path,
                 urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
+                package_path,
             })
         }
 
         pub(crate) fn get(&mut self) -> &urdf_rs::Robot {
             &self.robot
+        }
+
+        pub(crate) fn take_package_path_map(&mut self) -> HashMap<String, String> {
+            mem::take(&mut self.package_path)
         }
     }
 }

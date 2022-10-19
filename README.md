@@ -93,6 +93,10 @@ urdf-viz -h
 
 If there are no "package://" in mesh tag, and don't use xacro you can skip install of ROS.
 
+If there are "package://" in mesh tag, but path or URL to package is known and
+don't use xacro you can also skip install of ROS [by replacing package with path
+or URL](https://github.com/openrr/urdf-viz/pull/176).
+
 ## GUI Usage
 
 In the GUI, you can do some operations with keyboard and mouse.
