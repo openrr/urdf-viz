@@ -20,7 +20,7 @@ assimp = ["assimp-crate", "assimp-sys"]
 # Note: k, kiss3d, serde, structopt, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
 crossbeam-queue = "0.3.5"
-k = "0.28"
+k = "0.29"
 kiss3d = "0.35"
 mesh-loader = "0.0.2"
 parking_lot = "0.12"
