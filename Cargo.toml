@@ -35,7 +35,7 @@ assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-axum = "0.5"
+axum = "0.6"
 ctrlc = { version = "3", features = ["termination"] }
 hyper = "0.14"
 tokio = { version = "1", features = ["full"] }
