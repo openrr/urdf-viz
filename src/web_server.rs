@@ -40,13 +40,14 @@ impl WebServer {
         self.handle.clone()
     }
 
-    pub fn bind(self) -> crate::errors::Result<impl Future<Output = hyper::Result<()>> + Send> {
+    pub fn bind(self) -> crate::Result<impl Future<Output = crate::Result<()>> + Send> {
         let app = app(self.handle());
 
         let addr = ([0, 0, 0, 0], self.port).into();
-        Ok(axum::Server::try_bind(&addr)
+        let server = axum::Server::try_bind(&addr)
             .map_err(|e| format!("error binding to {addr}: {e}"))?
-            .serve(app.into_make_service()))
+            .serve(app.into_make_service());
+        Ok(async move { server.await.map_err(|e| crate::Error::Other(e.to_string())) })
     }
 }
 

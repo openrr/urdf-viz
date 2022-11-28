@@ -17,7 +17,7 @@ members = ["examples/wasm"]
 default = ["assimp"]
 assimp = ["assimp-crate", "assimp-sys"]
 
-# Note: k, kiss3d, serde, structopt, urdf-rs, and wasm-bindgen are public dependencies.
+# Note: k, kiss3d, serde, structopt, tokio, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
 crossbeam-queue = "0.3.5"
 k = "0.29"
@@ -37,7 +37,6 @@ assimp-sys = { version = "0.3.1", optional = true }
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 axum = "0.6"
 ctrlc = { version = "3", features = ["termination"] }
-hyper = "0.14"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.3", features = ["trace"] }
 tracing-subscriber = "0.3"
