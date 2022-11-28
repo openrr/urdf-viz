@@ -47,6 +47,10 @@ jobs:
           mv binaries/x86_64/freetype.dll $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
           mv binaries/x86_64/freetype.lib $HOME/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/lib/
         if: startsWith(matrix.os, 'windows')
+      # https://github.com/actions/runner-images/issues/6627#issuecomment-1328214957
+      - name: Workaround GitHub Actions bug (windows)
+        run: rm -rf C:/Strawberry
+        if: startsWith(matrix.os, 'windows')
 
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets
