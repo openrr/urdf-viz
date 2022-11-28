@@ -1,7 +1,7 @@
 use std::{future::Future, sync::Arc};
 
 use axum::{
-    extract::Extension,
+    extract::State,
     http::StatusCode,
     routing::{get, post},
     Json, Router,
@@ -58,18 +58,18 @@ fn app(handle: Handle) -> Router {
         .route("/get_joint_positions", get(get_joint_positions))
         .route("/get_robot_origin", get(get_robot_origin))
         .route("/get_urdf_text", get(get_urdf_text))
-        .layer(Extension(handle))
+        .with_state(handle)
         .layer(tower_http::trace::TraceLayer::new_for_http())
 }
 
-async fn set_reload_request(Extension(handle): Extension<Handle>) -> Json<ResultResponse> {
+async fn set_reload_request(State(handle): State<Handle>) -> Json<ResultResponse> {
     handle.set_reload_request();
     Json(ResultResponse::SUCCESS)
 }
 
 async fn set_joint_positions(
+    State(handle): State<Handle>,
     Json(jp): Json<JointNamesAndPositions>,
-    Extension(handle): Extension<Handle>,
 ) -> Json<ResultResponse> {
     if jp.names.len() != jp.positions.len() {
         Json(ResultResponse {
@@ -87,22 +87,22 @@ async fn set_joint_positions(
 }
 
 async fn set_robot_origin(
+    State(handle): State<Handle>,
     Json(robot_origin): Json<RobotOrigin>,
-    Extension(handle): Extension<Handle>,
 ) -> Json<ResultResponse> {
     handle.set_target_robot_origin(robot_origin);
     Json(ResultResponse::SUCCESS)
 }
 
-async fn get_joint_positions(Extension(handle): Extension<Handle>) -> Json<JointNamesAndPositions> {
+async fn get_joint_positions(State(handle): State<Handle>) -> Json<JointNamesAndPositions> {
     Json(handle.current_joint_positions().clone())
 }
 
-async fn get_robot_origin(Extension(handle): Extension<Handle>) -> Json<RobotOrigin> {
+async fn get_robot_origin(State(handle): State<Handle>) -> Json<RobotOrigin> {
     Json(handle.current_robot_origin().clone())
 }
 
-async fn get_urdf_text(Extension(handle): Extension<Handle>) -> Result<String, StatusCode> {
+async fn get_urdf_text(State(handle): State<Handle>) -> Result<String, StatusCode> {
     match handle.urdf_text() {
         Some(text) => Ok(text.clone()),
         None => Err(StatusCode::NOT_FOUND),
