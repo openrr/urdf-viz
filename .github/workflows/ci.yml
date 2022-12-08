@@ -79,3 +79,19 @@ jobs:
           git -c user.name='ci' -c user.email='ci' commit -m 'Deploy urdf-viz to gh-pages'
           git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
         if: github.event_name == 'push' && github.event.ref == 'refs/heads/main' && github.repository_owner == 'openrr'
+
+  spell-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npx cspell --no-progress $(git ls-files)
+      - name: Check duplications in dictionary
+        run: |
+          dup=$(sed '/^$/d' .github/.cspell/dictionary.txt | LC_ALL=C sort -f | uniq -d -i)
+          if [[ -n "${dup}" ]]; then
+              echo "error: duplicated words in .github/.cspell/dictionary.txt"
+              echo "======================================="
+              echo "${dup}"
+              echo "======================================="
+              exit 1
+          fi
