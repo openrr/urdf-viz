@@ -5,11 +5,16 @@
   "dictionaryDefinitions": [
     {
       "name": "project-dictionary",
-      "path": "./.github/.cspell/dictionary.txt",
+      "path": "./.github/.cspell/project-dictionary.txt",
+      "addWords": true
+    },
+    {
+      "name": "rust-dependencies",
+      "path": "./.github/.cspell/rust-dependencies.txt",
       "addWords": true
     }
   ],
-  "dictionaries": ["project-dictionary"],
+  "dictionaries": ["project-dictionary", "rust-dependencies"],
   "ignoreRegExpList": [
     // Copyright notice
     "Copyright (\\(c\\) )?.*",
@@ -24,6 +29,12 @@
     // Cargo.toml authors
     "authors *= *\\[.*\\]",
     "\".* <[\\w_.+-]+@[\\w.-]+>\""
+  ],
+  "languageSettings": [
+    {
+      "languageId": ["*"],
+      "dictionaries": ["rust"]
+    }
   ],
   "ignorePaths": [
     // Licenses
