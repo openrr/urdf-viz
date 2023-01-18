@@ -6,6 +6,7 @@ ctxt
 devel
 freetype
 glfw
+glutin
 highp
 libglu
 mediump
@@ -22,9 +23,12 @@ rustdocflags
 rustflags
 rustfmt
 rustlib
+RUSTSEC
+rusttype
 rustup
 texcoords
 thormang
 toolchains
+webpki
 xacro
 xorg

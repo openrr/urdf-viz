@@ -1,0 +1,50 @@
+# https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
+[advisories]
+vulnerability = "deny"
+unmaintained = "allow" # TODO
+unsound = "deny"
+yanked = "deny"
+notice = "deny"
+ignore = [
+    "RUSTSEC-2021-0145", # atty 0.2, transitively dep of structopt (via old clap)
+    "RUSTSEC-2021-0119", # nix 0.18/0.20, transitively dep of kiss3d (via old glutin)
+    "RUSTSEC-2022-0041", # crossbeam-utils 0.7, transitively dep of kiss3d (via old rusttype)
+]
+
+# https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
+[bans]
+multiple-versions = "allow" # TODO
+wildcards = "allow" # https://github.com/EmbarkStudios/cargo-deny/issues/448
+skip = []
+
+# https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
+[licenses]
+default = "deny"
+unlicensed = "deny"
+copyleft = "deny"
+unused-allowed-license = "deny"
+private.ignore = true
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "Unicode-DFS-2016", # unicode-ident
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "ISC",
+    "OpenSSL",
+    "Zlib",
+    "MPL-2.0", # webpki-roots
+]
+
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
+]
+
+# https://embarkstudios.github.io/cargo-deny/checks/sources/cfg.html
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = []
