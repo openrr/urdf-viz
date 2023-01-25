@@ -141,6 +141,7 @@ pub struct UrdfViewerApp {
     point_size: f32,
     package_path: HashMap<String, String>,
     disable_menu: bool,
+    axis_scale: f32,
 }
 
 impl UrdfViewerApp {
@@ -155,6 +156,7 @@ impl UrdfViewerApp {
         tile_color2: (f32, f32, f32),
         ground_height: Option<f32>,
         disable_menu: bool,
+        axis_scale: f32,
     ) -> Result<Self, Error> {
         let input_path = PathBuf::from(&urdf_robot.path);
         let package_path = urdf_robot.take_package_path_map();
@@ -171,7 +173,7 @@ impl UrdfViewerApp {
             is_collision,
             &package_path,
         );
-        viewer.add_axis_cylinders(&mut window, "origin", 1.0);
+        viewer.add_axis_cylinders_to_scale(&mut window, "origin", 1.0, axis_scale);
         if let Some(h) = ground_height {
             viewer.add_ground(&mut window, h, 0.5, 3, tile_color1, tile_color2);
         }
@@ -217,6 +219,7 @@ impl UrdfViewerApp {
             point_size: 10.0,
             package_path,
             disable_menu,
+            axis_scale,
         })
     }
     pub fn handle(&self) -> Arc<RobotStateHandle> {
@@ -238,13 +241,18 @@ impl UrdfViewerApp {
         self.update_robot();
         if self.has_arms() {
             let window = self.window.as_mut().unwrap();
-            self.viewer.add_axis_cylinders(window, "ik_target", 0.2);
+            self.viewer
+                .add_axis_cylinders_to_scale(window, "ik_target", 0.2, self.axis_scale);
             self.update_ik_target_marker();
         }
         let window = self.window.as_mut().unwrap();
         self.robot.iter().for_each(|n| {
-            self.viewer
-                .add_axis_cylinders(window, &node_to_frame_name(n), FRAME_ARROW_SIZE);
+            self.viewer.add_axis_cylinders_to_scale(
+                window,
+                &node_to_frame_name(n),
+                FRAME_ARROW_SIZE,
+                self.axis_scale,
+            );
         });
         self.update_frame_markers();
     }
@@ -335,8 +343,12 @@ impl UrdfViewerApp {
         );
         const FRAME_ARROW_SIZE: f32 = 0.2;
         self.robot.iter().for_each(|n| {
-            self.viewer
-                .add_axis_cylinders(window, &node_to_frame_name(n), FRAME_ARROW_SIZE);
+            self.viewer.add_axis_cylinders_to_scale(
+                window,
+                &node_to_frame_name(n),
+                FRAME_ARROW_SIZE,
+                self.axis_scale,
+            );
         });
         self.update_robot();
     }
@@ -633,9 +645,12 @@ impl AppState {
                 // remove pre-existent node
                 scene.unlink();
             }
-            self.app
-                .viewer
-                .add_axis_cylinders(window, id, axis_marker.size);
+            self.app.viewer.add_axis_cylinders_to_scale(
+                window,
+                id,
+                axis_marker.size,
+                self.app.axis_scale,
+            );
             let scene = self.app.viewer.scene_node_mut(id).unwrap();
             if let Some(p) = axis_marker.position {
                 scene.set_local_translation(na::Translation3::new(p[0], p[1], p[2]));
@@ -967,6 +982,9 @@ pub struct Opt {
 
     #[structopt(short = "m", long = "disable-menu")]
     pub disable_menu: bool,
+
+    #[structopt(short = "s", long = "axis-scale", default_value = "1.0")]
+    pub axis_scale: f32,
 }
 
 fn default_back_ground_color_b() -> f32 {
