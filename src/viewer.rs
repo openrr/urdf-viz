@@ -147,12 +147,23 @@ impl Viewer {
         }
     }
     pub fn add_axis_cylinders(&mut self, window: &mut Window, name: &str, size: f32) {
+        self.add_axis_cylinders_to_scale(window, name, size, 1.0);
+    }
+    pub fn add_axis_cylinders_to_scale(
+        &mut self,
+        window: &mut Window,
+        name: &str,
+        size: f32,
+        scale: f32,
+    ) {
         let mut axis_group = window.add_group();
-        let mut x = axis_group.add_cylinder(0.01, size);
+        let radius = 0.01 * scale;
+        let size = size * scale;
+        let mut x = axis_group.add_cylinder(radius, size);
         x.set_color(0.0, 0.0, 1.0);
-        let mut y = axis_group.add_cylinder(0.01, size);
+        let mut y = axis_group.add_cylinder(radius, size);
         y.set_color(0.0, 1.0, 0.0);
-        let mut z = axis_group.add_cylinder(0.01, size);
+        let mut z = axis_group.add_cylinder(radius, size);
         z.set_color(1.0, 0.0, 0.0);
         let rot_x = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), 1.57);
         let rot_y = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), 1.57);
