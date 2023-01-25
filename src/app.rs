@@ -140,7 +140,7 @@ pub struct UrdfViewerApp {
     ik_constraints: k::Constraints,
     point_size: f32,
     package_path: HashMap<String, String>,
-    disable_menu: bool,
+    hide_menu: bool,
     axis_scale: f32,
 }
 
@@ -155,7 +155,7 @@ impl UrdfViewerApp {
         tile_color1: (f32, f32, f32),
         tile_color2: (f32, f32, f32),
         ground_height: Option<f32>,
-        disable_menu: bool,
+        hide_menu: bool,
         axis_scale: f32,
     ) -> Result<Self, Error> {
         let input_path = PathBuf::from(&urdf_robot.path);
@@ -173,7 +173,7 @@ impl UrdfViewerApp {
             is_collision,
             &package_path,
         );
-        viewer.add_axis_cylinders_to_scale(&mut window, "origin", 1.0, axis_scale);
+        viewer.add_axis_cylinders_with_scale(&mut window, "origin", 1.0, axis_scale);
         if let Some(h) = ground_height {
             viewer.add_ground(&mut window, h, 0.5, 3, tile_color1, tile_color2);
         }
@@ -218,7 +218,7 @@ impl UrdfViewerApp {
             ik_constraints: k::Constraints::default(),
             point_size: 10.0,
             package_path,
-            disable_menu,
+            hide_menu,
             axis_scale,
         })
     }
@@ -242,12 +242,12 @@ impl UrdfViewerApp {
         if self.has_arms() {
             let window = self.window.as_mut().unwrap();
             self.viewer
-                .add_axis_cylinders_to_scale(window, "ik_target", 0.2, self.axis_scale);
+                .add_axis_cylinders_with_scale(window, "ik_target", 0.2, self.axis_scale);
             self.update_ik_target_marker();
         }
         let window = self.window.as_mut().unwrap();
         self.robot.iter().for_each(|n| {
-            self.viewer.add_axis_cylinders_to_scale(
+            self.viewer.add_axis_cylinders_with_scale(
                 window,
                 &node_to_frame_name(n),
                 FRAME_ARROW_SIZE,
@@ -343,7 +343,7 @@ impl UrdfViewerApp {
         );
         const FRAME_ARROW_SIZE: f32 = 0.2;
         self.robot.iter().for_each(|n| {
-            self.viewer.add_axis_cylinders_to_scale(
+            self.viewer.add_axis_cylinders_with_scale(
                 window,
                 &node_to_frame_name(n),
                 FRAME_ARROW_SIZE,
@@ -491,7 +491,7 @@ impl UrdfViewerApp {
                 }
             }
             Key::M => {
-                self.disable_menu = !self.disable_menu;
+                self.hide_menu = !self.hide_menu;
             }
             _ => {}
         };
@@ -645,7 +645,7 @@ impl AppState {
                 // remove pre-existent node
                 scene.unlink();
             }
-            self.app.viewer.add_axis_cylinders_to_scale(
+            self.app.viewer.add_axis_cylinders_with_scale(
                 window,
                 id,
                 axis_marker.size,
@@ -743,7 +743,7 @@ impl window::State for AppState {
             return;
         }
 
-        if !self.app.disable_menu {
+        if !self.app.hide_menu {
             self.app.viewer.draw_text(
                 window,
                 HOW_TO_USE_STR,
@@ -980,8 +980,9 @@ pub struct Opt {
     #[structopt(long = "package-path", value_name = "PACKAGE=PATH")]
     pub package_path: Vec<String>,
 
-    #[structopt(short = "m", long = "disable-menu")]
-    pub disable_menu: bool,
+    /// Hide the menu by default.
+    #[structopt(short = "m", long = "hide-menu")]
+    pub hide_menu: bool,
 
     #[structopt(short = "s", long = "axis-scale", default_value = "1.0")]
     pub axis_scale: f32,

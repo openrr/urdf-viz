@@ -10,6 +10,8 @@ use std::path::Path;
 use std::rc::Rc;
 use tracing::*;
 
+const DEFAULT_CYLINDER_RADIUS: f32 = 0.01;
+
 pub struct Viewer {
     scenes: HashMap<String, SceneNode>,
     pub arc_ball: ArcBall,
@@ -147,9 +149,9 @@ impl Viewer {
         }
     }
     pub fn add_axis_cylinders(&mut self, window: &mut Window, name: &str, size: f32) {
-        self.add_axis_cylinders_to_scale(window, name, size, 1.0);
+        self.add_axis_cylinders_with_scale(window, name, size, 1.0);
     }
-    pub fn add_axis_cylinders_to_scale(
+    pub fn add_axis_cylinders_with_scale(
         &mut self,
         window: &mut Window,
         name: &str,
@@ -157,7 +159,7 @@ impl Viewer {
         scale: f32,
     ) {
         let mut axis_group = window.add_group();
-        let radius = 0.01 * scale;
+        let radius = DEFAULT_CYLINDER_RADIUS * scale;
         let size = size * scale;
         let mut x = axis_group.add_cylinder(radius, size);
         x.set_color(0.0, 0.0, 1.0);
