@@ -43,7 +43,7 @@ async fn main() -> urdf_viz::Result<()> {
         (opt.tile_color1_r, opt.tile_color1_g, opt.tile_color1_b),
         (opt.tile_color2_r, opt.tile_color2_g, opt.tile_color2_b),
         opt.ground_height,
-        opt.disable_menu,
+        opt.hide_menu,
         opt.axis_scale,
     )?;
     app.set_ik_constraints(ik_constraints);
