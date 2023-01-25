@@ -114,6 +114,7 @@ r:    set random angles
 z:    reset joint positions and origin
 c:    toggle visual/collision
 f:    toggle show link frames
+m:    toggle show menu
 "#;
 
 const FRAME_ARROW_SIZE: f32 = 0.2;
@@ -139,6 +140,7 @@ pub struct UrdfViewerApp {
     ik_constraints: k::Constraints,
     point_size: f32,
     package_path: HashMap<String, String>,
+    disable_menu: bool,
 }
 
 impl UrdfViewerApp {
@@ -152,6 +154,7 @@ impl UrdfViewerApp {
         tile_color1: (f32, f32, f32),
         tile_color2: (f32, f32, f32),
         ground_height: Option<f32>,
+        disable_menu: bool,
     ) -> Result<Self, Error> {
         let input_path = PathBuf::from(&urdf_robot.path);
         let package_path = urdf_robot.take_package_path_map();
@@ -213,6 +216,7 @@ impl UrdfViewerApp {
             ik_constraints: k::Constraints::default(),
             point_size: 10.0,
             package_path,
+            disable_menu,
         })
     }
     pub fn handle(&self) -> Arc<RobotStateHandle> {
@@ -474,6 +478,9 @@ impl UrdfViewerApp {
                     self.update_robot();
                 }
             }
+            Key::M => {
+                self.disable_menu = !self.disable_menu;
+            }
             _ => {}
         };
     }
@@ -721,13 +728,15 @@ impl window::State for AppState {
             return;
         }
 
-        self.app.viewer.draw_text(
-            window,
-            HOW_TO_USE_STR,
-            FONT_SIZE_USAGE,
-            &na::Point2::new(2000.0, 10.0),
-            &na::Point3::new(1f32, 1.0, 1.0),
-        );
+        if !self.app.disable_menu {
+            self.app.viewer.draw_text(
+                window,
+                HOW_TO_USE_STR,
+                FONT_SIZE_USAGE,
+                &na::Point2::new(2000.0, 10.0),
+                &na::Point3::new(1f32, 1.0, 1.0),
+            );
+        }
         self.handle_request(window);
         if self.app.has_joints() {
             self.app.viewer.draw_text(
@@ -955,6 +964,9 @@ pub struct Opt {
     /// Replace `package://PACKAGE` in mesh tag with PATH.
     #[structopt(long = "package-path", value_name = "PACKAGE=PATH")]
     pub package_path: Vec<String>,
+
+    #[structopt(short = "m", long = "disable-menu")]
+    pub disable_menu: bool,
 }
 
 fn default_back_ground_color_b() -> f32 {
