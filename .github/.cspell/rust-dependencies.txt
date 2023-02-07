@@ -2,32 +2,9 @@
 // It is not intended for manual editing.
 
 assimp
-axum
-base
 bindgen
-console
-crossbeam
-ctrlc
-error
-futures
 getrandom
-hook
-http
-json
-kiss
-loader
-mesh
-panic
-parking
-queue
-rand
-serde
 structopt
-subscriber
 thiserror
-tokio
-tower
-tracing
 urdf
 ureq
-wasm
