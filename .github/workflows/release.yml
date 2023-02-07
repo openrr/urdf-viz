@@ -20,6 +20,7 @@ jobs:
   create-release:
     if: github.repository_owner == 'openrr'
     runs-on: ubuntu-20.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -50,6 +51,7 @@ jobs:
           - os: windows-latest
             include-files: binaries/x86_64/freetype.dll,binaries/FTL.TXT,binaries/GPLv2.TXT
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
