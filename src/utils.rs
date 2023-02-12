@@ -27,9 +27,9 @@ mod native {
 
     use crate::Result;
 
-    fn read_urdf(path: &str) -> Result<(urdf_rs::Robot, String)> {
+    fn read_urdf(path: &str, args: &Vec<(String, String)>) -> Result<(urdf_rs::Robot, String)> {
         let urdf_text = if Path::new(path).extension().and_then(OsStr::to_str) == Some("xacro") {
-            urdf_rs::utils::convert_xacro_to_urdf(path)?
+            urdf_rs::utils::convert_xacro_to_urdf_with_args(path, args)?
         } else if path.starts_with("https://") || path.starts_with("http://") {
             ureq::get(path)
                 .call()
@@ -48,17 +48,23 @@ mod native {
         pub(crate) urdf_text: Arc<Mutex<String>>,
         robot: urdf_rs::Robot,
         package_path: HashMap<String, String>,
+        xacro_args: Vec<(String, String)>,
     }
 
     impl RobotModel {
-        pub fn new(path: impl Into<String>, package_path: HashMap<String, String>) -> Result<Self> {
+        pub fn new(
+            path: impl Into<String>,
+            package_path: HashMap<String, String>,
+            xacro_args: &Vec<(String, String)>,
+        ) -> Result<Self> {
             let path = path.into();
-            let (robot, urdf_text) = read_urdf(&path)?;
+            let (robot, urdf_text) = read_urdf(&path, &xacro_args)?;
             Ok(Self {
                 path,
                 urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
                 package_path,
+                xacro_args: xacro_args.clone(),
             })
         }
 
@@ -75,6 +81,7 @@ mod native {
                 urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
                 package_path,
+                xacro_args: Vec::new(),
             })
         }
 
@@ -83,7 +90,7 @@ mod native {
         }
 
         pub(crate) fn reload(&mut self) {
-            match read_urdf(&self.path) {
+            match read_urdf(&self.path, &self.xacro_args) {
                 Ok((robot, text)) => {
                     self.robot = robot;
                     *self.urdf_text.lock() = text;
