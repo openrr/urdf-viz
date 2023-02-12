@@ -27,7 +27,7 @@ mod native {
 
     use crate::Result;
 
-    fn read_urdf(path: &str, args: &Vec<(String, String)>) -> Result<(urdf_rs::Robot, String)> {
+    fn read_urdf(path: &str, args: &[(String, String)]) -> Result<(urdf_rs::Robot, String)> {
         let urdf_text = if Path::new(path).extension().and_then(OsStr::to_str) == Some("xacro") {
             urdf_rs::utils::convert_xacro_to_urdf_with_args(path, args)?
         } else if path.starts_with("https://") || path.starts_with("http://") {
@@ -55,16 +55,16 @@ mod native {
         pub fn new(
             path: impl Into<String>,
             package_path: HashMap<String, String>,
-            xacro_args: &Vec<(String, String)>,
+            xacro_args: &[(String, String)],
         ) -> Result<Self> {
             let path = path.into();
-            let (robot, urdf_text) = read_urdf(&path, &xacro_args)?;
+            let (robot, urdf_text) = read_urdf(&path, xacro_args)?;
             Ok(Self {
                 path,
                 urdf_text: Arc::new(Mutex::new(urdf_text)),
                 robot,
                 package_path,
-                xacro_args: xacro_args.clone(),
+                xacro_args: xacro_args.to_owned(),
             })
         }
 
