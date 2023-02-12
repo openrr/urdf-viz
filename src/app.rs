@@ -907,6 +907,10 @@ pub struct Opt {
     /// Input urdf or xacro
     #[serde(default, rename = "urdf")]
     pub input_urdf_or_xacro: String,
+    /// Xacro arguments
+    #[structopt(long = "xacro-args", value_name = "ARGUMENT=VALUE", parse(try_from_str = parse_xacro_argument))]
+    #[serde(default)]
+    pub xacro_arguments: Vec<(String, String)>,
     /// end link names
     #[structopt(short = "e", long = "end-link-name")]
     #[serde(default)]
@@ -996,6 +1000,17 @@ fn default_tile_color1() -> f32 {
 }
 fn default_tile_color2() -> f32 {
     0.8
+}
+
+fn parse_xacro_argument(xacro_argument: &str) -> Result<(String, String), Error> {
+    xacro_argument
+        .split_once('=')
+        .ok_or_else(|| {
+            Error::Other(format!(
+                "Invalid xacro argument key=value: no `=` found in {xacro_argument}"
+            ))
+        })
+        .map(|s| (s.0.to_owned(), s.1.to_owned()))
 }
 
 impl Opt {
