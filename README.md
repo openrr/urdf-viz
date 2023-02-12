@@ -85,6 +85,12 @@ It will be converted by `rosrun xacro xacro` inside of `urdf-viz`.
 urdf-viz XACRO_FILE.urdf.xacro
 ```
 
+If your xacro file has some arguments, you can pass them by `--xacro-args` option.
+
+```bash
+urdf-viz XACRO_FILE.urdf.xacro --xacro-args arg1=value arg2=value
+```
+
 For other options, please read the output of `-h` option.
 
 ```bash
