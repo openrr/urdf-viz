@@ -982,13 +982,16 @@ pub struct Opt {
 
     /// Replace `package://PACKAGE` in mesh tag with PATH.
     #[structopt(long = "package-path", value_name = "PACKAGE=PATH")]
+    #[serde(default)]
     pub package_path: Vec<String>,
 
     /// Hide the menu by default.
     #[structopt(short = "m", long = "hide-menu")]
+    #[serde(default)]
     pub hide_menu: bool,
 
     #[structopt(short = "s", long = "axis-scale", default_value = "1.0")]
+    #[serde(default)]
     pub axis_scale: f32,
 }
 
