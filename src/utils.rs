@@ -29,7 +29,7 @@ mod native {
 
     fn read_urdf(path: &str, xacro_args: &[(String, String)]) -> Result<(urdf_rs::Robot, String)> {
         let urdf_text = if Path::new(path).extension().and_then(OsStr::to_str) == Some("xacro") {
-            urdf_rs::utils::convert_xacro_to_urdf_with_args(path, args)?
+            urdf_rs::utils::convert_xacro_to_urdf_with_args(path, xacro_args)?
         } else if path.starts_with("https://") || path.starts_with("http://") {
             ureq::get(path)
                 .call()
