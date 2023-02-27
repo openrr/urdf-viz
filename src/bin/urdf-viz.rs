@@ -49,6 +49,8 @@ async fn main() -> urdf_viz::Result<()> {
         opt.ground_height,
         opt.hide_menu,
         opt.axis_scale,
+        opt.move_base_diff_unit,
+        opt.move_joint_diff_unit,
     )?;
     app.set_ik_constraints(ik_constraints);
     app.init();

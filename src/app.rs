@@ -142,6 +142,8 @@ pub struct UrdfViewerApp {
     package_path: HashMap<String, String>,
     hide_menu: bool,
     axis_scale: f32,
+    move_base_diff_unit: f32,
+    move_joint_diff_unit: f32,
 }
 
 impl UrdfViewerApp {
@@ -157,6 +159,8 @@ impl UrdfViewerApp {
         ground_height: Option<f32>,
         hide_menu: bool,
         axis_scale: f32,
+        move_base_diff_unit: f32,
+        move_joint_diff_unit: f32,
     ) -> Result<Self, Error> {
         let input_path = PathBuf::from(&urdf_robot.path);
         let package_path = urdf_robot.take_package_path_map();
@@ -220,6 +224,8 @@ impl UrdfViewerApp {
             package_path,
             hide_menu,
             axis_scale,
+            move_base_diff_unit,
+            move_joint_diff_unit,
         })
     }
     pub fn handle(&self) -> Arc<RobotStateHandle> {
@@ -420,25 +426,25 @@ impl UrdfViewerApp {
             }
             Key::A => {
                 let mut origin = self.robot.origin();
-                origin.translation.vector[1] += 0.1;
+                origin.translation.vector[1] += self.move_base_diff_unit;
                 self.robot.set_origin(origin);
                 self.update_robot();
             }
             Key::S => {
                 let mut origin = self.robot.origin();
-                origin.translation.vector[0] -= 0.1;
+                origin.translation.vector[0] -= self.move_base_diff_unit;
                 self.robot.set_origin(origin);
                 self.update_robot();
             }
             Key::D => {
                 let mut origin = self.robot.origin();
-                origin.translation.vector[1] -= 0.1;
+                origin.translation.vector[1] -= self.move_base_diff_unit;
                 self.robot.set_origin(origin);
                 self.update_robot();
             }
             Key::W => {
                 let mut origin = self.robot.origin();
-                origin.translation.vector[0] += 0.1;
+                origin.translation.vector[0] += self.move_base_diff_unit;
                 self.robot.set_origin(origin);
                 self.update_robot();
             }
@@ -478,15 +484,23 @@ impl UrdfViewerApp {
             }
             Key::Up => {
                 if self.has_joints() {
-                    move_joint_by_index(self.index_of_move_joint.get(), 0.1, &mut self.robot)
-                        .unwrap_or(());
+                    move_joint_by_index(
+                        self.index_of_move_joint.get(),
+                        self.move_joint_diff_unit,
+                        &mut self.robot,
+                    )
+                    .unwrap_or(());
                     self.update_robot();
                 }
             }
             Key::Down => {
                 if self.has_joints() {
-                    move_joint_by_index(self.index_of_move_joint.get(), -0.1, &mut self.robot)
-                        .unwrap_or(());
+                    move_joint_by_index(
+                        self.index_of_move_joint.get(),
+                        -self.move_joint_diff_unit,
+                        &mut self.robot,
+                    )
+                    .unwrap_or(());
                     self.update_robot();
                 }
             }
@@ -993,6 +1007,12 @@ pub struct Opt {
     #[structopt(short = "s", long = "axis-scale", default_value = "1.0")]
     #[serde(default)]
     pub axis_scale: f32,
+
+    #[structopt(short = "b", long = "move-base-diff-unit", default_value = "0.1")]
+    pub move_base_diff_unit: f32,
+
+    #[structopt(short = "j", long = "move-joint-diff-unit", default_value = "0.1")]
+    pub move_joint_diff_unit: f32,
 }
 
 fn default_back_ground_color_b() -> f32 {
