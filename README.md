@@ -1,6 +1,6 @@
 # urdf-viz
 
-[![Build Status](https://img.shields.io/github/workflow/status/openrr/urdf-viz/CI/main)](https://github.com/openrr/urdf-viz/actions) [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz) [![docs](https://docs.rs/urdf-viz/badge.svg)](https://docs.rs/urdf-viz)
+[![Build Status](https://img.shields.io/github/workflow/status/openrr/urdf-viz/CI/main)](https://github.com/openrr/urdf-viz/actions) [![crates.io](https://img.shields.io/crates/v/urdf-viz.svg)](https://crates.io/crates/urdf-viz) [![docs](https://docs.rs/urdf-viz/badge.svg)](https://docs.rs/urdf-viz) [![discord](https://dcbadge.vercel.app/api/server/8DAFFKc88B?style=flat)](https://discord.gg/8DAFFKc88B)
 
 Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 `urdf-viz` is written in Rust-lang.
@@ -244,3 +244,7 @@ curl http://127.0.0.1:7777/get_urdf_text
 * [assimp-rs](https://github.com/Eljay/assimp-rs): assimp rust interface. `kiss3d` supports `.obj` files natively, but urdf contains `dae` or `stl` files. These files are converted to kiss3d mesh model by `assimp-rs`
 * [urdf-rs](https://github.com/openrr/urdf-rs): URDF file loader.
 * [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
+
+## `OpenRR` Community
+
+[Here](https://discord.gg/8DAFFKc88B) is a discord server for `OpenRR` users and developers.
