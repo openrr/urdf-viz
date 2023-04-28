@@ -73,19 +73,17 @@ pub fn add_geometry(
                     if let Some(replaced_filename) =
                         crate::utils::replace_package_with_path(&filename, package_path)
                     {
-                        filename = Cow::Owned(replaced_filename);
+                        filename = replaced_filename.into();
                     }
                 };
                 let replaced_filename = urdf_rs::utils::expand_package_path(&filename, base_dir);
                 if !replaced_filename.starts_with("https://")
                     && !replaced_filename.starts_with("http://")
-                    && !Path::new(&replaced_filename).exists()
+                    && !Path::new(&*replaced_filename).exists()
                 {
                     return Err(Error::from(format!("{replaced_filename} not found")));
                 }
-                // TODO: remove Cow::Owned once https://github.com/openrr/urdf-rs/pull/41
-                // is released in the next breaking release of urdf-rs.
-                filename = Cow::Owned(replaced_filename);
+                filename = replaced_filename.into_owned().into();
             }
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
             debug!("filename = {filename}");
@@ -110,7 +108,7 @@ pub fn add_geometry(
 
 // Use material which is defined as root materials if found.
 // Root material is used for PR2, but not documented.
-pub fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -> [f64; 4] {
+pub fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -> urdf_rs::Vec4 {
     match urdf_robot
         .materials
         .iter()
@@ -136,4 +134,4 @@ pub fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -
 }
 
 // https://github.com/openrr/urdf-rs/pull/3/files#diff-0fb2eeea3273a4c9b3de69ee949567f546dc8c06b1e190336870d00b54ea0979L36-L38
-const DEFAULT_MESH_SCALE: [f64; 3] = [1.0f64; 3];
+const DEFAULT_MESH_SCALE: urdf_rs::Vec3 = urdf_rs::Vec3([1.0f64; 3]);

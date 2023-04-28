@@ -6,4 +6,7 @@ updates:
       interval: daily
     commit-message:
       prefix: ''
+    ignore:
+      # These dependencies need to be updated at the same time with k.
+      - dependency-name: urdf-rs
     labels: []
