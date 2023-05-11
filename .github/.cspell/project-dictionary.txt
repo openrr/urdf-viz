@@ -1,5 +1,4 @@
 cdylib
-clippy
 collada
 condvar
 ctxt
@@ -26,9 +25,9 @@ rustlib
 RUSTSEC
 rusttype
 rustup
+SIGINT
 texcoords
 thormang
-toolchains
 webpki
 xacro
 xorg
