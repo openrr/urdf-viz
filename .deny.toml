@@ -9,6 +9,7 @@ ignore = [
     "RUSTSEC-2021-0145", # atty 0.2, transitively dep of structopt (via old clap)
     "RUSTSEC-2021-0119", # nix 0.18/0.20, transitively dep of kiss3d (via old glutin)
     "RUSTSEC-2022-0041", # crossbeam-utils 0.7, transitively dep of kiss3d (via old rusttype)
+    "RUSTSEC-2023-0045", # memoffset 0.5, transitively dep of kiss3d (via old rusttype)
 ]
 
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
