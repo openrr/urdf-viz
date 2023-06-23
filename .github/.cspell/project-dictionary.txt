@@ -9,6 +9,7 @@ glutin
 highp
 libglu
 mediump
+memoffset
 msvc
 nalgebra
 ncollide
