@@ -26,6 +26,7 @@ extern crate assimp_crate as assimp;
 mod assimp_utils;
 
 pub mod app;
+pub mod bevy_app;
 mod errors;
 pub use errors::*;
 mod handle;

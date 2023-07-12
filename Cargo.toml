@@ -12,6 +12,7 @@ exclude = [".github/*", "img/*"]
 
 [workspace]
 members = ["examples/wasm"]
+resolver = "2"
 
 [features]
 default = ["assimp"]
@@ -19,6 +20,8 @@ assimp = ["assimp-crate", "assimp-sys"]
 
 # Note: k, kiss3d, serde, structopt, tokio, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
+bevy = "0.11"
+bevy_stl = { version = "0.11", features = ["wireframe"] }
 crossbeam-queue = "0.3.5"
 k = "0.30"
 kiss3d = "0.35"
