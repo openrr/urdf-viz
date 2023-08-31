@@ -66,9 +66,10 @@ pub fn assimp_material_color(
     };
     let mat = &(**material) as *const assimp_sys::AiMaterial;
     unsafe {
+        use std::os::raw::c_char;
         match assimp_sys::aiGetMaterialColor(
             mat,
-            color_type.as_ptr() as *const i8,
+            color_type.as_ptr() as *const c_char,
             0,
             0,
             &mut assimp_color,
