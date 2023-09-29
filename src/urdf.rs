@@ -13,6 +13,7 @@ pub fn add_geometry(
     base_dir: Option<&Path>,
     group: &mut SceneNode,
     use_texture: bool,
+    use_assimp: bool,
     package_path: &HashMap<String, String>,
 ) -> Result<SceneNode> {
     match *geometry {
@@ -88,9 +89,23 @@ pub fn add_geometry(
             let na_scale = na::Vector3::new(scale[0] as f32, scale[1] as f32, scale[2] as f32);
             debug!("filename = {filename}");
             if cfg!(feature = "assimp") {
-                load_mesh(&filename, na_scale, opt_color, group, use_texture)
+                load_mesh(
+                    &filename,
+                    na_scale,
+                    opt_color,
+                    group,
+                    use_texture,
+                    use_assimp,
+                )
             } else {
-                match load_mesh(&filename, na_scale, opt_color, group, use_texture) {
+                match load_mesh(
+                    &filename,
+                    na_scale,
+                    opt_color,
+                    group,
+                    use_texture,
+                    use_assimp,
+                ) {
                     Ok(scene) => Ok(scene),
                     Err(e) => {
                         error!("{e}");
