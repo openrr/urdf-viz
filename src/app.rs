@@ -941,6 +941,11 @@ pub struct Opt {
     #[structopt(short = "d", long = "disable-texture")]
     #[serde(default)]
     pub disable_texture: bool,
+    #[cfg(feature = "assimp")]
+    /// Disable using assimp for loading mesh
+    #[structopt(long = "disable-assimp")]
+    #[serde(default)]
+    pub disable_assimp: bool,
     /// Port number for web server interface (default to 7777)
     #[structopt(short = "p", long = "web-server-port")]
     pub web_server_port: Option<u16>,

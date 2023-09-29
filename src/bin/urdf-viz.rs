@@ -39,6 +39,10 @@ async fn main() -> urdf_viz::Result<()> {
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,
+        #[cfg(feature = "assimp")]
+        opt.disable_assimp,
+        #[cfg(not(feature = "assimp"))]
+        true,
         (
             opt.back_ground_color_r,
             opt.back_ground_color_g,
