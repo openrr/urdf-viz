@@ -18,6 +18,7 @@ pub struct Viewer {
     font: Rc<kiss3d::text::Font>,
     original_colors: HashMap<String, Vec<na::Point3<f32>>>,
     is_texture_enabled: bool,
+    is_assimp_enabled: bool,
     link_joint_map: HashMap<String, String>,
 }
 
@@ -42,6 +43,7 @@ impl Viewer {
             font,
             original_colors: HashMap::new(),
             is_texture_enabled: true,
+            is_assimp_enabled: cfg!(feature = "assimp"),
             link_joint_map: HashMap::new(),
         };
         (viewer, window)
@@ -51,6 +53,14 @@ impl Viewer {
     }
     pub fn enable_texture(&mut self) {
         self.is_texture_enabled = true;
+    }
+
+    pub fn disable_assimp(&mut self) {
+        self.is_assimp_enabled = false;
+    }
+    /// if `assimp` feature is disabled, this method does nothing.
+    pub fn enable_assimp(&mut self) {
+        self.is_assimp_enabled = cfg!(feature = "assimp");
     }
 
     pub fn add_robot(
@@ -118,6 +128,7 @@ impl Viewer {
                     base_dir,
                     &mut scene_group,
                     self.is_texture_enabled,
+                    self.is_assimp_enabled,
                     package_path,
                 ) {
                     Ok(mut base_group) => {
