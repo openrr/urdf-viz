@@ -153,6 +153,7 @@ impl UrdfViewerApp {
         mut end_link_names: Vec<String>,
         is_collision: bool,
         disable_texture: bool,
+        disable_assimp: bool,
         background_color: (f32, f32, f32),
         tile_color1: (f32, f32, f32),
         tile_color2: (f32, f32, f32),
@@ -169,6 +170,9 @@ impl UrdfViewerApp {
         let (mut viewer, mut window) = Viewer::with_background_color("urdf-viz", background_color);
         if disable_texture {
             viewer.disable_texture();
+        }
+        if disable_assimp {
+            viewer.disable_assimp();
         }
         viewer.add_robot_with_base_dir_and_collision_flag(
             &mut window,
