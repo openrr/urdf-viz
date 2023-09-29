@@ -95,13 +95,14 @@ pub fn load_mesh(
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
     #[allow(unused_variables)] use_texture: bool,
+    #[allow(unused_variables)] use_assimp: bool,
 ) -> Result<SceneNode> {
     use std::{ffi::OsStr, path::Path};
 
     let file_string = filename.as_ref();
 
     #[cfg(feature = "assimp")]
-    if !file_string.starts_with("https://") && !file_string.starts_with("http://") {
+    if use_assimp && !file_string.starts_with("https://") && !file_string.starts_with("http://") {
         return load_mesh_assimp(file_string, scale, opt_color, group, use_texture);
     }
 
@@ -183,6 +184,7 @@ pub fn load_mesh(
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
     _use_texture: bool,
+    _use_assimp: bool,
 ) -> Result<SceneNode> {
     use crate::utils::MeshKind;
 
