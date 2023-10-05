@@ -14,7 +14,7 @@ npm install
 npm run serve
 ```
 
-Then, open http://localhost:8080 in a browser.
+Then, open <http://localhost:8080> in a browser.
 
 ### Params
 

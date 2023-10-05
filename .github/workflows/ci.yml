@@ -69,11 +69,13 @@ jobs:
       - name: Install wasm-pack
         uses: taiki-e/install-action@wasm-pack
       - run: cargo build --target wasm32-unknown-unknown --no-default-features --lib
+      - run: cargo build --target wasm32-unknown-unknown -p urdf-viz-wasm
       - name: Build wasm example
-        run: cd examples/wasm && npm install && npm run build
+        run: npm install && npm run build
         env:
           CARGO_PROFILE_DEV_OPT_LEVEL: 3
           NODE_OPTIONS: --openssl-legacy-provider
+        working-directory: examples/wasm
       - name: Deploy to gh-pages
         run: |
           cd examples/wasm/dist

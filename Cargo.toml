@@ -61,3 +61,7 @@ web-sys = { version = "0.3", features = [
     "Response",
     "WebGlRenderingContext",
 ] }
+
+[dev-dependencies]
+serde_qs = "0.12"
+url = "2"
