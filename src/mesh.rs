@@ -8,7 +8,6 @@ use tracing::*;
 #[cfg(not(target_family = "wasm"))]
 fn load_mesh_assimp(
     file_string: &str,
-    data: &str,
     scale: na::Vector3<f32>,
     opt_urdf_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
@@ -24,7 +23,7 @@ fn load_mesh_assimp(
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
     let (meshes, textures, colors) =
-        convert_assimp_scene_to_kiss3d_mesh(&importer.read_string(data)?);
+        convert_assimp_scene_to_kiss3d_mesh(&importer.read_file(file_string)?);
     info!(
         "num mesh, texture, colors = {} {} {}",
         meshes.len(),
@@ -105,17 +104,12 @@ pub fn load_mesh(
     #[cfg(feature = "assimp")]
     if use_assimp {
         let is_url = file_string.starts_with("https://") || file_string.starts_with("http://");
-        let buf = if is_url {
-            crate::utils::fetch_read(file_string)?
-        } else {
-            use std::io::Read;
-            let mut file = std::fs::File::open(file_string)?;
-            let mut buf = vec![];
-            file.read_to_end(&mut buf)?;
-            buf
-        };
-        let data = String::from_utf8(buf)?;
-        return load_mesh_assimp(file_string, &data, scale, opt_color, group, use_texture);
+        if is_url {
+            let file = crate::utils::fetch_tempfile(file_string)?;
+            let path = file.path().to_str().unwrap();
+            return load_mesh_assimp(path, scale, opt_color, group, use_texture);
+        }
+        return load_mesh_assimp(file_string, scale, opt_color, group, use_texture);
     }
 
     let filename = Path::new(file_string);

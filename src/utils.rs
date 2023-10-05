@@ -107,9 +107,9 @@ mod native {
     }
 
     #[cfg(feature = "assimp")]
-    /// http request -> return content
-    pub fn fetch_read(url: &str) -> Result<Vec<u8>> {
-        use std::io::Read;
+    /// http request -> write to tempfile -> return that file
+    pub(crate) fn fetch_tempfile(url: &str) -> Result<tempfile::NamedTempFile> {
+        use std::io::{Read, Write};
 
         const RESPONSE_SIZE_LIMIT: usize = 10 * 1_024 * 1_024;
 
@@ -123,7 +123,9 @@ mod native {
         if buf.len() > RESPONSE_SIZE_LIMIT {
             return Err(crate::Error::Other(format!("{url} is too big")));
         }
-        Ok(buf)
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(&buf)?;
+        Ok(file)
     }
 }
 
