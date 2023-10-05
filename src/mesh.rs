@@ -102,7 +102,13 @@ pub fn load_mesh(
     let file_string = filename.as_ref();
 
     #[cfg(feature = "assimp")]
-    if use_assimp && !file_string.starts_with("https://") && !file_string.starts_with("http://") {
+    if use_assimp {
+        let is_url = file_string.starts_with("https://") || file_string.starts_with("http://");
+        if is_url {
+            let file = crate::utils::fetch_tempfile(file_string)?;
+            let path = file.path().to_str().unwrap();
+            return load_mesh_assimp(path, scale, opt_color, group, use_texture);
+        }
         return load_mesh_assimp(file_string, scale, opt_color, group, use_texture);
     }
 

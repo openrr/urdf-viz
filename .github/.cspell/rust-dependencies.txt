@@ -5,6 +5,7 @@ assimp
 bindgen
 getrandom
 structopt
+tempfile
 thiserror
 urdf
 ureq
