@@ -105,6 +105,26 @@ mod native {
             mem::take(&mut self.package_path)
         }
     }
+
+    #[cfg(feature = "assimp")]
+    /// http request -> return content
+    pub fn fetch_read(url: &str) -> Result<Vec<u8>> {
+        use std::io::Read;
+
+        const RESPONSE_SIZE_LIMIT: usize = 10 * 1_024 * 1_024;
+
+        let mut buf: Vec<u8> = vec![];
+        ureq::get(url)
+            .call()
+            .map_err(|e| crate::Error::Other(e.to_string()))?
+            .into_reader()
+            .take((RESPONSE_SIZE_LIMIT + 1) as u64)
+            .read_to_end(&mut buf)?;
+        if buf.len() > RESPONSE_SIZE_LIMIT {
+            return Err(crate::Error::Other(format!("{url} is too big")));
+        }
+        Ok(buf)
+    }
 }
 
 #[cfg(target_family = "wasm")]
