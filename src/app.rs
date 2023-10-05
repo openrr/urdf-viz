@@ -1014,13 +1014,15 @@ pub struct Opt {
     pub hide_menu: bool,
 
     #[structopt(short = "s", long = "axis-scale", default_value = "1.0")]
-    #[serde(default)]
+    #[serde(default = "default_axis_scale")]
     pub axis_scale: f32,
 
     #[structopt(short = "b", long = "move-base-diff-unit", default_value = "0.1")]
+    #[serde(default = "default_diff_unit")]
     pub move_base_diff_unit: f32,
 
     #[structopt(short = "j", long = "move-joint-diff-unit", default_value = "0.1")]
+    #[serde(default = "default_diff_unit")]
     pub move_joint_diff_unit: f32,
 }
 
@@ -1032,6 +1034,12 @@ fn default_tile_color1() -> f32 {
 }
 fn default_tile_color2() -> f32 {
     0.8
+}
+fn default_axis_scale() -> f32 {
+    1.0
+}
+fn default_diff_unit() -> f32 {
+    0.1
 }
 
 fn parse_xacro_argument(xacro_argument: &str) -> Result<(String, String), Error> {
@@ -1131,5 +1139,11 @@ mod tests {
         assert!(opt.create_package_path_map().is_err());
         let opt: Opt = StructOpt::from_iter(["urdf-viz", "a.urdf", "--package-path", "a"]);
         assert!(opt.create_package_path_map().is_err());
+    }
+
+    #[test]
+    fn test_params() {
+        let url = url::Url::parse("http://localhost:8080/?urdf=https://raw.githubusercontent.com/openrr/urdf-viz/main/sample.urdf").unwrap();
+        let _: Opt = serde_qs::from_str(url.query().unwrap_or_default()).unwrap();
     }
 }

@@ -27,6 +27,7 @@ async fn run() -> Result<(), JsValue> {
         opt.end_link_names,
         opt.is_collision,
         opt.disable_texture,
+        true,
         (
             opt.back_ground_color_r,
             opt.back_ground_color_g,
@@ -37,6 +38,8 @@ async fn run() -> Result<(), JsValue> {
         opt.ground_height,
         opt.hide_menu,
         opt.axis_scale,
+        opt.move_base_diff_unit,
+        opt.move_joint_diff_unit,
     )?;
     app.set_ik_constraints(ik_constraints);
     app.init();
