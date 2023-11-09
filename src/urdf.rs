@@ -77,7 +77,7 @@ pub fn add_geometry(
                         filename = replaced_filename.into();
                     }
                 };
-                let replaced_filename = urdf_rs::utils::expand_package_path(&filename, base_dir);
+                let replaced_filename = urdf_rs::utils::expand_package_path(&filename, base_dir)?;
                 if !replaced_filename.starts_with("https://")
                     && !replaced_filename.starts_with("http://")
                     && !Path::new(&*replaced_filename).exists()
