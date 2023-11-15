@@ -20,9 +20,14 @@ pub(crate) fn replace_package_with_path(
 
 #[cfg(not(target_family = "wasm"))]
 mod native {
-    use std::{collections::HashMap, ffi::OsStr, fs, mem, path::Path, sync::Arc};
+    use std::{
+        collections::HashMap,
+        ffi::OsStr,
+        fs, mem,
+        path::Path,
+        sync::{Arc, Mutex},
+    };
 
-    use parking_lot::Mutex;
     use tracing::error;
 
     use crate::Result;
@@ -93,7 +98,7 @@ mod native {
             match read_urdf(&self.path, &self.xacro_args) {
                 Ok((robot, text)) => {
                     self.robot = robot;
-                    *self.urdf_text.lock() = text;
+                    *self.urdf_text.lock().unwrap() = text;
                 }
                 Err(e) => {
                     error!("{e}");
@@ -131,10 +136,15 @@ mod native {
 
 #[cfg(target_family = "wasm")]
 mod wasm {
-    use std::{collections::HashMap, mem, path::Path, str, sync::Arc};
+    use std::{
+        collections::HashMap,
+        mem,
+        path::Path,
+        str,
+        sync::{Arc, Mutex},
+    };
 
     use js_sys::Uint8Array;
-    use parking_lot::Mutex;
     use serde::{Deserialize, Serialize};
     use tracing::debug;
     use wasm_bindgen::JsCast;
