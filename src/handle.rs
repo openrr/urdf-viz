@@ -1,9 +1,11 @@
 use crossbeam_queue::ArrayQueue;
-use parking_lot::{Mutex, MutexGuard};
 use serde::{Deserialize, Serialize};
 #[cfg(not(target_family = "wasm"))]
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::{ops, sync::Arc};
+use std::{
+    ops,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 use crate::utils::RobotModel;
 
@@ -144,19 +146,19 @@ pub const ROBOT_OBJECT_ID: &str = "robot";
 
 impl RobotStateHandle {
     pub fn current_joint_positions(&self) -> JointNamesAndPositionsLockGuard<'_> {
-        JointNamesAndPositionsLockGuard(self.current_joint_positions.lock())
+        JointNamesAndPositionsLockGuard(self.current_joint_positions.lock().unwrap())
     }
 
     pub fn current_robot_origin(&self) -> RobotOriginLockGuard<'_> {
-        RobotOriginLockGuard(self.current_robot_origin.lock())
+        RobotOriginLockGuard(self.current_robot_origin.lock().unwrap())
     }
 
     pub fn urdf_text(&self) -> Option<UrdfTextLockGuard<'_>> {
-        Some(UrdfTextLockGuard(self.urdf_text.as_ref()?.lock()))
+        Some(UrdfTextLockGuard(self.urdf_text.as_ref()?.lock().unwrap()))
     }
 
     pub fn set_target_joint_positions(&self, joint_positions: JointNamesAndPositions) {
-        *self.target_joint_positions.lock() = Some(joint_positions);
+        *self.target_joint_positions.lock().unwrap() = Some(joint_positions);
     }
 
     pub fn set_target_robot_origin(&self, robot_origin: RobotOrigin) {
@@ -189,8 +191,8 @@ impl RobotStateHandle {
 
     pub fn set_robot(&self, robot: RobotModel) {
         // set_robot may change name or number of joints, so reset target_joint_positions.
-        *self.target_joint_positions.lock() = None;
-        *self.robot.lock() = Some(robot);
+        *self.target_joint_positions.lock().unwrap() = None;
+        *self.robot.lock().unwrap() = Some(robot);
     }
 
     pub fn set_relationship(&self, relationship: Relationship) {
@@ -198,7 +200,7 @@ impl RobotStateHandle {
     }
 
     pub fn take_target_joint_positions(&self) -> Option<JointNamesAndPositions> {
-        self.target_joint_positions.lock().take()
+        self.target_joint_positions.lock().unwrap().take()
     }
 
     pub fn pop_target_object_origin(&self) -> Option<ObjectOrigin> {
@@ -206,7 +208,7 @@ impl RobotStateHandle {
     }
 
     pub(crate) fn take_robot(&self) -> Option<RobotModel> {
-        self.robot.lock().take()
+        self.robot.lock().unwrap().take()
     }
 
     #[cfg(not(target_family = "wasm"))]
