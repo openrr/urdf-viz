@@ -17,8 +17,6 @@
 //! Visualize [URDF(Unified Robot Description Format)](http://wiki.ros.org/urdf) file.
 //! `urdf-viz` is written by rust-lang.
 
-#![warn(missing_debug_implementations, rust_2018_idioms)]
-
 #[cfg(feature = "assimp")]
 extern crate assimp_crate as assimp;
 

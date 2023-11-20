@@ -14,8 +14,6 @@
   limitations under the License.
 */
 
-#![warn(rust_2018_idioms)]
-
 use structopt::StructOpt;
 use tracing::{debug, warn};
 use urdf_viz::{app::*, WebServer};
