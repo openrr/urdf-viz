@@ -24,7 +24,7 @@ const ASSIMP_DIFFUSE: &[u8] = b"$clr.diffuse\0";
 
 type RefCellMesh = Rc<RefCell<Mesh>>;
 
-pub fn assimp_material_texture(material: &assimp::Material<'_>) -> Option<String> {
+fn assimp_material_texture(material: &assimp::Material<'_>) -> Option<String> {
     use std::os::raw::{c_float, c_uint};
     let mut path = assimp_sys::AiString::default();
     let texture_type = assimp_sys::AiTextureType::Diffuse;
@@ -54,7 +54,7 @@ pub fn assimp_material_texture(material: &assimp::Material<'_>) -> Option<String
     }
 }
 
-pub fn assimp_material_color(
+fn assimp_material_color(
     material: &assimp::Material<'_>,
     color_type: &'static [u8],
 ) -> Option<na::Vector3<f32>> {
@@ -84,7 +84,7 @@ pub fn assimp_material_color(
     }
 }
 
-pub fn convert_assimp_scene_to_kiss3d_mesh(
+pub(crate) fn convert_assimp_scene_to_kiss3d_mesh(
     scene: &assimp::Scene<'_>,
 ) -> (Vec<RefCellMesh>, Vec<String>, Vec<na::Vector3<f32>>) {
     let meshes = scene
