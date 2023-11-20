@@ -17,19 +17,23 @@
 use k::nalgebra as na;
 use kiss3d::resource::Mesh;
 use std::cell::RefCell;
+use std::ffi::CStr;
+use std::os::raw::{c_float, c_uint};
 use std::rc::Rc;
 use tracing::*;
 
-const ASSIMP_DIFFUSE: &[u8] = b"$clr.diffuse\0";
+const ASSIMP_DIFFUSE: &CStr = match CStr::from_bytes_with_nul(b"$clr.diffuse\0") {
+    Ok(s) => s,
+    Err(_) => unreachable!(),
+};
 
 type RefCellMesh = Rc<RefCell<Mesh>>;
 
 fn assimp_material_texture(material: &assimp::Material<'_>) -> Option<String> {
-    use std::os::raw::{c_float, c_uint};
     let mut path = assimp_sys::AiString::default();
     let texture_type = assimp_sys::AiTextureType::Diffuse;
-    let mat = &(**material) as *const assimp_sys::AiMaterial;
-    let mut mapping = assimp_sys::AiTextureMapping::UV;
+    let mat = &**material;
+    let mapping = assimp_sys::AiTextureMapping::UV;
     let mut uv_index: c_uint = 0;
     let mut blend: c_float = 0.0;
     let mut op = assimp_sys::AiTextureOp::Multiply;
@@ -40,13 +44,13 @@ fn assimp_material_texture(material: &assimp::Material<'_>) -> Option<String> {
             mat,
             texture_type,
             0,
-            &mut path as *mut assimp_sys::AiString,
-            &mut mapping as *const assimp_sys::AiTextureMapping,
-            &mut uv_index as *mut c_uint,
-            &mut blend as *mut c_float,
-            &mut op as *mut assimp_sys::AiTextureOp,
-            &mut map_mode as *mut assimp_sys::AiTextureMapMode,
-            &mut flags as *mut c_uint,
+            &mut path,
+            &mapping,
+            &mut uv_index,
+            &mut blend,
+            &mut op,
+            &mut map_mode,
+            &mut flags,
         ) {
             assimp_sys::AiReturn::Success => Some(path.as_ref().to_owned()),
             _ => None,
@@ -56,7 +60,7 @@ fn assimp_material_texture(material: &assimp::Material<'_>) -> Option<String> {
 
 fn assimp_material_color(
     material: &assimp::Material<'_>,
-    color_type: &'static [u8],
+    color_type: &'static CStr,
 ) -> Option<na::Vector3<f32>> {
     let mut assimp_color = assimp_sys::AiColor4D {
         r: 0.0,
@@ -64,16 +68,9 @@ fn assimp_material_color(
         b: 0.0,
         a: 0.0,
     };
-    let mat = &(**material) as *const assimp_sys::AiMaterial;
+    let mat = &**material;
     unsafe {
-        use std::os::raw::c_char;
-        match assimp_sys::aiGetMaterialColor(
-            mat,
-            color_type.as_ptr() as *const c_char,
-            0,
-            0,
-            &mut assimp_color,
-        ) {
+        match assimp_sys::aiGetMaterialColor(mat, color_type.as_ptr(), 0, 0, &mut assimp_color) {
             assimp_sys::AiReturn::Success => Some(na::Vector3::<f32>::new(
                 assimp_color.r,
                 assimp_color.g,
