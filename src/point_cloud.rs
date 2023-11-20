@@ -11,7 +11,7 @@ use kiss3d::resource::{
 };
 use na::{Matrix4, Point3};
 
-pub struct PointCloudRenderer {
+pub(crate) struct PointCloudRenderer {
     shader: Effect,
     pos: ShaderAttribute<Point3<f32>>,
     color: ShaderAttribute<Point3<f32>>,
@@ -23,7 +23,7 @@ pub struct PointCloudRenderer {
 }
 
 impl PointCloudRenderer {
-    pub fn new(point_size: f32) -> PointCloudRenderer {
+    pub(crate) fn new(point_size: f32) -> PointCloudRenderer {
         let mut shader = Effect::new_from_str(&vertex_shader_src(point_size), FRAGMENT_SHADER_SRC);
 
         shader.use_program();
@@ -40,7 +40,7 @@ impl PointCloudRenderer {
         }
     }
 
-    pub fn insert(&mut self, id: Option<String>, points: &[[f32; 3]], colors: &[[f32; 3]]) {
+    pub(crate) fn insert(&mut self, id: Option<String>, points: &[[f32; 3]], colors: &[[f32; 3]]) {
         assert_eq!(points.len(), colors.len());
         if let Some(colored_points) = self.colored_points.data_mut() {
             if let Some(id) = id {
