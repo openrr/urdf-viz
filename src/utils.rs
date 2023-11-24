@@ -144,6 +144,7 @@ mod wasm {
         sync::{Arc, Mutex},
     };
 
+    use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
     use js_sys::Uint8Array;
     use serde::{Deserialize, Serialize};
     use tracing::debug;
@@ -166,7 +167,7 @@ mod wasm {
             match &mesh.data {
                 MeshData::None => {}
                 MeshData::Base64(s) => {
-                    mesh.data = MeshData::Bytes(base64::decode(s).map_err(|e| e.to_string())?);
+                    mesh.data = MeshData::Bytes(BASE64.decode(s).map_err(|e| e.to_string())?);
                 }
                 MeshData::Bytes(_) => unreachable!(),
             }
@@ -287,7 +288,7 @@ mod wasm {
 
                 let data = if kind != MeshKind::Other {
                     debug!("loading {input_file}");
-                    MeshData::Base64(base64::encode(read(&input_file).await?))
+                    MeshData::Base64(BASE64.encode(read(&input_file).await?))
                 } else {
                     MeshData::None
                 };
