@@ -43,10 +43,16 @@ impl WebServer {
     pub fn bind(self) -> crate::Result<impl Future<Output = crate::Result<()>> + Send> {
         let app = app(self.handle());
 
-        let addr = ([0, 0, 0, 0], self.port).into();
-        let server = axum::Server::try_bind(&addr)
-            .map_err(|e| format!("error binding to {addr}: {e}"))?
-            .serve(app.into_make_service());
+        // Use std::net::TcpListener::bind to early catch web server startup failure
+        let addr: std::net::SocketAddr = ([0, 0, 0, 0], self.port).into();
+        let listener = (|| {
+            let l = std::net::TcpListener::bind(addr)?;
+            l.set_nonblocking(true)?;
+            tokio::net::TcpListener::from_std(l)
+        })()
+        .map_err(|e| format!("error binding to {addr}: {e}"))?;
+
+        let server = axum::serve(listener, app.into_make_service());
         Ok(async move { server.await.map_err(|e| crate::Error::Other(e.to_string())) })
     }
 }

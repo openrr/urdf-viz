@@ -13,6 +13,7 @@ msvc
 nalgebra
 ncollide
 nextage
+nonblocking
 openrr
 powerset
 rgba
