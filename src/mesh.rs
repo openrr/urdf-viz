@@ -22,6 +22,7 @@ fn load_mesh_assimp(
     let mut importer = assimp::Importer::new();
     importer.pre_transform_vertices(|x| x.enable = true);
     importer.collada_ignore_up_direction(true);
+    importer.triangulate(true);
     let (meshes, textures, colors) =
         convert_assimp_scene_to_kiss3d_mesh(&importer.read_file(file_string)?);
     info!(
