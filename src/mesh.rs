@@ -277,7 +277,7 @@ fn load_stl(
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
 ) -> Result<SceneNode> {
-    let stl = mesh_loader::stl::from_slice(bytes)?;
+    let stl = mesh_loader::Mesh::merge(mesh_loader::stl::from_slice(bytes)?.meshes);
     let mesh = Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
         stl.vertices.into_iter().map(Into::into).collect(),
         stl.faces
@@ -308,35 +308,37 @@ fn load_collada(
     group: &mut SceneNode,
 ) -> Result<SceneNode> {
     let mut base = group.add_group();
-    let collada =
-        mesh_loader::collada::from_str(s).map_err(|e| crate::Error::Other(e.to_string()))?;
-    for mesh in collada.meshes {
-        debug!(
-            "name={},vertices={},normals={},texcoords0={},texcoords1={},faces={}",
-            mesh.name,
-            mesh.vertices.len(),
-            mesh.normals.len(),
-            mesh.texcoords[0].len(),
-            mesh.texcoords[1].len(),
-            mesh.faces.len()
-        );
-        let positions = mesh.vertices.iter().map(|&v| na::Point3::from(v)).collect();
-        let faces = mesh
-            .faces
-            .iter()
-            .map(|v| na::Point3::new(v[0] as u16, v[1] as u16, v[2] as u16))
-            .collect();
-        let mut scene = base.add_mesh(
-            Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
-                positions, faces, None, None, false,
-            ))),
-            scale,
-        );
-        if let Some(color) = *opt_color {
-            scene.set_color(color[0], color[1], color[2]);
-        }
-
-        // TODO: material
+    let collada = mesh_loader::Mesh::merge(mesh_loader::collada::from_str(s)?.meshes);
+    debug!(
+        "name={},vertices={},normals={},texcoords0={},texcoords1={},faces={}",
+        collada.name,
+        collada.vertices.len(),
+        collada.normals.len(),
+        collada.texcoords[0].len(),
+        collada.texcoords[1].len(),
+        collada.faces.len()
+    );
+    let positions = collada.vertices.into_iter().map(Into::into).collect();
+    let faces = collada
+        .faces
+        .into_iter()
+        .map(|f| {
+            na::Point3::new(
+                f[0].try_into().unwrap(),
+                f[1].try_into().unwrap(),
+                f[2].try_into().unwrap(),
+            )
+        })
+        .collect();
+    let mut scene = base.add_mesh(
+        Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+            positions, faces, None, None, false,
+        ))),
+        scale,
+    );
+    if let Some(color) = *opt_color {
+        scene.set_color(color[0], color[1], color[2]);
     }
+    // TODO: material
     Ok(base)
 }
