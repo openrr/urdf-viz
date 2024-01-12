@@ -21,7 +21,6 @@ rospack
 rosrun
 rustdocflags
 rustflags
-rustfmt
 rustlib
 RUSTSEC
 rusttype
