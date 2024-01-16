@@ -156,7 +156,6 @@ mod wasm {
 
     #[derive(Serialize, Deserialize)]
     pub(crate) struct Mesh {
-        pub(crate) kind: MeshKind,
         pub(crate) path: String,
         data: MeshData,
     }
@@ -196,14 +195,6 @@ mod wasm {
         Base64(String),
         Bytes(Vec<u8>),
         None,
-    }
-
-    #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    pub(crate) enum MeshKind {
-        Obj,
-        Stl,
-        Dae,
-        Other,
     }
 
     pub fn window() -> Result<web_sys::Window> {
@@ -276,25 +267,10 @@ mod wasm {
                         .to_string()
                 };
 
-                let kind = if input_file.ends_with(".obj") || input_file.ends_with(".OBJ") {
-                    MeshKind::Obj
-                } else if input_file.ends_with(".stl") || input_file.ends_with(".STL") {
-                    MeshKind::Stl
-                } else if input_file.ends_with(".dae") || input_file.ends_with(".DAE") {
-                    MeshKind::Dae
-                } else {
-                    MeshKind::Other
-                };
-
-                let data = if kind != MeshKind::Other {
-                    debug!("loading {input_file}");
-                    MeshData::Base64(BASE64.encode(read(&input_file).await?))
-                } else {
-                    MeshData::None
-                };
+                debug!("loading {input_file}");
+                let data = MeshData::Base64(BASE64.encode(read(&input_file).await?));
 
                 let new = serde_json::to_string(&Mesh {
-                    kind,
                     path: filename.clone(),
                     data,
                 })

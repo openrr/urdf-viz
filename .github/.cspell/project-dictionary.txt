@@ -25,7 +25,6 @@ rustlib
 RUSTSEC
 rusttype
 rustup
-texcoords
 thormang
 webpki
 xacro
