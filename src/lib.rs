@@ -18,9 +18,6 @@
 //! `urdf-viz` is written by rust-lang.
 
 #[cfg(feature = "assimp")]
-extern crate assimp_crate as assimp;
-
-#[cfg(feature = "assimp")]
 mod assimp_utils;
 
 pub mod app;

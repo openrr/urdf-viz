@@ -15,7 +15,7 @@ members = ["examples/wasm"]
 
 [features]
 default = ["assimp"]
-assimp = ["assimp-crate", "assimp-sys", "tempfile"]
+assimp = ["dep:assimp", "assimp-sys", "tempfile"]
 
 # Note: k, kiss3d, serde, structopt, tokio, urdf-rs, and wasm-bindgen are public dependencies.
 [dependencies]
@@ -30,7 +30,7 @@ thiserror = "1.0"
 tracing = "0.1"
 urdf-rs = "0.8"
 
-assimp-crate = { package = "assimp", version = "0.3.1", optional = true }
+assimp = { version = "0.3.1", optional = true }
 assimp-sys = { version = "0.3.1", optional = true }
 tempfile = { version = "3.8", optional = true }
 
