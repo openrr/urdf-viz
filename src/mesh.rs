@@ -177,18 +177,17 @@ fn load_with_mesh_loader(
     scale: na::Vector3<f32>,
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
-    mut use_texture: bool,
+    use_texture: bool,
 ) -> Result<SceneNode> {
     let mut base = group.add_group();
     let mut loader = mesh_loader::Loader::default();
-    use_texture &= !is_url(file_string);
     if use_texture {
         // TODO: Using fetch_or_read can support remote materials, but loading becomes slow.
-        // #[cfg(not(target_family = "wasm"))]
-        // {
-        //     loader = loader
-        //         .custom_reader(|p| fetch_or_read(p.to_str().unwrap()).map_err(io::Error::other));
-        // }
+        #[cfg(not(target_family = "wasm"))]
+        {
+            loader = loader
+                .custom_reader(|p| fetch_or_read(p.to_str().unwrap()).map_err(io::Error::other));
+        }
     } else {
         loader = loader.custom_reader(|_| Err(io::Error::other("texture rendering disabled")));
     }
@@ -219,19 +218,21 @@ fn load_with_mesh_loader(
             if let Some(color) = material.color.diffuse {
                 kiss3d_scene.set_color(color[0], color[1], color[2]);
             }
+            #[cfg(not(target_family = "wasm"))]
             if let Some(path) = &material.texture.diffuse {
                 let path_string = path.to_str().unwrap();
                 // TODO: Using fetch_or_read can support remote materials, but loading becomes slow.
-                // let buf = fetch_or_read(path_string)?;
-                // kiss3d_scene.set_texture_from_memory(&buf, path_string);
-                kiss3d_scene.set_texture_from_file(path, path_string);
+                let buf = fetch_or_read(path_string)?;
+                kiss3d_scene.set_texture_from_memory(&buf, path_string);
+                // kiss3d_scene.set_texture_from_file(path, path_string);
             }
+            #[cfg(not(target_family = "wasm"))]
             if let Some(path) = &material.texture.ambient {
                 let path_string = path.to_str().unwrap();
                 // TODO: Using fetch_or_read can support remote materials, but loading becomes slow.
-                // let buf = fetch_or_read(path_string)?;
-                // kiss3d_scene.set_texture_from_memory(&buf, path_string);
-                kiss3d_scene.set_texture_from_file(path, path_string);
+                let buf = fetch_or_read(path_string)?;
+                kiss3d_scene.set_texture_from_memory(&buf, path_string);
+                // kiss3d_scene.set_texture_from_file(path, path_string);
             }
         }
     }
