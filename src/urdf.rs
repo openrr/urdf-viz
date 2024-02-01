@@ -1,5 +1,6 @@
 use crate::errors::{Error, Result};
 use crate::mesh::load_mesh;
+use crate::utils::is_url;
 use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
 use std::borrow::Cow;
@@ -78,10 +79,7 @@ pub fn add_geometry(
                     }
                 };
                 let replaced_filename = urdf_rs::utils::expand_package_path(&filename, base_dir)?;
-                if !replaced_filename.starts_with("https://")
-                    && !replaced_filename.starts_with("http://")
-                    && !Path::new(&*replaced_filename).exists()
-                {
+                if !is_url(&replaced_filename) && !Path::new(&*replaced_filename).exists() {
                     return Err(Error::from(format!("{replaced_filename} not found")));
                 }
                 filename = replaced_filename.into_owned().into();

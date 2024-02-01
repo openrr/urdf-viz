@@ -1,4 +1,4 @@
-use crate::errors::Result;
+use crate::{errors::Result, utils::is_url};
 use k::nalgebra as na;
 use kiss3d::scene::SceneNode;
 use std::{cell::RefCell, ffi::OsStr, io, path::Path, rc::Rc};
@@ -94,15 +94,14 @@ pub fn load_mesh(
     scale: na::Vector3<f32>,
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
-    #[allow(unused_variables)] use_texture: bool,
+    use_texture: bool,
     #[allow(unused_variables)] use_assimp: bool,
 ) -> Result<SceneNode> {
     let file_string = filename.as_ref();
 
     #[cfg(feature = "assimp")]
     if use_assimp {
-        let is_url = file_string.starts_with("https://") || file_string.starts_with("http://");
-        if is_url {
+        if is_url(file_string) {
             let file = crate::utils::fetch_tempfile(file_string)?;
             let path = file.path().to_str().unwrap();
             return load_mesh_assimp(path, scale, opt_color, group, use_texture);
@@ -110,42 +109,16 @@ pub fn load_mesh(
         return load_mesh_assimp(file_string, scale, opt_color, group, use_texture);
     }
 
-    let filename = Path::new(file_string);
-
-    match filename.extension().and_then(OsStr::to_str) {
-        Some("obj" | "OBJ") => {
-            if !file_string.starts_with("https://") && !file_string.starts_with("http://") {
-                let mtl_path = filename.parent().unwrap_or_else(|| Path::new("."));
-                debug!(
-                    "load obj: path = {file_string}, mtl_path = {}",
-                    mtl_path.display()
-                );
-                let mut base = group.add_obj(filename, mtl_path, scale);
-                if let Some(color) = *opt_color {
-                    base.set_color(color[0], color[1], color[2]);
-                }
-                Ok(base)
-            } else {
-                Ok(load_obj(
-                    &String::from_utf8(fetch_or_read(file_string)?)?,
-                    file_string,
-                    scale,
-                    opt_color,
-                    group,
-                ))
-            }
-        }
-        ext => {
-            debug!("load {ext:?}: path = {file_string}");
-            load_with_mesh_loader(
-                &fetch_or_read(file_string)?,
-                file_string,
-                scale,
-                opt_color,
-                group,
-            )
-        }
-    }
+    let ext = Path::new(file_string).extension().and_then(OsStr::to_str);
+    debug!("load {ext:?}: path = {file_string}");
+    load_with_mesh_loader(
+        &fetch_or_read(file_string)?,
+        file_string,
+        scale,
+        opt_color,
+        group,
+        use_texture,
+    )
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -154,8 +127,8 @@ fn fetch_or_read(filename: &str) -> Result<Vec<u8>> {
 
     const RESPONSE_SIZE_LIMIT: usize = 10 * 1_024 * 1_024;
 
-    if filename.starts_with("https://") || filename.starts_with("http://") {
-        let mut buf: Vec<u8> = vec![];
+    if is_url(filename) {
+        let mut buf = Vec::with_capacity(128);
         ureq::get(filename)
             .call()
             .map_err(|e| crate::Error::Other(e.to_string()))?
@@ -185,71 +158,17 @@ pub fn load_mesh(
     _use_assimp: bool,
 ) -> Result<SceneNode> {
     let data = crate::utils::Mesh::decode(data.as_ref())?;
-
-    match Path::new(&data.path).extension().and_then(OsStr::to_str) {
-        Some("obj" | "OBJ") => {
-            debug!("load obj: path = {}", data.path);
-            Ok(load_obj(
-                data.string().unwrap(),
-                &data.path,
-                scale,
-                opt_color,
-                group,
-            ))
-        }
-        ext => {
-            debug!("load {ext:?}: path = {}", data.path);
-            load_with_mesh_loader(data.bytes().unwrap(), &data.path, scale, opt_color, group)
-        }
-    }
-}
-
-// Refs: https://github.com/sebcrozet/kiss3d/blob/73ff15dc40aaf994f3e8e240c23bb660be71a6cd/src/scene/scene_node.rs#L807-L866
-fn load_obj(
-    s: &str,
-    filename: &str,
-    scale: na::Vector3<f32>,
-    opt_color: &Option<na::Point3<f32>>,
-    group: &mut SceneNode,
-) -> SceneNode {
-    let tex = kiss3d::resource::TextureManager::get_global_manager(|tm| tm.get_default());
-    let mat = kiss3d::resource::MaterialManager::get_global_manager(|mm| mm.get_default());
-
-    // TODO: mtl
-    let objs = kiss3d::loader::obj::parse(s, ".".as_ref(), filename);
-    let mut root;
-
-    let self_root = objs.len() == 1;
-    let child_scale;
-
-    if self_root {
-        root = group.clone();
-        child_scale = scale;
-    } else {
-        root = SceneNode::new(scale, na::one(), None);
-        group.add_child(root.clone());
-        child_scale = na::Vector3::from_element(1.0);
-    }
-
-    let mut last = None;
-    for (_, mesh, _mtl) in objs {
-        let mesh = Rc::new(RefCell::new(mesh));
-        let object = kiss3d::scene::Object::new(mesh, 1.0, 1.0, 1.0, tex.clone(), mat.clone());
-
-        // TODO: mtl
-
-        last = Some(root.add_object(child_scale, na::one(), object));
-    }
-
-    let mut base = if self_root {
-        last.expect("there was nothing on this obj file")
-    } else {
-        root
-    };
-    if let Some(color) = *opt_color {
-        base.set_color(color[0], color[1], color[2]);
-    }
-    base
+    let ext = Path::new(&data.path).extension().and_then(OsStr::to_str);
+    debug!("load {ext:?}: path = {}", data.path);
+    let use_texture = false;
+    load_with_mesh_loader(
+        data.bytes().unwrap(),
+        &data.path,
+        scale,
+        opt_color,
+        group,
+        use_texture,
+    )
 }
 
 fn load_with_mesh_loader(
@@ -258,44 +177,71 @@ fn load_with_mesh_loader(
     scale: na::Vector3<f32>,
     opt_color: &Option<na::Point3<f32>>,
     group: &mut SceneNode,
+    mut use_texture: bool,
 ) -> Result<SceneNode> {
-    let mesh = mesh_loader::Loader::default()
-        .merge_meshes(true)
-        .load_from_slice(bytes, file_string)
-        .map_err(|e| {
-            if e.kind() == io::ErrorKind::Unsupported {
-                crate::errors::Error::from(format!(
-                    "{file_string} is not supported, because assimp feature is disabled"
-                ))
-            } else {
-                e.into()
+    let mut base = group.add_group();
+    let mut loader = mesh_loader::Loader::default();
+    use_texture &= !is_url(file_string);
+    if use_texture {
+        // TODO: Using fetch_or_read can support remote materials, but loading becomes slow.
+        // #[cfg(not(target_family = "wasm"))]
+        // {
+        //     loader = loader
+        //         .custom_reader(|p| fetch_or_read(p.to_str().unwrap()).map_err(io::Error::other));
+        // }
+    } else {
+        loader = loader.custom_reader(|_| Err(io::Error::other("texture rendering disabled")));
+    }
+    let scene = loader.load_from_slice(bytes, file_string).map_err(|e| {
+        if e.kind() == io::ErrorKind::Unsupported {
+            crate::errors::Error::from(format!(
+                "{file_string} is not supported, because assimp feature is disabled"
+            ))
+        } else {
+            e.into()
+        }
+    })?;
+
+    for (mesh, material) in scene.meshes.into_iter().zip(scene.materials) {
+        let coords = mesh.vertices.into_iter().map(Into::into).collect();
+        let faces = mesh
+            .faces
+            .into_iter()
+            .map(|f| {
+                na::Point3::new(
+                    f[0].try_into().unwrap(),
+                    f[1].try_into().unwrap(),
+                    f[2].try_into().unwrap(),
+                )
+            })
+            .collect();
+
+        let kiss3d_mesh = Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+            coords, faces, None, None, false,
+        )));
+        let mut kiss3d_scene = base.add_mesh(kiss3d_mesh, scale);
+        if use_texture {
+            if let Some(color) = material.color.diffuse {
+                kiss3d_scene.set_color(color[0], color[1], color[2]);
             }
-        })?
-        .meshes
-        .pop()
-        .unwrap(); // merge_meshes(true) merges all meshes into one
-    debug!("mesh={mesh:?}");
-    let positions = mesh.vertices.into_iter().map(Into::into).collect();
-    let faces = mesh
-        .faces
-        .into_iter()
-        .map(|f| {
-            na::Point3::new(
-                f[0].try_into().unwrap(),
-                f[1].try_into().unwrap(),
-                f[2].try_into().unwrap(),
-            )
-        })
-        .collect();
-    let mut base = group.add_mesh(
-        Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
-            positions, faces, None, None, false,
-        ))),
-        scale,
-    );
+            if let Some(path) = &material.texture.diffuse {
+                let path_string = path.to_str().unwrap();
+                // TODO: Using fetch_or_read can support remote materials, but loading becomes slow.
+                // let buf = fetch_or_read(path_string)?;
+                // kiss3d_scene.set_texture_from_memory(&buf, path_string);
+                kiss3d_scene.set_texture_from_file(path, path_string);
+            }
+            if let Some(path) = &material.texture.ambient {
+                let path_string = path.to_str().unwrap();
+                // TODO: Using fetch_or_read can support remote materials, but loading becomes slow.
+                // let buf = fetch_or_read(path_string)?;
+                // kiss3d_scene.set_texture_from_memory(&buf, path_string);
+                kiss3d_scene.set_texture_from_file(path, path_string);
+            }
+        }
+    }
     if let Some(color) = *opt_color {
         base.set_color(color[0], color[1], color[2]);
     }
-    // TODO: material
     Ok(base)
 }
