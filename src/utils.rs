@@ -18,6 +18,10 @@ pub(crate) fn replace_package_with_path(
     ))
 }
 
+pub(crate) fn is_url(path: &str) -> bool {
+    path.starts_with("https://") || path.starts_with("http://")
+}
+
 #[cfg(not(target_family = "wasm"))]
 mod native {
     use std::{
@@ -30,12 +34,12 @@ mod native {
 
     use tracing::error;
 
-    use crate::Result;
+    use crate::{utils::is_url, Result};
 
     fn read_urdf(path: &str, xacro_args: &[(String, String)]) -> Result<(urdf_rs::Robot, String)> {
         let urdf_text = if Path::new(path).extension().and_then(OsStr::to_str) == Some("xacro") {
             urdf_rs::utils::convert_xacro_to_urdf_with_args(path, xacro_args)?
-        } else if path.starts_with("https://") || path.starts_with("http://") {
+        } else if is_url(path) {
             ureq::get(path)
                 .call()
                 .map_err(|e| crate::Error::Other(e.to_string()))?
@@ -152,7 +156,7 @@ mod wasm {
     use wasm_bindgen_futures::JsFuture;
     use web_sys::Response;
 
-    use crate::{Error, Result};
+    use crate::{utils::is_url, Error, Result};
 
     #[derive(Serialize, Deserialize)]
     pub(crate) struct Mesh {
@@ -178,14 +182,6 @@ mod wasm {
                 MeshData::None => None,
                 MeshData::Bytes(bytes) => Some(bytes),
                 MeshData::Base64(_) => unreachable!(),
-            }
-        }
-
-        pub(crate) fn string(&self) -> Option<&str> {
-            match &self.data {
-                MeshData::None => None,
-                MeshData::Bytes(s) => str::from_utf8(s).ok(),
-                MeshData::Base64(..) => unreachable!(),
             }
         }
     }
@@ -242,9 +238,7 @@ mod wasm {
                 .chain(link.collision.iter_mut().map(|c| &mut c.geometry))
         }) {
             if let urdf_rs::Geometry::Mesh { filename, .. } = geometry {
-                let input_file = if filename.starts_with("https://")
-                    || filename.starts_with("http://")
-                {
+                let input_file = if is_url(filename) {
                     filename.clone()
                 } else if filename.starts_with("package://") {
                     crate::utils::replace_package_with_path(filename, package_path).ok_or_else(||
