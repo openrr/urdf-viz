@@ -20,6 +20,7 @@ use std::cell::RefCell;
 use std::ffi::CStr;
 use std::os::raw::{c_float, c_uint};
 use std::rc::Rc;
+use std::str;
 use tracing::*;
 
 const ASSIMP_DIFFUSE: &CStr = match CStr::from_bytes_with_nul(b"$clr.diffuse\0") {
@@ -52,7 +53,14 @@ fn assimp_material_texture(material: &assimp::Material<'_>) -> Option<String> {
             &mut map_mode,
             &mut flags,
         ) {
-            assimp_sys::AiReturn::Success => Some(path.as_ref().to_owned()),
+            assimp_sys::AiReturn::Success => Some(
+                // assimp-rs's impl AsRef<str> for AiString does a similar, but it
+                // might panic because assimp-rs doesn't handle the case where assimp
+                // returns an out-of-range length (which probably means an error).
+                str::from_utf8(path.data.get(0..path.length)?)
+                    .ok()?
+                    .to_owned(),
+            ),
             _ => None,
         }
     }
