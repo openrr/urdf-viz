@@ -100,6 +100,7 @@ pub(crate) fn convert_assimp_scene_to_kiss3d_mesh(
             vertices.extend(mesh.vertex_iter().map(|v| na::Point3::new(v.x, v.y, v.z)));
             indices.extend(mesh.face_iter().filter_map(|f| {
                 if f.num_indices == 3 {
+                    // TODO: https://github.com/openrr/urdf-viz/issues/22
                     Some(na::Point3::new(f[0] as u16, f[1] as u16, f[2] as u16))
                 } else {
                     debug!("invalid mesh!");
