@@ -15,22 +15,18 @@ If you are using rust-lang already and `cargo` is installed, you can install by 
 cargo install urdf-viz
 ```
 
-If you don't use mesh other than `.obj`, `.stl`, and `.dae` files, you can skip install
-of assimp by disabling the `assimp` feature like below.
+If you want to use mesh other than `.obj`, `.stl`, and `.dae` files, you need to install
+with assimp like below.
 
 ```bash
-cargo install urdf-viz --no-default-features
+cargo install urdf-viz --features assimp
 ```
-
-Note: When the `assimp` feature is disabled, materials are not fully supported yet.
 
 ### Pre-requirements for build
 
 #### Common
 
-You need [cmake](https://cmake.org/download/) to use assimp (mesh loader).
-It can be skipped if you use `--no-default-features`, but it will make it
-fail to show mesh files other than `.obj`, `.stl`, and `.dae`.
+If you want to use `--features assimp` to use mesh other than `.obj`, `.stl`, and `.dae` files, you need [cmake](https://cmake.org/download/).
 
 #### On Linux
 
@@ -241,7 +237,7 @@ curl http://127.0.0.1:7777/get_urdf_text
 * [kiss3d](https://github.com/sebcrozet/kiss3d): `urdf-viz` is strongly depend on `kiss3d`, which is super easy to use, great 3D graphic engine.
 * [nalgebra](https://github.com/sebcrozet/nalgebra): linear algebra library.
 * [k](https://github.com/openrr/k): kinematics library which is based on [nalgebra](https://github.com/sebcrozet/nalgebra). It can load URDF files using `urdf-rs`.
-* [assimp-rs](https://github.com/Eljay/assimp-rs): assimp rust interface. `kiss3d` supports `.obj` files natively, but urdf contains `dae` or `stl` files. These files are converted to kiss3d mesh model by `assimp-rs`
+* [mesh-loader](https://github.com/openrr/mesh-loader): Mesh files (`.obj`, `.stl`, and `.dae`) loader.
 * [urdf-rs](https://github.com/openrr/urdf-rs): URDF file loader.
 * [structopt](https://github.com/TeXitoi/structopt): super easy command line arguments parser.
 

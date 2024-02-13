@@ -14,7 +14,7 @@ exclude = [".github/*", "img/*"]
 members = ["examples/wasm"]
 
 [features]
-default = ["assimp"]
+default = []
 assimp = ["dep:assimp", "assimp-sys", "tempfile"]
 
 # Note: k, kiss3d, serde, structopt, tokio, urdf-rs, and wasm-bindgen are public dependencies.

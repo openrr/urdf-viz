@@ -54,9 +54,9 @@ jobs:
         if: startsWith(matrix.os, 'windows')
 
       - run: cargo fmt --all --check
-      - run: cargo clippy --all-targets
+      - run: cargo clippy --all-features --all-targets
       - run: cargo hack build --feature-powerset
-      - run: cargo test
+      - run: cargo test --all-features
 
   wasm:
     runs-on: ubuntu-20.04
@@ -68,7 +68,7 @@ jobs:
           targets: wasm32-unknown-unknown
       - name: Install wasm-pack
         uses: taiki-e/install-action@wasm-pack
-      - run: cargo build --target wasm32-unknown-unknown --no-default-features --lib
+      - run: cargo build --target wasm32-unknown-unknown --lib
       - run: cargo build --target wasm32-unknown-unknown -p urdf-viz-wasm
       - name: Build wasm example
         run: npm install && npm run build

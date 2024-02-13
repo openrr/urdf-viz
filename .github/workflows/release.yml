@@ -72,6 +72,8 @@ jobs:
         with:
           bin: urdf-viz
           include: ${{ matrix.include-files }}
+          # TODO: Should we enable assimp feature for pre-built binary?
+          # all-features: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_PROFILE_RELEASE_LTO: true
