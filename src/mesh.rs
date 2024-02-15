@@ -207,8 +207,7 @@ fn load_with_mesh_loader(
         let faces = mesh
             .faces
             .into_iter()
-            // TODO: https://github.com/openrr/urdf-viz/issues/22
-            .map(|f| na::Point3::new(f[0] as u16, f[1] as u16, f[2] as u16))
+            .map(|f| na::Point3::new(f[0], f[1], f[2]))
             .collect();
 
         let kiss3d_mesh = Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
