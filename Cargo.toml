@@ -21,7 +21,7 @@ assimp = ["dep:assimp", "assimp-sys", "tempfile"]
 [dependencies]
 crossbeam-queue = "0.3.5"
 k = "0.31"
-kiss3d = "0.35"
+kiss3d = { git = "https://github.com/sebcrozet/kiss3d.git", rev = "da70cd0", features = ["vertex_index_u32"] }
 mesh-loader = "0.1.6"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
