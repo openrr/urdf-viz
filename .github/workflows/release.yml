@@ -58,6 +58,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install xorg-dev libglu1-mesa-dev
         if: startsWith(matrix.os, 'ubuntu')
+      - run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> "${GITHUB_ENV}"
+        if: startsWith(matrix.os, 'windows')
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:

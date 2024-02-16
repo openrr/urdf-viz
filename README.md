@@ -40,7 +40,7 @@ sudo apt-get install cmake xorg-dev libglu1-mesa-dev
 ### Download binary
 
 You can download prebuilt binaries from the [release page](https://github.com/openrr/urdf-viz/releases).
-Prebuilt binaries are available for macOS, Linux, and Windows.
+Prebuilt binaries are available for macOS, Linux, and Windows (static executable).
 
 ### Install via Homebrew
 
