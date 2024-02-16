@@ -2,14 +2,12 @@ cdylib
 collada
 ctxt
 devel
-freetype
 glfw
 glutin
 highp
 libglu
 mediump
 memoffset
-msvc
 nalgebra
 ncollide
 nextage
@@ -21,7 +19,6 @@ rospack
 rosrun
 rustdocflags
 rustflags
-rustlib
 RUSTSEC
 rusttype
 rustup
