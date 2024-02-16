@@ -37,19 +37,6 @@ compile `assimp-sys` and `glfw-sys`.
 sudo apt-get install cmake xorg-dev libglu1-mesa-dev
 ```
 
-#### On Windows
-
-You need freetype.lib in your PATH, which is required by `freetype-sys`.
-You can find binaries [here](https://github.com/PistonDevelopers/binaries)
-
-#### On MacOS
-
-Install freetype by brew.
-
-```bash
-brew install freetype
-```
-
 ### Download binary
 
 You can download prebuilt binaries from the [release page](https://github.com/openrr/urdf-viz/releases).
