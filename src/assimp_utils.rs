@@ -23,10 +23,7 @@ use std::rc::Rc;
 use std::str;
 use tracing::*;
 
-const ASSIMP_DIFFUSE: &CStr = match CStr::from_bytes_with_nul(b"$clr.diffuse\0") {
-    Ok(s) => s,
-    Err(_) => unreachable!(),
-};
+const ASSIMP_DIFFUSE: &CStr = c"$clr.diffuse";
 
 type RefCellMesh = Rc<RefCell<Mesh>>;
 
