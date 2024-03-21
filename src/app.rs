@@ -207,7 +207,12 @@ impl UrdfViewerApp {
         println!("DoF={num_joints}");
         println!("joint names={names:?}");
         let mut handle = RobotStateHandle::default();
-        handle.current_joint_positions.lock().unwrap().names = names.clone();
+        handle
+            .current_joint_positions
+            .lock()
+            .unwrap()
+            .names
+            .clone_from(&names);
         handle.urdf_text = Some(urdf_robot.urdf_text.clone());
         Ok(UrdfViewerApp {
             input_path,
@@ -338,7 +343,7 @@ impl UrdfViewerApp {
         let names: Vec<_> = self.robot.iter_joints().map(|j| j.name.clone()).collect();
         if self.names != names {
             let dof = names.len();
-            self.names = names.clone();
+            self.names.clone_from(&names);
             let mut current_joint_positions = self.handle.current_joint_positions.lock().unwrap();
             current_joint_positions.names = names;
             current_joint_positions.positions = vec![0.0; dof];
