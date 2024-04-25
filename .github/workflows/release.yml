@@ -46,7 +46,15 @@ jobs:
     needs: [create-release]
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-latest, windows-latest]
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-20.04
+          - target: x86_64-apple-darwin
+            os: macos-13
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -58,13 +66,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install xorg-dev libglu1-mesa-dev
         if: startsWith(matrix.os, 'ubuntu')
-      - run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> "${GITHUB_ENV}"
-        if: startsWith(matrix.os, 'windows')
+      - run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >>"${GITHUB_ENV}"
+        if: contains(matrix.target, '-windows-msvc')
+      # https://doc.rust-lang.org/rustc/platform-support.html
+      - run: echo "MACOSX_DEPLOYMENT_TARGET=10.12" >>"${GITHUB_ENV}"
+        if: matrix.target == 'x86_64-apple-darwin'
+      - run: echo "MACOSX_DEPLOYMENT_TARGET=11.0" >>"${GITHUB_ENV}"
+        if: matrix.target == 'aarch64-apple-darwin'
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: urdf-viz
-          include: ${{ matrix.include-files }}
+          target: ${{ matrix.target }}
           # TODO: Should we enable assimp feature for pre-built binary?
           # all-features: true
         env:

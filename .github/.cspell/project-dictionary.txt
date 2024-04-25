@@ -1,3 +1,4 @@
+aarch
 cdylib
 collada
 ctxt
@@ -8,6 +9,7 @@ highp
 libglu
 mediump
 memoffset
+msvc
 nalgebra
 ncollide
 nextage
