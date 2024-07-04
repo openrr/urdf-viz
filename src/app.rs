@@ -114,6 +114,7 @@ r:    set random angles
 z:    reset joint positions and origin
 c:    toggle visual/collision
 f:    toggle show link frames
+n:    toggle show link names
 m:    toggle show menu
 "#;
 
@@ -137,6 +138,7 @@ pub struct UrdfViewerApp {
     handle: Arc<RobotStateHandle>,
     is_collision: bool,
     show_frames: bool,
+    show_link_names: bool,
     ik_constraints: k::Constraints,
     point_size: f32,
     package_path: HashMap<String, String>,
@@ -228,6 +230,7 @@ impl UrdfViewerApp {
             handle: Arc::new(handle),
             is_collision,
             show_frames: false,
+            show_link_names: false,
             ik_constraints: k::Constraints::default(),
             point_size: 10.0,
             package_path,
@@ -302,6 +305,26 @@ impl UrdfViewerApp {
             let name = node_to_frame_name(n);
             if let Some(obj) = self.viewer.scene_node_mut(&name) {
                 window.remove_node(obj);
+            }
+        }
+    }
+
+    fn draw_link_names(&mut self, window: &mut Window) {
+        for n in self.robot.iter() {
+            let name = node_to_frame_name(n);
+            let link_name = if let Some(n) = name.strip_suffix("_joint_frame") {
+                n
+            } else {
+                name.as_str()
+            };
+            if let Some(tr) = n.world_transform() {
+                self.viewer.draw_text_from_3d(
+                    window,
+                    link_name,
+                    40.0,
+                    &na::Point3::new(tr.translation.x, tr.translation.y, tr.translation.z),
+                    &na::Point3::new(1f32, 1.0, 1.0),
+                );
             }
         }
     }
@@ -472,6 +495,9 @@ impl UrdfViewerApp {
             Key::F => {
                 self.show_frames = !self.show_frames;
                 self.update_frame_markers();
+            }
+            Key::N => {
+                self.show_link_names = !self.show_link_names;
             }
             #[cfg(not(target_family = "wasm"))]
             Key::L => {
@@ -824,6 +850,9 @@ impl window::State for AppState {
                 &na::Point2::new(10f32, 150.0),
                 &na::Point3::new(0.9f32, 0.5, 1.0),
             );
+        }
+        if self.app.show_link_names {
+            self.app.draw_link_names(window);
         }
 
         for mut event in window.events().iter() {
