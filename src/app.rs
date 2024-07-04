@@ -798,7 +798,9 @@ impl window::State for AppState {
                 window,
                 HOW_TO_USE_STR,
                 FONT_SIZE_USAGE,
-                &na::Point2::new(2000.0, 10.0),
+                // The x2 factor should be removed for kiss3d >= 0.36
+                // See: https://github.com/sebcrozet/kiss3d/issues/98
+                &na::Point2::new((window.width() as f32 * 2.0) - 900.0, 10.0),
                 &na::Point3::new(1f32, 1.0, 1.0),
             );
         }
