@@ -1,6 +1,7 @@
 use crate::urdf::*;
 use k::nalgebra as na;
 use kiss3d::camera::ArcBall;
+use kiss3d::camera::Camera;
 use kiss3d::ncollide3d::simba::scalar::SubsetOf;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
@@ -224,6 +225,37 @@ impl Viewer {
     ) {
         window.draw_text(text, pos, size, &self.font, color);
     }
+
+    pub fn draw_text_from_3d(
+        &mut self,
+        window: &mut Window,
+        text: &str,
+        size: f32,
+        pos: &na::Point3<f32>,
+        color: &na::Point3<f32>,
+    ) {
+        let height = window.height() as f32;
+        let width = window.width() as f32;
+        let text_position_in_2d: na::Matrix<
+            f32,
+            na::Const<2>,
+            na::Const<1>,
+            na::ArrayStorage<f32, 2, 1>,
+        > = self.arc_ball.project(pos, &na::Vector2::new(width, height));
+        self.draw_text(
+            window,
+            text,
+            size,
+            // The x2 factor should be removed for kiss3d >= 0.36
+            // See: https://github.com/sebcrozet/kiss3d/issues/98
+            &na::Point2::new(
+                text_position_in_2d.x * 2.0,
+                (height - text_position_in_2d.y) * 2.0,
+            ),
+            color,
+        );
+    }
+
     pub fn set_temporal_color(&mut self, link_name: &str, r: f32, g: f32, b: f32) {
         if let Some(obj) = self.scenes.get_mut(link_name) {
             obj.set_color(r, g, b);
