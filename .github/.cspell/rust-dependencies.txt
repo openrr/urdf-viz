@@ -2,7 +2,6 @@
 // It is not intended for manual editing.
 
 assimp
-bindgen
 getrandom
 structopt
 thiserror
