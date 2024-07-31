@@ -75,3 +75,5 @@ missing_debug_implementations = "warn"
 rust_2018_idioms = "warn"
 single_use_lifetimes = "warn"
 unreachable_pub = "warn"
+[workspace.lints.clippy]
+lint_groups_priority = { level = "allow", priority = 1 } # https://github.com/rust-lang/rust-clippy/issues/12920
