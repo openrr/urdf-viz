@@ -49,6 +49,15 @@ You can install urdf-viz using [Homebrew tap on macOS and Linux](https://github.
 ```sh
 brew install openrr/tap/urdf-viz
 ```
+### Run with Docker
+Build docker image:
+```bash
+docker build . -t urdf_viz_docker
+```
+Create container:
+```bash
+docker run -it --rm --privileged -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $XAUTHORITY:/tmp/.docker.xauth -e XAUTHORITY=/tmp/.docker.xauth urdf_viz_docker
+```
 
 ## How to use
 
