@@ -10,3 +10,10 @@ updates:
       # These dependencies need to be updated at the same time with k.
       - dependency-name: urdf-rs
     labels: []
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: ''
+    labels: []
