@@ -1,4 +1,3 @@
-aarch
 cdylib
 collada
 ctxt
@@ -23,7 +22,6 @@ rustdocflags
 rustflags
 RUSTSEC
 rusttype
-rustup
 thormang
 webpki
 xacro
