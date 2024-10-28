@@ -79,6 +79,8 @@ jobs:
   wasm:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
