@@ -13,6 +13,8 @@ ignore = [
     "RUSTSEC-2021-0150", # unmaintained (ncollide3d), dep of kiss3d
     "RUSTSEC-2024-0370", # unmaintained (proc-macro-error), transitively dep of structopt
     "RUSTSEC-2024-0375", # unmaintained (atty), transitively dep of structopt (via old clap)
+    "RUSTSEC-2024-0384", # unmaintained (instant), dep of kiss3d
+    "RUSTSEC-2024-0388", # unmaintained (derivative), transitively dep of kiss3d
 ]
 
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
