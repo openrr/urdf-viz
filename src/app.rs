@@ -54,9 +54,10 @@ fn move_joint_by_random(robot: &mut k::Chain<f32>) -> Result<(), k::Error> {
     robot.set_joint_positions(&angles_vec)
 }
 
-fn move_joint_to_zero(robot: &mut k::Chain<f32>) -> Result<(), k::Error> {
+fn move_joint_to_zero(robot: &mut k::Chain<f32>) {
     let angles_vec = vec![0.0; robot.dof()];
-    robot.set_joint_positions(&angles_vec)
+    // use clamped variant because 0.0 is maybe out-of-limits.
+    robot.set_joint_positions_clamped(&angles_vec)
 }
 
 fn move_joint_by_index(
@@ -332,9 +333,8 @@ impl UrdfViewerApp {
     fn update_robot(&mut self) {
         // this is hack to handle invalid mimic joints, like hsr
         let joint_positions = self.robot.joint_positions();
-        self.robot
-            .set_joint_positions(&joint_positions)
-            .unwrap_or_else(|err| error!("failed to update robot joints {err}"));
+        // Use clamped variant because 0.0 which is the default position value is maybe out-of-limits.
+        self.robot.set_joint_positions_clamped(&joint_positions);
         self.viewer.update(&self.robot);
         self.update_ik_target_marker();
         self.update_frame_markers();
@@ -513,7 +513,7 @@ impl UrdfViewerApp {
             Key::Z => {
                 self.robot.set_origin(na::Isometry::identity());
                 if self.has_joints() {
-                    move_joint_to_zero(&mut self.robot).unwrap_or(());
+                    move_joint_to_zero(&mut self.robot);
                 }
                 self.update_robot();
             }
