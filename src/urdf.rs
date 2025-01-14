@@ -125,12 +125,7 @@ pub fn rgba_from_visual(urdf_robot: &urdf_rs::Robot, visual: &urdf_rs::Visual) -
     match urdf_robot
         .materials
         .iter()
-        .find(|mat| {
-            visual
-                .material
-                .as_ref()
-                .map_or(false, |m| mat.name == m.name)
-        })
+        .find(|mat| visual.material.as_ref().is_some_and(|m| mat.name == m.name))
         .cloned()
     {
         Some(ref material) => material
