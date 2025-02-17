@@ -105,7 +105,7 @@ jobs:
           git add .
           git -c user.name='ci' -c user.email='ci' commit -m 'Deploy urdf-viz to gh-pages'
           git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
-        if: github.event_name == 'push' && github.event.ref == 'refs/heads/main' && github.repository_owner == 'openrr'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository_owner == 'openrr'
 
   deny:
     runs-on: ubuntu-latest
