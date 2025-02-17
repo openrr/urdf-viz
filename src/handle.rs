@@ -120,7 +120,7 @@ impl Default for RobotStateHandle {
     }
 }
 
-// Wrapper type to prevent parking_lot updates from becoming a breaking change.
+// Wrapper type to prevent mutex type changes from becoming a breaking change.
 macro_rules! impl_guard {
     ($guard_name:ident($target:ident)) => {
         #[derive(Debug)]
