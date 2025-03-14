@@ -1,20 +1,12 @@
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 [advisories]
 yanked = "deny"
+unmaintained = "none"
 ignore = [
     "RUSTSEC-2021-0145", # atty 0.2, transitively dep of structopt (via old clap)
     "RUSTSEC-2021-0119", # nix 0.18/0.20, transitively dep of kiss3d (via old glutin)
     "RUSTSEC-2022-0041", # crossbeam-utils 0.7, transitively dep of kiss3d (via old rusttype)
     "RUSTSEC-2023-0045", # memoffset 0.5, transitively dep of kiss3d (via old rusttype)
-    "RUSTSEC-2020-0016", # unmaintained (net2), transitively dep of kiss3d (via old glutin)
-    "RUSTSEC-2020-0020", # unmaintained (stb_truetype), transitively dep of kiss3d (via old rusttype)
-    "RUSTSEC-2021-0139", # unmaintained (ansi_term), transitively dep of structopt (via old clap)
-    "RUSTSEC-2021-0140", # unmaintained (rusttype), dep of kiss3d
-    "RUSTSEC-2021-0150", # unmaintained (ncollide3d), dep of kiss3d
-    "RUSTSEC-2024-0370", # unmaintained (proc-macro-error), transitively dep of structopt
-    "RUSTSEC-2024-0375", # unmaintained (atty), transitively dep of structopt (via old clap)
-    "RUSTSEC-2024-0384", # unmaintained (instant), dep of kiss3d
-    "RUSTSEC-2024-0388", # unmaintained (derivative), transitively dep of kiss3d
 ]
 
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
@@ -34,7 +26,6 @@ allow = [
     "BSD-3-Clause",
     "CC0-1.0",
     "ISC",
-    "OpenSSL",
     "Zlib",
     "MPL-2.0", # webpki-roots
 ]
