@@ -85,8 +85,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          # TODO: Pin to 1.81 due to https://github.com/webpack/webpack/issues/15566
-          toolchain: '1.81'
           targets: wasm32-unknown-unknown
       - name: Install wasm-pack
         uses: taiki-e/install-action@wasm-pack
