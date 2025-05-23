@@ -17,4 +17,7 @@ module.exports = {
         }),
     ],
     mode: 'development',
+    experiments: {
+        asyncWebAssembly: true,
+    },
 };
