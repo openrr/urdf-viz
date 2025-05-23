@@ -27,7 +27,7 @@ allow = [
     "CC0-1.0",
     "ISC",
     "Zlib",
-    "MPL-2.0", # webpki-roots
+    "CDLA-Permissive-2.0", # webpki-roots
 ]
 
 [[licenses.clarify]]
