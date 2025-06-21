@@ -345,10 +345,31 @@ impl UrdfViewerApp {
         self.remove_frame_markers(window);
         // update urdf_robot
         reload_fn(&mut self.urdf_robot);
-
         // update robot based on new urdf_robot
         let urdf_robot = self.urdf_robot.get();
+
+        let previous_positions: HashMap<_, _> = self
+            .robot
+            .iter_joints()
+            .map(|j| (j.name.clone(), j.joint_position().unwrap()))
+            .collect();
         self.robot = urdf_robot.into();
+
+        // restore joint positions
+        let joint_positions: Vec<_> = self
+            .robot
+            .iter_joints()
+            .map(|j| {
+                previous_positions
+                    .get(&j.name)
+                    .copied()
+                    .unwrap_or(j.joint_position().unwrap())
+            })
+            .collect();
+        self.robot
+            .set_joint_positions(&joint_positions)
+            .unwrap_or(());
+
         self.input_path = PathBuf::from(&self.urdf_robot.path);
         let end_link_names = if self.input_end_link_names.is_empty() {
             self.robot
