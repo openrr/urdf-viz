@@ -1,7 +1,6 @@
 cdylib
 collada
 ctxt
-devel
 glfw
 glutin
 highp
