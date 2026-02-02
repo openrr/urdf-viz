@@ -67,7 +67,7 @@ web-sys = { version = "0.3", features = [
 ] }
 
 [dev-dependencies]
-serde_qs = "1.0"
+serde_qs = "1"
 url = "2"
 
 [lints]
