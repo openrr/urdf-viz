@@ -42,7 +42,7 @@ tempfile = { version = "3.8", optional = true }
 axum = "0.8"
 ctrlc = { version = "3", features = ["termination"] }
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["trace"] }
+tower-http = { version = "0.7", features = ["trace"] }
 tracing-subscriber = "0.3"
 ureq = "2"
 
